@@ -11,6 +11,7 @@ from io import BytesIO
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend, aman untuk batch rendering
 import matplotlib.pyplot as plt
+from label_suggester import apply_label_suggestions, save_label_suggestions
 
 _DIR        = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 OUT_FOLDER  = os.path.join(_DIR, "out")
@@ -62,40 +63,67 @@ def generate_event_chart_b64(raw_df, event_time_s):
 
     has_gyro = all(c in seg.columns for c in ("gx", "gy", "gz"))
 
+    num_subplots = 6 if has_gyro else 3
     fig, axes = plt.subplots(
-        2 if has_gyro else 1, 1,
-        figsize=(4, 3 if has_gyro else 1.8),
+        num_subplots, 1,
+        figsize=(4.2, 5.5 if has_gyro else 2.8),
         dpi=100,
         sharex=True,
     )
 
-    if not has_gyro:
-        axes = [axes]
+    # --- Accelerometer subplots ---
+    if all(c in seg.columns for c in ("ax", "ay", "az")):
+        ax_val = seg["ax"].astype(float).values
+        ay_val = seg["ay"].astype(float).values
+        az_val = seg["az"].astype(float).values
+        
+        axes[0].plot(t_rel, ax_val, color="#ef4444", linewidth=0.8)
+        axes[0].set_ylabel("Acc X", fontsize=6)
+        axes[0].set_title("Accelerometer (m/s²)", fontsize=8, pad=2)
+        
+        axes[1].plot(t_rel, ay_val, color="#22c55e", linewidth=0.8)
+        axes[1].set_ylabel("Acc Y", fontsize=6)
+        
+        axes[2].plot(t_rel, az_val, color="#3b82f6", linewidth=0.8)
+        axes[2].set_ylabel("Acc Z", fontsize=6)
+        
+        for i in range(3):
+            axes[i].axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
+            axes[i].tick_params(labelsize=6)
+            axes[i].grid(True, alpha=0.3)
+    else:
+        axes[0].plot(t_rel, mags, color="#2563eb", linewidth=0.8)
+        axes[0].set_ylabel("m/s²", fontsize=6)
+        axes[0].set_title("Accelerometer", fontsize=8, pad=2)
+        axes[0].axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
+        axes[0].tick_params(labelsize=6)
+        axes[0].grid(True, alpha=0.3)
+        axes[1].set_visible(False)
+        axes[2].set_visible(False)
 
-    # --- Accelerometer subplot ---
-    ax_a = axes[0]
-    ax_a.plot(t_rel, mags, color="#2563eb", linewidth=0.8)
-    ax_a.axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
-    ax_a.set_ylabel("m/s²", fontsize=7)
-    ax_a.set_title("Accelerometer", fontsize=8, pad=2)
-    ax_a.tick_params(labelsize=6)
-    ax_a.grid(True, alpha=0.3)
-
-    # --- Gyroscope subplot ---
+    # --- Gyroscope subplots ---
     if has_gyro:
         gx = seg["gx"].fillna(0.0).astype(float).values
         gy = seg["gy"].fillna(0.0).astype(float).values
         gz = seg["gz"].fillna(0.0).astype(float).values
-        gyro_mag = np.sqrt(gx ** 2 + gy ** 2 + gz ** 2)
 
-        ax_g = axes[1]
-        ax_g.plot(t_rel, gyro_mag, color="#d97706", linewidth=0.8)
-        ax_g.axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
-        ax_g.set_ylabel("rad/s", fontsize=7)
-        ax_g.set_xlabel("detik dari event", fontsize=7)
-        ax_g.set_title("Gyroscope", fontsize=8, pad=2)
-        ax_g.tick_params(labelsize=6)
-        ax_g.grid(True, alpha=0.3)
+        axes[3].plot(t_rel, gx, color="#ef4444", linewidth=0.8)
+        axes[3].set_ylabel("Gyr X", fontsize=6)
+        axes[3].set_title("Gyroscope (rad/s)", fontsize=8, pad=2)
+        
+        axes[4].plot(t_rel, gy, color="#22c55e", linewidth=0.8)
+        axes[4].set_ylabel("Gyr Y", fontsize=6)
+        
+        axes[5].plot(t_rel, gz, color="#3b82f6", linewidth=0.8)
+        axes[5].set_ylabel("Gyr Z", fontsize=6)
+        axes[5].set_xlabel("detik dari event", fontsize=7)
+        
+        for i in range(3, 6):
+            axes[i].axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
+            axes[i].tick_params(labelsize=6)
+            axes[i].grid(True, alpha=0.3)
+    else:
+        axes[2].set_xlabel("detik dari event", fontsize=7)
 
     fig.tight_layout(pad=0.5)
 
@@ -140,6 +168,9 @@ selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
 df_trip       = df_trip.sort_values(by="time_s")
 
+if "suggested_label" not in df_trip.columns:
+    df_trip = apply_label_suggestions(df_trip)
+
 start_time          = df_trip["time_s"].min()
 df_trip["detik_ke"] = df_trip["time_s"] - start_time
 df_trip["nomor_event"] = range(1, len(df_trip) + 1)
@@ -167,6 +198,8 @@ else:
 _preview_cols = ["nomor_event", "datetime_wib", "detik_ke", "peak_mag_g", "peak_gyro_mag", "level"]
 if _HAS_SCORE:
     _preview_cols += ["score", "priority"]
+if "asymmetry_score" in df_trip.columns:
+    _preview_cols += ["num_peaks_gyro", "asymmetry_score"]
 df_trip.head(5)[_preview_cols]
 
 # %% [markdown]
@@ -189,11 +222,18 @@ folium.PolyLine(path, color="blue", weight=3, opacity=0.4).add_to(m)
 print("Membangkitkan grafik sensor untuk setiap event ...")
 chart_count = 0
 
-for _, row in df_trip.iterrows():
+event_coords = {}
+nomors = df_trip["nomor_event"].tolist()
+
+for i, (_, row) in enumerate(df_trip.iterrows()):
     nomor      = int(row["nomor_event"])
+    prev_nomor = nomors[i-1] if i > 0 else None
+    next_nomor = nomors[i+1] if i < len(nomors) - 1 else None
     # Tambahkan sedikit simpangan/jitter agar marker tidak saling tumpang tindih sempurna
     lat        = row["lat"] + np.random.uniform(-0.00002, 0.00002)
     lon        = row["lon"] + np.random.uniform(-0.00002, 0.00002)
+    
+    event_coords[nomor] = {"lat": lat, "lon": lon}
     waktu_real = row["datetime_wib"].strftime("%H:%M:%S")
     menit      = int(row["detik_ke"] // 60)
     detik      = int(row["detik_ke"] % 60)
@@ -201,12 +241,24 @@ for _, row in df_trip.iterrows():
     gyro_val   = row.get("peak_gyro_mag", 0)
     level      = row["level"]
 
+    # --- Fitur Shape Baru ---
+    num_peaks_accel = row.get("num_peaks_accel", None)
+    num_peaks_gyro  = row.get("num_peaks_gyro", None)
+    asym_score      = row.get("asymmetry_score", None)
+    loc_dur         = row.get("local_duration", None)
+
     # Ambil kolom scoring (backward-compatible jika belum ada)
     score      = row.get("score", None)
     priority   = row.get("priority", None)
     speed_mean = row.get("speed_mean", None)
     mag_jrk    = row.get("mag_jrk", None)
 
+    # --- Get Sugesti ---
+    suggested_lbl  = row.get("suggested_label", "")
+    suggested_conf = row.get("suggestion_confidence", 0.0)
+    suggested_rsn  = row.get("suggestion_reason", "")
+    suggested_raw  = row.get("suggested_raw_label", "")
+    
     # Warna marker: pakai priority jika tersedia, fallback ke level
     if priority:
         color = "red" if priority == "high" else ("orange" if priority == "medium" else "green")
@@ -221,22 +273,53 @@ for _, row in df_trip.iterrows():
             chart_html = f'<img src="data:image/png;base64,{b64}" style="width:100%;margin-top:6px;">'
             chart_count += 1
 
-    # --- Baris scoring tambahan (hanya jika tersedia) ---
+    # --- Baris scoring & shape tambahan (hanya jika tersedia) ---
     scoring_rows = ""
     if score is not None:
         speed_kmh = f"{speed_mean * 3.6:.1f} km/h" if speed_mean is not None and speed_mean == speed_mean else "N/A"
         jrk_str   = f"{mag_jrk:.1f}" if mag_jrk is not None and mag_jrk == mag_jrk else "N/A"
         pri_color = "#dc2626" if priority == "high" else ("#d97706" if priority == "medium" else "#16a34a")
-        scoring_rows = f"""
+        scoring_rows += f"""
           <tr><td>Score</td><td>: <b>{score:.3f}</b></td></tr>
           <tr><td>Priority</td><td>: <b style='color:{pri_color};'>{priority}</b></td></tr>
           <tr><td>Speed</td><td>: {speed_kmh}</td></tr>
           <tr><td>Jerk</td><td>: {jrk_str} m/s²</td></tr>
         """
+        if suggested_lbl:
+            scoring_rows += f"""
+              <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
+              <tr><td colspan='2'>🤖 <b>Suggested: <span style='color:#2563eb;'>{suggested_raw}</span></b> ({suggested_conf*100:.0f}%)</td></tr>
+              <tr><td colspan='2' style='font-size:10px;color:#555;'><i>{suggested_rsn}</i></td></tr>
+            """
+        
+    if asym_score is not None and asym_score == asym_score: # NaN check
+        scoring_rows += f"""
+          <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
+          <tr><td>Peaks (Acc/Gyr)</td><td>: {int(num_peaks_accel)} / <b>{int(num_peaks_gyro)}</b></td></tr>
+          <tr><td>Asymmetry</td><td>: <b>{asym_score:.2f}</b></td></tr>
+          <tr><td>Duration</td><td>: {loc_dur:.2f}s</td></tr>
+        """
+
+    nav_buttons = "<div style='margin-top: 8px; display: flex; justify-content: space-between;'>"
+    if prev_nomor:
+        nav_buttons += f"<button onclick='goToEvent({prev_nomor})' style='cursor:pointer; padding:2px 8px; font-size:11px;'>&laquo; Prev</button>"
+    else:
+        nav_buttons += "<div></div>"
+        
+    if next_nomor:
+        nav_buttons += f"<button onclick='goToEvent({next_nomor})' style='cursor:pointer; padding:2px 8px; font-size:11px;'>Next &raquo;</button>"
+    else:
+        nav_buttons += "<div></div>"
+    nav_buttons += "</div>"
+
+    gmaps_url = f"https://www.google.com/maps?q={lat},{lon}"
 
     popup_html = f"""
     <div style='width:340px; font-family:sans-serif;'>
-        <h4 style='margin:0 0 4px 0;'>Event #{nomor}</h4>
+        <div style='display:flex; justify-content:space-between; align-items:center;'>
+            <h4 style='margin:0 0 4px 0;'>Event #{nomor}</h4>
+            <button onclick="copyGmaps('{gmaps_url}', this)" style='cursor:pointer; font-size:11px; color:#ffffff; background-color:#16a34a; padding:2px 6px; border:none; border-radius:3px;'>📍 Salin Maps URL</button>
+        </div>
         <hr style='margin:0 0 6px 0;'>
         <b style='color:#2563eb;'>🎧 Audio: Menit {menit:02d} Detik {detik:02d}</b><br>
         <span style='font-size:11px;color:#666;'>Waktu: {waktu_real} WIB</span><br>
@@ -247,6 +330,7 @@ for _, row in df_trip.iterrows():
           {scoring_rows}
         </table>
         {chart_html}
+        {nav_buttons}
     </div>
     """
 
@@ -256,6 +340,61 @@ for _, row in df_trip.iterrows():
         icon=folium.Icon(color=color, icon="info-sign"),
     ).add_to(m)
 
+js_script = """
+<script>
+var eventCoords = {
+"""
+for k, v in event_coords.items():
+    js_script += f"    {k}: [{v['lat']}, {v['lon']}],\n"
+js_script += """};
+function goToEvent(nomor) {
+    var coords = eventCoords[nomor];
+    if (!coords) return;
+    
+    var mapInstance = null;
+    for (var key in window) {
+        if (window[key] instanceof L.Map) {
+            mapInstance = window[key];
+            break;
+        }
+    }
+    if (!mapInstance) return;
+    
+    mapInstance.setView(coords, 18);
+    
+    mapInstance.eachLayer(function(layer) {
+        if (layer instanceof L.Marker) {
+            var mLat = layer.getLatLng().lat;
+            var mLon = layer.getLatLng().lng;
+            if (Math.abs(mLat - coords[0]) < 1e-6 && Math.abs(mLon - coords[1]) < 1e-6) {
+                layer.openPopup();
+            }
+        }
+    });
+}
+
+function copyGmaps(url, btn) {
+    var temp = document.createElement("textarea");
+    temp.value = url;
+    document.body.appendChild(temp);
+    temp.select();
+    try {
+        document.execCommand("copy");
+        btn.innerHTML = "✅ Tersalin!";
+        btn.style.backgroundColor = "#2563eb";
+        setTimeout(function() {
+            btn.innerHTML = "📍 Salin Maps URL";
+            btn.style.backgroundColor = "#16a34a";
+        }, 2000);
+    } catch (err) {
+        alert("Gagal menyalin URL.");
+    }
+    document.body.removeChild(temp);
+}
+</script>
+"""
+m.get_root().html.add_child(folium.Element(js_script))
+
 print(f"Selesai. {chart_count}/{len(df_trip)} event memiliki grafik sensor.")
 m
 
@@ -264,72 +403,76 @@ m
 # Cocokkan nomor event di peta dengan rekaman audio Anda, lalu isi label di bawah.
 # 
 # Label yang disarankan (konsisten bahasa Inggris):
-# - `"Normal"` — getaran wajar, bukan kerusakan
+# - `"Non-Event"` — semua yang bukan event diskrit, termasuk rough road, engine vibration, maneuver, dan noise.
 # - `"Pothole"` — lubang jalan
 # - `"Speed Bump"` — polisi tidur
-# - `"Crack"` — retakan/sambungan aspal
-# - `"Severe Anomaly"` — kerusakan parah / tidak terklasifikasi
-
 # %%
 USER_LABELS = {
-    2: "Normal",
-    3: "Normal",
-    4: "Normal",
-    5: "Normal",
-    6: "Normal",
-    7: "Normal",
-    8: "Normal",
-    9: "Normal",
-    10: "Normal",
-    11: "Normal",
-    12: "Normal",
-    15: "Jembatan",
-    23: "Normal",
-    28: "Normal",
-    30: "Normal",
-    34: "Normal",
-    38: "Normal",
-    40: "Normal",
-    43: "Normal",
-    44: "Normal",
-    45: "Normal",
-    46: "Normal",
-    47: "Lubang",
-    48: "Normal",
-    49: "Lubang",
-    50: "Lubang",
-    51: "Normal",
-    52: "Lubang",
-    53: "Normal",
-    54: "Lubang",
-    55: "Lubang",
-    56: "Lubang",
-    57: "Normal",
-    58: "Normal",
-    59: "Normal",
-    60: "Normal",
-    61: "Lubang",
-    62: "Lubang", 
-    63: "Lubang",
-    64: "Lubang",
-    65: "Normal",
-    66: "Normal",
-    67: "Polisi Tidur",
-    68: "Jalan Rusak",
-    69: "Normal",
-    70: "Normal",
-    71: "Lubang",
-    72: "Jalan Rusak",
-    73: "Jalan Rusak",
-    75: "Lubang",
-    76: "Normal",
-    77: "Normal",
-    78: "Normal",
-    79: "Normal",
-    80: "Polisi Tidur",
-    82: "Lubang",
-    83: "Normal"
-    
+    2: "Non-Event",
+    3: "Non-Event",
+    4: "Non-Event",
+    5: "Non-Event",
+    6: "Non-Event",
+    7: "Non-Event",
+    8: "Non-Event",
+    9: "Non-Event",
+    10: "Non-Event",
+    11: "Non-Event",
+    12: "Non-Event",
+    14: "Pothole",
+    15: "Non-Event",
+    16: "Non-Event",
+    17: "Non-Event",
+    23: "Non-Event",
+    24: "Non-Event",
+    26: "Non-Event",
+    28: "Non-Event",
+    29: "Non-Event",
+    30: "Non-Event",
+    31: "Non-Event",
+    32: "Non-Event",
+    34: "Non-Event",
+    38: "Non-Event",
+    40: "Non-Event",
+    43: "Non-Event",
+    44: "Non-Event",
+    45: "Non-Event",
+    46: "Non-Event",
+    47: "Speed Bump",
+    48: "Non-Event",
+    49: "Non-Event",
+    50: "Pothole",
+    51: "Non-Event",
+    52: "Pothole",
+    53: "Non-Event",
+    54: "Pothole",
+    55: "Pothole",
+    56: "Pothole",
+    57: "Non-Event",
+    58: "Non-Event",
+    59: "Non-Event",
+    60: "Non-Event",
+    61: "Pothole",
+    62: "Pothole", 
+    63: "Pothole",
+    64: "Pothole",
+    65: "Non-Event",
+    66: "Non-Event",
+    67: "Speed Bump",
+    68: "Non-Event",
+    69: "Non-Event",
+    70: "Non-Event",
+    71: "Pothole",
+    72: "Non-Event",
+    73: "Non-Event",
+    75: "Pothole",
+    76: "Non-Event",
+    77: "Non-Event",
+    78: "Non-Event",
+    79: "Non-Event",
+    80: "Speed Bump",
+    82: "Pothole",
+    83: "Non-Event"
 }
 
 print(f"Total label sesi ini: {len(USER_LABELS)}")
