@@ -29,6 +29,7 @@ from scipy.signal import find_peaks
 from scipy.stats import median_abs_deviation
 from scipy.ndimage import gaussian_filter1d
 from label_suggester import apply_label_suggestions, SUGGESTION_COLS
+from sensor_fusion import apply_sensor_fusion
 
 # ---------- CONFIG ----------
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -42,15 +43,15 @@ PEAK_MIN_DISTANCE_S = 0.2
 CLUSTER_TIME_S      = 2.0
 CLUSTER_SPATIAL_M   = 10.0
 
-# Accelerometer severity thresholds (G-force)
-NORMAL_G    = 5.0
-CANDIDATE_G = 8.5
-HIGH_CONF_G = 10
+# Accelerometer severity thresholds (G-force, specifically for a_vertical)
+NORMAL_VERT_G    = 3.0
+CANDIDATE_VERT_G = 5.0
+HIGH_CONF_VERT_G = 8.0
 
 G_TO_MS2       = 9.80665
-NORMAL_MS2     = NORMAL_G    * G_TO_MS2
-CANDIDATE_MS2  = CANDIDATE_G * G_TO_MS2
-HIGH_CONF_MS2  = HIGH_CONF_G * G_TO_MS2
+NORMAL_VERT_MS2     = NORMAL_VERT_G    * G_TO_MS2
+CANDIDATE_VERT_MS2  = CANDIDATE_VERT_G * G_TO_MS2
+HIGH_CONF_VERT_MS2  = HIGH_CONF_VERT_G * G_TO_MS2
 
 # Gyroscope severity thresholds (rad/s)
 GYRO_NORMAL_RAD    = 3.0   # minimum to trigger peak detection
@@ -126,6 +127,14 @@ def _normalise_0_1(values):
         return np.zeros_like(values, dtype=float)
     return (values - mn) / rng
 
+def _robust_normalise(values, min_val, max_val):
+    """Clip values to [min_val, max_val] and normalise to [0, 1]."""
+    clipped = np.clip(values, min_val, max_val)
+    rng = max_val - min_val
+    if rng < 1e-12:
+        return np.zeros_like(values, dtype=float)
+    return (clipped - min_val) / rng
+
 
 # ---------- MULTISENSOR PEAK DETECTION ----------
 
@@ -151,7 +160,9 @@ def detect_peaks(df):
     """
     df    = df.sort_values("timestamp").reset_index(drop=True)
     times = df["timestamp"].astype(float) / 1000.0
-    mags  = df["magnitude"].astype(float).values
+    # Use vertical acceleration for peak detection
+    mags  = np.abs(df["a_vertical"].astype(float).values)
+    mags_raw_vert = df["a_vertical"].astype(float).values
 
     if len(df) < 3:
         return pd.DataFrame(), 0.0, None, 50.0
@@ -164,7 +175,7 @@ def detect_peaks(df):
     # Accelerometer
     med_a     = np.median(mags)
     mad_a     = median_abs_deviation(mags, scale="normal")
-    accel_thr = max(NORMAL_MS2, med_a + 4.0 * (mad_a if mad_a > 0 else 1.0))
+    accel_thr = max(NORMAL_VERT_MS2, med_a + 4.0 * (mad_a if mad_a > 0 else 1.0))
     accel_idx, _ = find_peaks(mags, height=accel_thr, distance=min_dist)
 
     # Gyroscope
@@ -182,16 +193,17 @@ def detect_peaks(df):
         med_g    = np.median(gyro_mags)
         mad_g    = median_abs_deviation(gyro_mags, scale="normal")
         gyro_thr = max(GYRO_NORMAL_RAD, med_g + 4.0 * (mad_g if mad_g > 0 else 0.1))
-        gyro_idx, _ = find_peaks(gyro_mags, height=gyro_thr, distance=min_dist)
+        # gyro_idx, _ = find_peaks(gyro_mags, height=gyro_thr, distance=min_dist) # Removed gyro trigger
 
-    # Union of both peak index sets
-    combined_idx = np.unique(np.concatenate([accel_idx, gyro_idx])).astype(int)
+    # Peak index solely determined by vertical acceleration
+    combined_idx = accel_idx.astype(int)
 
     if combined_idx.size == 0:
         return pd.DataFrame(), accel_thr, gyro_thr, fs
 
     peaks                  = df.iloc[combined_idx].copy().reset_index(drop=True)
-    peaks["peak_mag"]      = mags[combined_idx]
+    peaks["peak_mag"]      = df["magnitude"].values[combined_idx]
+    peaks["peak_vertical"] = mags_raw_vert[combined_idx]
     peaks["peak_gyro_mag"] = gyro_mags[combined_idx]
     peaks["time_s"]        = peaks["timestamp"].astype(float) / 1000.0
 
@@ -217,7 +229,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "peak_interval_mean": 0.0,
         "peak_interval_std": 0.0,
         "asymmetry_score": 0.0,
-        "accel_energy": 0.0,
+        "vertical_energy": 0.0,
         "gyro_energy": 0.0,
         "accel_to_gyro_ratio": 0.0,
         "local_duration": 0.0,
@@ -241,6 +253,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
 
     t = seg["timestamp"].astype(float).values / 1000.0
     mags = seg["magnitude"].astype(float).values
+    a_vert = seg["a_vertical"].astype(float).values
 
     # ---------- Sampling rate ----------
     dt = np.diff(t)
@@ -258,7 +271,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         gyro_mag = np.zeros_like(mags)
 
     # ---------- Remove gravity ----------
-    mags_norm = np.maximum(0, mags - 9.8)
+    mags_norm = np.abs(a_vert)
 
     # ---------- Smoothing ----------
     mags_smooth = gaussian_filter1d(mags_norm, sigma=2.0)
@@ -333,17 +346,17 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         duration_above_threshold = 0.0
 
     # ---------- Asymmetry ----------
-    left_energy  = float(np.sum(mags_norm[t_rel < 0] ** 2))
-    right_energy = float(np.sum(mags_norm[t_rel > 0] ** 2))
+    left_energy  = float(np.sum(a_vert[t_rel < 0] ** 2))
+    right_energy = float(np.sum(a_vert[t_rel > 0] ** 2))
     total_energy = left_energy + right_energy + 1e-6
 
     asymmetry_score = abs(left_energy - right_energy) / total_energy
 
     # ---------- Energy ----------
-    accel_energy = float(np.sum(mags_norm ** 2))
+    vertical_energy = float(np.sum(a_vert ** 2))
     gyro_energy  = float(np.sum(gyro_mag ** 2))
 
-    accel_to_gyro_ratio = accel_energy / (gyro_energy + 1e-6)
+    accel_to_gyro_ratio = vertical_energy / (gyro_energy + 1e-6)
 
     return {
         "num_peaks_accel": num_peaks_accel,
@@ -351,7 +364,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "peak_interval_mean": peak_interval_mean,
         "peak_interval_std": peak_interval_std,
         "asymmetry_score": asymmetry_score,
-        "accel_energy": accel_energy,
+        "vertical_energy": vertical_energy,
         "gyro_energy": gyro_energy,
         "accel_to_gyro_ratio": accel_to_gyro_ratio,
         "local_duration": local_duration,
@@ -396,6 +409,7 @@ def cluster_peaks(peaks, raw_df=None):
                 lats       = [row.lat],
                 lons       = [row.lon],
                 mags       = [row.peak_mag],
+                mags_v     = [row.peak_vertical],
                 gyro_mags  = [row.peak_gyro_mag],
                 speeds     = [row.peak_speed],
             )
@@ -414,6 +428,7 @@ def cluster_peaks(peaks, raw_df=None):
                 current["lats"].append(row.lat)
                 current["lons"].append(row.lon)
                 current["mags"].append(row.peak_mag)
+                current["mags_v"].append(row.peak_vertical)
                 current["gyro_mags"].append(row.peak_gyro_mag)
                 current["speeds"].append(row.peak_speed)
                 continue
@@ -425,6 +440,7 @@ def cluster_peaks(peaks, raw_df=None):
             lats       = [row.lat],
             lons       = [row.lon],
             mags       = [row.peak_mag],
+            mags_v     = [row.peak_vertical],
             gyro_mags  = [row.peak_gyro_mag],
             speeds     = [row.peak_speed],
         )
@@ -436,8 +452,10 @@ def cluster_peaks(peaks, raw_df=None):
     rows = []
     for e in events:
         max_accel_ms2 = float(np.max(e["mags"]))
+        max_vert_ms2  = float(e["mags_v"][np.argmax(np.abs(e["mags_v"]))])
         max_gyro_rads = float(np.max(e["gyro_mags"]))
         accel_g       = max_accel_ms2 / G_TO_MS2
+        vert_g        = max_vert_ms2 / G_TO_MS2
 
         # Event duration (seconds between first and last peak in cluster)
         event_duration = float(np.max(e["times"]) - np.min(e["times"]))
@@ -446,22 +464,22 @@ def cluster_peaks(peaks, raw_df=None):
         valid_speeds = [s for s in e["speeds"] if not (s != s)]  # filter NaN
         speed_mean   = float(np.mean(valid_speeds)) if valid_speeds else float("nan")
 
-        # Jerk: mean |diff(magnitude)| within ±0.5 s of event centre from raw signal
-        event_jerk = 0.0
+        # Jerk: mean |diff(a_vertical)| within ±0.5 s of event centre from raw signal
+        vert_jrk = 0.0
         t_centre = float(np.mean(e["times"]))
         if raw_times is not None:
             jrk_mask = (raw_times >= t_centre - 0.5) & (raw_times <= t_centre + 0.5)
-            jrk_seg  = raw_mags[jrk_mask]
+            jrk_seg  = raw_df.loc[jrk_mask, "a_vertical"].astype(float).values
             if len(jrk_seg) > 1:
-                event_jerk = float(np.mean(np.abs(np.diff(jrk_seg))))
+                vert_jrk = float(np.mean(np.abs(np.diff(jrk_seg))))
 
         # Secondary shape features extraction from raw signal
         shape_feats = extract_event_shape_features(raw_df, t_centre)
 
-        # Multisensor fusion level (OR logic) — kept for backward compatibility
-        if accel_g >= HIGH_CONF_G or max_gyro_rads >= GYRO_HIGH_CONF_RAD:
+        # Multisensor fusion level (OR logic) — updated to use vertical
+        if abs(vert_g) >= HIGH_CONF_VERT_G or max_gyro_rads >= GYRO_HIGH_CONF_RAD:
             level = "high_conf"
-        elif accel_g >= CANDIDATE_G or max_gyro_rads >= GYRO_CANDIDATE_RAD:
+        elif abs(vert_g) >= CANDIDATE_VERT_G or max_gyro_rads >= GYRO_CANDIDATE_RAD:
             level = "candidate"
         else:
             level = "normal"
@@ -472,17 +490,19 @@ def cluster_peaks(peaks, raw_df=None):
             "lat":            float(e["lats"][-1]),
             "lon":            float(e["lons"][-1]),
             "peak_mag":       max_accel_ms2,
+            "peak_vertical":  max_vert_ms2,
             "peak_mag_g":     accel_g,
+            "peak_vertical_g": vert_g,
             "peak_gyro_mag":  max_gyro_rads,
             "speed_mean":     speed_mean,
             "event_duration": event_duration,
-            "mag_jrk":        event_jerk,
+            "vert_jrk":       vert_jrk,
             "num_peaks_accel": shape_feats["num_peaks_accel"],
             "num_peaks_gyro":  shape_feats["num_peaks_gyro"],
             "peak_interval_mean": shape_feats["peak_interval_mean"],
             "peak_interval_std":  shape_feats["peak_interval_std"],
             "asymmetry_score": shape_feats["asymmetry_score"],
-            "accel_energy":   shape_feats["accel_energy"],
+            "vertical_energy": shape_feats["vertical_energy"],
             "gyro_energy":    shape_feats["gyro_energy"],
             "accel_to_gyro_ratio": shape_feats["accel_to_gyro_ratio"],
             "local_duration": shape_feats["local_duration"],
@@ -544,12 +564,13 @@ def score_events(events_df):
 
     df["speed_factor"] = df["speed_mean"].apply(_speed_factor)
 
-    # --- Normalise each component to [0, 1] ---
-    n_accel = _normalise_0_1(df["peak_mag_g"].values)
-    n_gyro  = _normalise_0_1(df["peak_gyro_mag"].values)
-    n_jerk  = _normalise_0_1(df["mag_jrk"].values)
+    # --- Normalise each component to [0, 1] using robust fixed bounds ---
+    # Outliers (like 10G or 20G peaks) will no longer squash the scores of normal 4G-5G potholes
+    n_accel = _robust_normalise(np.abs(df["peak_vertical_g"]).values, 3.0, 8.0)
+    n_gyro  = _robust_normalise(df["peak_gyro_mag"].values, 0.0, 6.0)
+    n_jerk  = _robust_normalise(df["vert_jrk"].values, 0.0, 15.0)
     n_speed = df["speed_factor"].values  # already [0, 1]
-    n_dur   = _normalise_0_1(df["event_duration"].values)
+    n_dur   = _robust_normalise(df["event_duration"].values, 0.0, 2.0)
 
     # --- Weighted composite score ---
     df["score"] = (
@@ -560,25 +581,25 @@ def score_events(events_df):
         + W_DURATION * n_dur
     )
 
-    # --- Shape Features Boost / Penalty ---
-    def _apply_boost(row):
-        lbl = row.get("suggested_label", "")
-        boost = 0.0
-        if lbl in ("Pothole", "Speed Bump"):
-            boost = 0.25
-        elif lbl == "Non-Event":
-            boost = -0.25
-        return row["score"] + boost
+    # --- Shape Features Boost / Penalty (DISABLED) ---
+    # def _apply_boost(row):
+    #     lbl = row.get("suggested_label", "")
+    #     boost = 0.0
+    #     if lbl in ("Pothole", "Speed Bump"):
+    #         boost = 0.25
+    #     elif lbl == "Non-Event":
+    #         boost = -0.25
+    #     return row["score"] + boost
 
-    if "suggested_raw_label" in df.columns:
-        df["score"] = df.apply(_apply_boost, axis=1)
-        df["score"] = df["score"].clip(0.0, 1.0)
+    # if "suggested_raw_label" in df.columns:
+    #     df["score"] = df.apply(_apply_boost, axis=1)
+    #     df["score"] = df["score"].clip(0.0, 1.0)
 
     # --- Priority label ---
     def _priority(s):
-        if s >= 0.65:
+        if s >= 0.60:
             return "high"
-        if s >= 0.35:
+        if s >= 0.30:
             return "medium"
         return "low"
 
@@ -614,6 +635,7 @@ def extract_windows_features(df):
 
         if len(seg) >= 3:
             mags = seg["magnitude"].astype(float).values
+            a_vert = seg["a_vertical"].astype(float).values
 
             feat = {
                 "window_start": start,
@@ -623,6 +645,11 @@ def extract_windows_features(df):
                 "mag_max":      float(np.max(mags)),
                 "mag_rms":      float(np.sqrt(np.mean(mags ** 2))),
                 "mag_jrk":      float(np.mean(np.abs(np.diff(mags)))),
+                "vert_mean":    float(np.mean(a_vert)),
+                "vert_std":     float(np.std(a_vert)),
+                "vert_max":     float(np.max(a_vert)),
+                "vert_min":     float(np.min(a_vert)),
+                "vert_rms":     float(np.sqrt(np.mean(a_vert ** 2))),
                 "lat_mean":     float(seg["lat"].mean()),
                 "lon_mean":     float(seg["lon"].mean()),
                 "speed_mean":   float(seg["speed"].mean()) if "speed" in seg.columns else float("nan"),
@@ -659,12 +686,13 @@ def extract_windows_features(df):
 # (manual_labeling_per_trip.py, build_train_set.py) keep working.
 _LABELING_COLS = [
     "event_id", "time_s", "lat", "lon",
-    "peak_mag", "peak_mag_g", "peak_gyro_mag",
-    "speed_mean", "event_duration", "mag_jrk",
+    "peak_vertical", "peak_vertical_g", "peak_gyro_mag",
+    "speed_mean", "event_duration", "vert_jrk",
     "num_peaks_accel", "num_peaks_gyro", "peak_interval_mean", "peak_interval_std",
-    "asymmetry_score", "accel_energy", "gyro_energy", "accel_to_gyro_ratio", "local_duration",
+    "asymmetry_score", "vertical_energy", "gyro_energy", "accel_to_gyro_ratio", "local_duration",
     "score", "priority", "level",
     "trip_id", "label", "notes", "maps_link",
+    "peak_mag", "peak_mag_g"
 ] + SUGGESTION_COLS
 
 def prepare_labeling_file(df, filename):
@@ -704,6 +732,13 @@ for csv_path in glob.glob(os.path.join(CSV_FOLDER, "*.csv")):
         df["magnitude"] = np.sqrt(df["ax"] ** 2 + df["ay"] ** 2 + df["az"] ** 2)
 
     validate_magnitude(df, os.path.basename(csv_path))
+    
+    # Apply sensor fusion to estimate a_vertical and a_horizontal
+    try:
+        df = apply_sensor_fusion(df)
+    except ValueError as e:
+        print(f"  [SKIPPED] {os.path.basename(csv_path)}: {e}")
+        continue
 
     _, meta  = load_trip_meta(csv_path)
     trip_id  = meta.get("tripId") if meta else os.path.basename(csv_path)
@@ -777,28 +812,32 @@ prepare_labeling_file(
 distance_km  = total_distance_m / 1000
 duration_min = total_duration_s / 60
 
-print("\n===== DATASET SUMMARY =====")
-print(f"Total Trips        : {total_trips}")
-print(f"Total Distance     : {distance_km:.2f} km")
-print(f"Total Duration     : {duration_min:.2f} min")
+print("\n" + "="*55)
+print(" *** VERTICAL-CENTRIC PIPELINE SUMMARY ***")
+print("="*55)
+print(f" [+] Total Trips        : {total_trips}")
+print(f" [+] Total Distance     : {distance_km:.2f} km")
+print(f" [+] Total Duration     : {duration_min:.2f} min")
 if total_duration_s > 0:
-    print(f"Average Speed      : {(total_distance_m / total_duration_s) * 3.6:.2f} km/h")
+    print(f" [+] Average Speed      : {(total_distance_m / total_duration_s) * 3.6:.2f} km/h")
+print("-" * 55)
 
 if not candidates_df.empty:
     pri_counts = candidates_df["priority"].value_counts()
     lvl_counts = candidates_df["level"].value_counts()
-    print(f"Total Events       : {total_events}")
-    print(f"\n  --- Priority (composite score) ---")
-    print(f"  high   (score >= 0.65) : {int(pri_counts.get('high', 0))}")
-    print(f"  medium (score >= 0.35) : {int(pri_counts.get('medium', 0))}")
-    print(f"  low    (score <  0.35) : {int(pri_counts.get('low', 0))}")
-    print(f"\n  --- Level (sensor threshold, backward compat) ---")
-    print(f"  high_conf (accel >= {HIGH_CONF_G} G | gyro >= {GYRO_HIGH_CONF_RAD} rad/s) : {int(lvl_counts.get('high_conf', 0))}")
-    print(f"  candidate (accel >= {CANDIDATE_G} G | gyro >= {GYRO_CANDIDATE_RAD} rad/s) : {int(lvl_counts.get('candidate', 0))}")
-    print(f"  normal                                                   : {int(lvl_counts.get('normal', 0))}")
-
-    print(f"\n  --- Score distribution ---")
-    print(candidates_df["score"].describe().to_string())
+    print(f" [!] Total Events Detected : {total_events}")
+    if distance_km > 0:
+        print(f" [!] Events per km         : {total_events / distance_km:.2f}")
+    
+    print("\n [ Priority Breakdown ]")
+    print(f"   * High   (>= 0.60) : {int(pri_counts.get('high', 0))} events")
+    print(f"   * Medium (>= 0.30) : {int(pri_counts.get('medium', 0))} events")
+    print(f"   * Low    (<  0.30) : {int(pri_counts.get('low', 0))} events")
+    
+    print("\n [ Legacy Level Breakdown ]")
+    print(f"   * High Conf (abs(vert) >= {HIGH_CONF_VERT_G} G) : {int(lvl_counts.get('high_conf', 0))}")
+    print(f"   * Candidate (abs(vert) >= {CANDIDATE_VERT_G} G) : {int(lvl_counts.get('candidate', 0))}")
+    print(f"   * Normal                         : {int(lvl_counts.get('normal', 0))}")
 
     # Speed context breakdown
     speed_valid = candidates_df["speed_mean"].dropna()
@@ -806,30 +845,29 @@ if not candidates_df.empty:
         n_low  = int((speed_valid < SPEED_LOW_MS).sum())
         n_mid  = int(((speed_valid >= SPEED_LOW_MS) & (speed_valid < SPEED_HIGH_MS)).sum())
         n_high = int((speed_valid >= SPEED_HIGH_MS).sum())
-        print(f"\n  --- Speed context ---")
-        print(f"  < {SPEED_LOW_MS} m/s ({SPEED_LOW_MS*3.6:.0f} km/h)  : {n_low} events (factor=0.3)")
-        print(f"  {SPEED_LOW_MS}–{SPEED_HIGH_MS} m/s             : {n_mid} events (factor=0.5–1.0)")
-        print(f"  >= {SPEED_HIGH_MS} m/s ({SPEED_HIGH_MS*3.6:.0f} km/h) : {n_high} events (factor=1.0)")
+        print("\n [ Speed Context ]")
+        print(f"   * < {SPEED_LOW_MS*3.6:.0f} km/h     : {n_low} events")
+        print(f"   * {SPEED_LOW_MS*3.6:.0f}-{SPEED_HIGH_MS*3.6:.0f} km/h : {n_mid} events")
+        print(f"   * >= {SPEED_HIGH_MS*3.6:.0f} km/h    : {n_high} events")
 else:
-    print("Total Events       : 0 (no candidates detected)")
+    print(" [!] Total Events       : 0 (no candidates detected)")
 
-print(f"Total Windows      : {total_windows}")
-if total_trips > 0:
-    print(f"Avg Distance/Trip  : {distance_km / total_trips:.2f} km")
-    print(f"Avg Duration/Trip  : {duration_min / total_trips:.2f} min")
-if distance_km > 0:
-    print(f"Events per km      : {total_events / distance_km:.2f}")
-print("===========================")
+print("-" * 55)
+print(f" [+] Total Windows Processed: {total_windows}")
 
 # ---------- FEATURE DISTRIBUTIONS ----------
 if not windows_df.empty:
-    if "mag_max" in windows_df.columns:
-        print("\n==== ACCELEROMETER (mag_max, m/s²) ====")
-        print(windows_df["mag_max"].describe().to_string())
+    if "vert_max" in windows_df.columns:
+        print("\n [~] VERTICAL ACCELERATION (vert_max, m/s²)")
+        print(" " + "-"*40)
+        print(windows_df["vert_max"].describe().to_string())
 
     if "gyro_mag_max" in windows_df.columns:
         valid_gyro = windows_df[windows_df["gyro_mag_max"] > 0]["gyro_mag_max"]
         if not valid_gyro.empty:
-            print("\n==== GYROSCOPE (gyro_mag_max, rad/s) ====")
+            print("\n [~] GYROSCOPE (gyro_mag_max, rad/s)")
+            print(" " + "-"*40)
             print(valid_gyro.describe().to_string())
-            print(f"Windows with gyro data : {len(valid_gyro)} / {len(windows_df)}")
+            print(f"   Windows with gyro data : {len(valid_gyro)} / {len(windows_df)}")
+
+print("="*55 + "\n")

@@ -11,6 +11,7 @@ artifacts/
 labeling-copilot/
 output-copilot/
 guardrail-verify/
+.agents/
 
 verify_labeling_output.py
 

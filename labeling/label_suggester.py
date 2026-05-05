@@ -52,8 +52,9 @@ _RAW_TO_FINAL = {
 
 # ---------- ML FEATURES ----------
 ML_FEATURES = [
-    "peak_mag_g", "num_peaks_accel", "num_peaks_gyro",
-    "asymmetry_score", "local_duration", "accel_energy", "gyro_energy"
+    "peak_vertical_g", "num_peaks_accel", "num_peaks_gyro",
+    "asymmetry_score", "local_duration", "vertical_energy", "gyro_energy",
+    "speed_mean", "vert_jrk"
 ]
 
 # ---------- SUGGESTION SCHEMA ----------
@@ -160,7 +161,7 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
     xgb_le = models.get("xgb_le")
 
     # Ambil fitur untuk heuristics
-    a = _f(row, "peak_mag_g")
+    a = abs(_f(row, "peak_vertical_g"))  # use absolute vertical G for old magnitude thresholds
     g = _f(row, "peak_gyro_mag")
     npa = int(_f(row, "num_peaks_accel", 0))
     npg = int(_f(row, "num_peaks_gyro", 0))
@@ -357,11 +358,11 @@ def save_label_suggestions(df: pd.DataFrame, out_path: str) -> None:
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     cols = [c for c in df.columns if c in (
         "event_id", "trip_id", "time_s", "lat", "lon",
-        "peak_mag", "peak_mag_g", "peak_gyro_mag",
-        "speed_mean", "event_duration", "mag_jrk",
+        "peak_vertical", "peak_vertical_g", "peak_gyro_mag",
+        "speed_mean", "event_duration", "vert_jrk",
         "num_peaks_accel", "num_peaks_gyro",
         "peak_interval_mean", "peak_interval_std",
-        "asymmetry_score", "accel_energy", "gyro_energy",
+        "asymmetry_score", "vertical_energy", "gyro_energy",
         "accel_to_gyro_ratio", "local_duration",
         "score", "priority", "level",
         *SUGGESTION_COLS

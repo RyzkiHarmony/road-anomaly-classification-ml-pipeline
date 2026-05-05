@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")  # non-interactive backend, aman untuk batch rendering
 import matplotlib.pyplot as plt
 from label_suggester import apply_label_suggestions, save_label_suggestions
+from sensor_fusion import apply_sensor_fusion
 
 _DIR        = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 OUT_FOLDER  = os.path.join(_DIR, "out")
@@ -46,8 +47,11 @@ PLOT_WINDOW_S = 1.5  # seconds before and after the event centre
 
 def generate_event_chart_b64(raw_df, event_time_s):
     """
-    Generate a dual-axis chart (Accelerometer + Gyroscope) around `event_time_s`
-    and return the image as a Base64-encoded PNG string for HTML embedding.
+    Generate a multi-panel chart around `event_time_s`:
+      Panel 1-3 : Raw Accelerometer X / Y / Z
+      Panel 4   : Vertical Linear Acceleration (a_vertical) – gravity removed & aligned
+      Panel 5-7 : Gyroscope X / Y / Z  (if available)
+    Returns the image as a Base64-encoded PNG string for HTML embedding.
     """
     times = raw_df["timestamp"].astype(float) / 1000.0
 
@@ -58,48 +62,57 @@ def generate_event_chart_b64(raw_df, event_time_s):
     if len(seg) < 3:
         return None
 
-    t_rel = seg["timestamp"].astype(float) / 1000.0 - event_time_s  # relative to event centre
-    mags  = seg["magnitude"].astype(float).values
+    t_rel  = seg["timestamp"].astype(float) / 1000.0 - event_time_s
+    has_gyro    = all(c in seg.columns for c in ("gx", "gy", "gz"))
+    has_vertical = "a_vertical" in seg.columns
 
-    has_gyro = all(c in seg.columns for c in ("gx", "gy", "gz"))
-
-    num_subplots = 6 if has_gyro else 3
+    # Determine number of subplots: Acc(3) + Vert(1) + Gyro(3 if available)
+    num_subplots = 3 + (1 if has_vertical else 0) + (3 if has_gyro else 0)
+    fig_height   = 1.3 * num_subplots
     fig, axes = plt.subplots(
         num_subplots, 1,
-        figsize=(4.2, 5.5 if has_gyro else 2.8),
+        figsize=(4.2, fig_height),
         dpi=100,
         sharex=True,
     )
+    if num_subplots == 1:
+        axes = [axes]
 
-    # --- Accelerometer subplots ---
+    ax_idx = 0
+
+    # --- Accelerometer subplots (raw X/Y/Z) ---
     if all(c in seg.columns for c in ("ax", "ay", "az")):
         ax_val = seg["ax"].astype(float).values
         ay_val = seg["ay"].astype(float).values
         az_val = seg["az"].astype(float).values
-        
-        axes[0].plot(t_rel, ax_val, color="#ef4444", linewidth=0.8)
-        axes[0].set_ylabel("Acc X", fontsize=6)
-        axes[0].set_title("Accelerometer (m/s²)", fontsize=8, pad=2)
-        
-        axes[1].plot(t_rel, ay_val, color="#22c55e", linewidth=0.8)
-        axes[1].set_ylabel("Acc Y", fontsize=6)
-        
-        axes[2].plot(t_rel, az_val, color="#3b82f6", linewidth=0.8)
-        axes[2].set_ylabel("Acc Z", fontsize=6)
-        
-        for i in range(3):
-            axes[i].axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
-            axes[i].tick_params(labelsize=6)
-            axes[i].grid(True, alpha=0.3)
+
+        axes[ax_idx].plot(t_rel, ax_val, color="#eab308", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Acc X", fontsize=6)
+        axes[ax_idx].set_title("Accelerometer raw (m/s²)", fontsize=8, pad=2)
+        ax_idx += 1
+
+        axes[ax_idx].plot(t_rel, ay_val, color="#22c55e", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Acc Y", fontsize=6)
+        ax_idx += 1
+
+        axes[ax_idx].plot(t_rel, az_val, color="#3b82f6", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Acc Z", fontsize=6)
+        ax_idx += 1
     else:
-        axes[0].plot(t_rel, mags, color="#2563eb", linewidth=0.8)
-        axes[0].set_ylabel("m/s²", fontsize=6)
-        axes[0].set_title("Accelerometer", fontsize=8, pad=2)
-        axes[0].axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
-        axes[0].tick_params(labelsize=6)
-        axes[0].grid(True, alpha=0.3)
-        axes[1].set_visible(False)
-        axes[2].set_visible(False)
+        mags = seg["magnitude"].astype(float).values
+        axes[ax_idx].plot(t_rel, mags, color="#2563eb", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Mag", fontsize=6)
+        axes[ax_idx].set_title("Accelerometer (m/s²)", fontsize=8, pad=2)
+        ax_idx += 1
+
+    # --- Vertical acceleration subplot ---
+    if has_vertical:
+        a_vert = seg["a_vertical"].astype(float).values
+        axes[ax_idx].plot(t_rel, a_vert, color="#a855f7", linewidth=1.0)
+        axes[ax_idx].axhline(0, color="gray", linewidth=0.5, linestyle=":")
+        axes[ax_idx].set_ylabel("a_vert", fontsize=6)
+        axes[ax_idx].set_title("Vertical Accel (m/s², +up/-down)", fontsize=8, pad=2)
+        ax_idx += 1
 
     # --- Gyroscope subplots ---
     if has_gyro:
@@ -107,23 +120,25 @@ def generate_event_chart_b64(raw_df, event_time_s):
         gy = seg["gy"].fillna(0.0).astype(float).values
         gz = seg["gz"].fillna(0.0).astype(float).values
 
-        axes[3].plot(t_rel, gx, color="#ef4444", linewidth=0.8)
-        axes[3].set_ylabel("Gyr X", fontsize=6)
-        axes[3].set_title("Gyroscope (rad/s)", fontsize=8, pad=2)
-        
-        axes[4].plot(t_rel, gy, color="#22c55e", linewidth=0.8)
-        axes[4].set_ylabel("Gyr Y", fontsize=6)
-        
-        axes[5].plot(t_rel, gz, color="#3b82f6", linewidth=0.8)
-        axes[5].set_ylabel("Gyr Z", fontsize=6)
-        axes[5].set_xlabel("detik dari event", fontsize=7)
-        
-        for i in range(3, 6):
-            axes[i].axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
-            axes[i].tick_params(labelsize=6)
-            axes[i].grid(True, alpha=0.3)
-    else:
-        axes[2].set_xlabel("detik dari event", fontsize=7)
+        axes[ax_idx].plot(t_rel, gx, color="#eab308", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Gyr X", fontsize=6)
+        axes[ax_idx].set_title("Gyroscope (rad/s)", fontsize=8, pad=2)
+        ax_idx += 1
+
+        axes[ax_idx].plot(t_rel, gy, color="#22c55e", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Gyr Y", fontsize=6)
+        ax_idx += 1
+
+        axes[ax_idx].plot(t_rel, gz, color="#3b82f6", linewidth=0.8)
+        axes[ax_idx].set_ylabel("Gyr Z", fontsize=6)
+        ax_idx += 1
+
+    # Shared formatting
+    for i, ax in enumerate(axes):
+        ax.axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
+        ax.tick_params(labelsize=6)
+        ax.grid(True, alpha=0.3)
+    axes[-1].set_xlabel("detik dari event", fontsize=7)
 
     fig.tight_layout(pad=0.5)
 
@@ -191,7 +206,13 @@ if raw_csv_path:
     df_raw = pd.read_csv(raw_csv_path)
     if "magnitude" not in df_raw.columns:
         df_raw["magnitude"] = np.sqrt(df_raw["ax"] ** 2 + df_raw["ay"] ** 2 + df_raw["az"] ** 2)
-    print(f"  {len(df_raw)} sampel mentah dimuat.")
+    # Apply sensor fusion to add a_vertical column for chart visualisation
+    try:
+        df_raw = apply_sensor_fusion(df_raw)
+        print(f"  {len(df_raw)} sampel mentah dimuat (sensor fusion applied).")
+    except ValueError as e:
+        print(f"[ERROR] Failed to apply sensor fusion on raw data: {e}")
+        df_raw = None
 else:
     print("[WARN] File CSV mentah tidak ditemukan untuk trip ini. Grafik tidak akan tampil.")
 
@@ -251,7 +272,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     score      = row.get("score", None)
     priority   = row.get("priority", None)
     speed_mean = row.get("speed_mean", None)
-    mag_jrk    = row.get("mag_jrk", None)
+    vert_jrk   = row.get("vert_jrk", None)
 
     # --- Get Sugesti ---
     suggested_lbl  = row.get("suggested_label", "")
@@ -259,6 +280,9 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     suggested_rsn  = row.get("suggestion_reason", "")
     suggested_raw  = row.get("suggested_raw_label", "")
     
+    vert_val = row.get('peak_vertical_g', float('nan'))
+    vert_dir_str = "<span style='color:#ef4444;'>⬇️ Down (Pothole?)</span>" if vert_val < 0 else "<span style='color:#16a34a;'>⬆️ Up (Bump?)</span>"
+
     # Warna marker: pakai priority jika tersedia, fallback ke level
     if priority:
         color = "red" if priority == "high" else ("orange" if priority == "medium" else "green")
@@ -277,13 +301,13 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     scoring_rows = ""
     if score is not None:
         speed_kmh = f"{speed_mean * 3.6:.1f} km/h" if speed_mean is not None and speed_mean == speed_mean else "N/A"
-        jrk_str   = f"{mag_jrk:.1f}" if mag_jrk is not None and mag_jrk == mag_jrk else "N/A"
+        jrk_str   = f"{vert_jrk:.1f}" if vert_jrk is not None and vert_jrk == vert_jrk else "N/A"
         pri_color = "#dc2626" if priority == "high" else ("#d97706" if priority == "medium" else "#16a34a")
         scoring_rows += f"""
           <tr><td>Score</td><td>: <b>{score:.3f}</b></td></tr>
           <tr><td>Priority</td><td>: <b style='color:{pri_color};'>{priority}</b></td></tr>
           <tr><td>Speed</td><td>: {speed_kmh}</td></tr>
-          <tr><td>Jerk</td><td>: {jrk_str} m/s²</td></tr>
+          <tr><td>Vert Jerk</td><td>: {jrk_str} m/s²</td></tr>
         """
         if suggested_lbl:
             scoring_rows += f"""
@@ -324,7 +348,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
         <b style='color:#2563eb;'>🎧 Audio: Menit {menit:02d} Detik {detik:02d}</b><br>
         <span style='font-size:11px;color:#666;'>Waktu: {waktu_real} WIB</span><br>
         <table style='font-size:11px;margin-top:4px;'>
-          <tr><td>Accel</td><td>: <b>{g_force:.2f} G</b></td></tr>
+          <tr><td>Vert (peak)</td><td>: <b>{vert_val:.2f} G</b> {vert_dir_str}</td></tr>
           <tr><td>Gyro</td><td>: <b>{gyro_val:.2f} rad/s</b></td></tr>
           <tr><td>Level</td><td>: {level}</td></tr>
           {scoring_rows}
@@ -435,44 +459,7 @@ USER_LABELS = {
     38: "Non-Event",
     40: "Non-Event",
     43: "Non-Event",
-    44: "Non-Event",
-    45: "Non-Event",
-    46: "Non-Event",
-    47: "Speed Bump",
-    48: "Non-Event",
-    49: "Non-Event",
-    50: "Pothole",
-    51: "Non-Event",
-    52: "Pothole",
-    53: "Non-Event",
-    54: "Pothole",
-    55: "Pothole",
-    56: "Pothole",
-    57: "Non-Event",
-    58: "Non-Event",
-    59: "Non-Event",
-    60: "Non-Event",
-    61: "Pothole",
-    62: "Pothole", 
-    63: "Pothole",
-    64: "Pothole",
-    65: "Non-Event",
-    66: "Non-Event",
-    67: "Speed Bump",
-    68: "Non-Event",
-    69: "Non-Event",
-    70: "Non-Event",
-    71: "Pothole",
-    72: "Non-Event",
-    73: "Non-Event",
-    75: "Pothole",
-    76: "Non-Event",
-    77: "Non-Event",
-    78: "Non-Event",
-    79: "Non-Event",
-    80: "Speed Bump",
-    82: "Pothole",
-    83: "Non-Event"
+    
 }
 
 print(f"Total label sesi ini: {len(USER_LABELS)}")

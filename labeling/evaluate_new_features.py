@@ -6,6 +6,7 @@ from scipy.signal import find_peaks
 import os
 import glob
 import json
+from sensor_fusion import apply_sensor_fusion
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_FOLDER = os.path.join(_DIR, "out")
@@ -43,10 +44,17 @@ def extract_new_features(raw_df, event_time_s, window_s=1.0):
             "num_peaks_accel": 0, "num_peaks_gyro": 0,
             "peak_interval_mean": 0.0, "peak_interval_std": 0.0,
             "symmetry_score": 0.0, "accel_energy": 0.0,
+            "vertical_energy": 0.0,
             "gyro_energy": 0.0, "accel_to_gyro_ratio": 0.0
         }
     
-    mags = seg["magnitude"].astype(float).values
+    if "a_vertical" in seg.columns:
+        a_vert = seg["a_vertical"].astype(float).values
+    else:
+        a_vert = np.zeros(len(seg))
+        
+    mags = np.abs(a_vert)
+    t_rel = times[mask].values - event_time_s
     t_rel = times[mask].values - event_time_s
     
     has_gyro = all(c in seg.columns for c in ("gx", "gy", "gz"))
@@ -83,19 +91,17 @@ def extract_new_features(raw_df, event_time_s, window_s=1.0):
         peak_interval_mean = 0.0
         peak_interval_std = 0.0
         
-    # 5. symmetry_score
-    left_mask = t_rel < 0
+    # 5. symmetry_score – now computed from a_vertical (direction-aware)
+    left_mask  = t_rel < 0
     right_mask = t_rel > 0
-    # Normalize by subtracting baseline (9.8 for accel) so we compare impact energy
-    mags_norm = np.maximum(0, mags - 9.8)
-    left_energy = np.sum(mags_norm[left_mask])
-    right_energy = np.sum(mags_norm[right_mask])
-    symmetry_score = abs(left_energy - right_energy)
-    
-    # 7 & 8 & 9. Energy features
-    accel_energy = np.sum(mags_norm**2)
-    gyro_energy = np.sum(gyro_mag**2)
-    accel_to_gyro_ratio = accel_energy / (gyro_energy + 1e-6)
+    left_energy  = np.sum(a_vert[left_mask] ** 2)
+    right_energy = np.sum(a_vert[right_mask] ** 2)
+    symmetry_score = abs(left_energy - right_energy) / (left_energy + right_energy + 1e-6)
+
+    # Energy features
+    vertical_energy = float(np.sum(a_vert ** 2))
+    gyro_energy     = np.sum(gyro_mag ** 2)
+    accel_to_gyro_ratio = vertical_energy / (gyro_energy + 1e-6)
     
     # Redefine event duration locally based on dominant peaks
     if num_peaks_accel > 1:
@@ -111,7 +117,7 @@ def extract_new_features(raw_df, event_time_s, window_s=1.0):
         "peak_interval_mean": float(peak_interval_mean),
         "peak_interval_std": float(peak_interval_std),
         "symmetry_score": float(symmetry_score),
-        "accel_energy": float(accel_energy),
+        "vertical_energy": vertical_energy,
         "gyro_energy": float(gyro_energy),
         "accel_to_gyro_ratio": float(accel_to_gyro_ratio),
         "local_duration": float(local_duration)
@@ -146,6 +152,12 @@ def main():
     raw_df = pd.read_csv(raw_csv_path)
     if "magnitude" not in raw_df.columns:
         raw_df["magnitude"] = np.sqrt(raw_df["ax"]**2 + raw_df["ay"]**2 + raw_df["az"]**2)
+    # Apply sensor fusion to add a_vertical
+    try:
+        raw_df = apply_sensor_fusion(raw_df)
+    except ValueError as e:
+        print(f"Skipping {csv_file}: Sensor fusion failed: {e}")
+        return []
         
     print(f"Extracting features for {len(USER_LABELS)} labeled events...")
     
@@ -179,9 +191,9 @@ def main():
     
     # Analyze separability
     features_to_plot = [
-        "num_peaks_accel", "num_peaks_gyro", "peak_interval_mean", 
-        "symmetry_score", "local_duration", "accel_energy", 
-        "gyro_energy", "accel_to_gyro_ratio", "peak_mag_g"
+        "num_peaks_accel", "num_peaks_gyro", "peak_interval_mean",
+        "symmetry_score", "local_duration",
+        "vertical_energy", "gyro_energy", "accel_to_gyro_ratio", "peak_mag_g"
     ]
     
     print("\nMean feature values per class:")
