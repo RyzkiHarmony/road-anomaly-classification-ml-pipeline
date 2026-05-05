@@ -135,7 +135,7 @@ def generate_event_chart_b64(raw_df, event_time_s):
 
     # Shared formatting
     for i, ax in enumerate(axes):
-        ax.axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.7)
+        ax.axvline(0, color="red", linewidth=0.8, linestyle="--", alpha=0.5)
         ax.tick_params(labelsize=6)
         ax.grid(True, alpha=0.3)
     axes[-1].set_xlabel("detik dari event", fontsize=7)
@@ -309,12 +309,13 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
           <tr><td>Speed</td><td>: {speed_kmh}</td></tr>
           <tr><td>Vert Jerk</td><td>: {jrk_str} m/s²</td></tr>
         """
-        if suggested_lbl:
-            scoring_rows += f"""
-              <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
-              <tr><td colspan='2'>🤖 <b>Suggested: <span style='color:#2563eb;'>{suggested_raw}</span></b> ({suggested_conf*100:.0f}%)</td></tr>
-              <tr><td colspan='2' style='font-size:10px;color:#555;'><i>{suggested_rsn}</i></td></tr>
-            """
+        # ENFORCING BLIND LABELING
+        # if suggested_lbl:
+        #     scoring_rows += f"""
+        #       <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
+        #       <tr><td colspan='2'>🤖 <b>Suggested: <span style='color:#2563eb;'>[HIDDEN]</span></b></td></tr>
+        #       <tr><td colspan='2' style='font-size:10px;color:#555;'><i>(Blind Labeling Mode)</i></td></tr>
+        #     """
         
     if asym_score is not None and asym_score == asym_score: # NaN check
         scoring_rows += f"""
@@ -432,33 +433,48 @@ m
 # - `"Speed Bump"` — polisi tidur
 # %%
 USER_LABELS = {
+    1: "Non-Event",
     2: "Non-Event",
-    3: "Non-Event",
-    4: "Non-Event",
+    3: "Speed Bump", # potentialy
+    4: "Non-Event", 
     5: "Non-Event",
     6: "Non-Event",
     7: "Non-Event",
-    8: "Non-Event",
-    9: "Non-Event",
+    8: "Speed Bump", # potentialy
+    9: "Pothole", 
     10: "Non-Event",
     11: "Non-Event",
     12: "Non-Event",
-    14: "Pothole",
-    15: "Non-Event",
-    16: "Non-Event",
-    17: "Non-Event",
+    13: "Non-Event",
+    14: "Non-Event",
+    15: "Speed Bump", # potentialy
+    16: "Pothole",
+    17: "Pothole", # Jalan Kasar
+    18: "Pothole",
+    19: "Pothole",
+    20: "Pothole",
+    21: "Non-Event",
+    22: "Non-Event",
     23: "Non-Event",
     24: "Non-Event",
+    25: "Non-Event",
     26: "Non-Event",
+    27: "Non-Event",
     28: "Non-Event",
-    29: "Non-Event",
-    30: "Non-Event",
+    29: "Pothole",
+    30: "Pothole",
     31: "Non-Event",
-    32: "Non-Event",
+    32: "Non-Event", # bisa jadi speed bump
+    33: "Speed Bump", 
     34: "Non-Event",
+    35: "Non-Event",
+    36: "Non-Event",
+    37: "Pothole", 
     38: "Non-Event",
+    39: "Non-Event", # sambungan jalan
     40: "Non-Event",
-    43: "Non-Event",
+    41: "Non-Event",
+    42: "Non-Event"
     
 }
 

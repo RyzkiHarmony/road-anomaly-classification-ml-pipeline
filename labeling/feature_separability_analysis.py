@@ -47,6 +47,16 @@ FEATURE_CANDIDATES = [
     "accel_to_gyro_ratio",
     "local_duration",
     "score",
+    # --- Fitur Baru: Domain Frekuensi & Distribusi ---
+    "fft_high_low_ratio",
+    "zcr",
+    "kurtosis",
+    "skewness",
+    # --- Fitur Baru: Per-Axis Gyro ---
+    "gyro_pitch_energy",
+    "gyro_roll_energy",
+    "gyro_yaw_energy",
+    "gyro_pitch_roll_ratio",
 ]
 
 # Alias label yang sering muncul
@@ -265,7 +275,7 @@ def plot_boxplots(df, features, stats_df, top_k=12):
 
         ax.boxplot(
             data,
-            labels=class_order,
+            tick_labels=class_order,
             patch_artist=True,
             showmeans=True
         )

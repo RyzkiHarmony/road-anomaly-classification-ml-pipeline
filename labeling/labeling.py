@@ -26,7 +26,8 @@ import math
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
-from scipy.stats import median_abs_deviation
+from scipy.stats import median_abs_deviation, kurtosis as sp_kurtosis, skew as sp_skew
+from scipy.fft import rfft, rfftfreq
 from scipy.ndimage import gaussian_filter1d
 from label_suggester import apply_label_suggestions, SUGGESTION_COLS
 from sensor_fusion import apply_sensor_fusion
@@ -66,10 +67,9 @@ SPEED_LOW_MS  = 2.0    # ≈ 7.2 km/h – skor sedikit diturunkan (mungkin idle)
 SPEED_HIGH_MS = 8.0    # ≈ 28.8 km/h – skor sedikit dinaikkan (impact lebih kuat)
 
 # Composite score weights – dipakai di score_events()
-W_ACCEL    = 0.35
+W_ACCEL    = 0.45
 W_GYRO     = 0.20
-W_JERK     = 0.15
-W_SPEED    = 0.15
+W_JERK     = 0.20
 W_DURATION = 0.15
 
 os.makedirs(OUT_FOLDER, exist_ok=True)
@@ -173,9 +173,10 @@ def detect_peaks(df):
     min_dist = max(1, int(PEAK_MIN_DISTANCE_S * fs))
 
     # Accelerometer
-    med_a     = np.median(mags)
-    mad_a     = median_abs_deviation(mags, scale="normal")
-    accel_thr = max(NORMAL_VERT_MS2, med_a + 4.0 * (mad_a if mad_a > 0 else 1.0))
+    # FIXED: Remove trip-level MAD to prevent future data leakage.
+    # We use a robust fixed baseline threshold (NORMAL_VERT_MS2) to trigger candidates, 
+    # and rely on local window features for severity assessment.
+    accel_thr = NORMAL_VERT_MS2
     accel_idx, _ = find_peaks(mags, height=accel_thr, distance=min_dist)
 
     # Gyroscope
@@ -235,6 +236,16 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "local_duration": 0.0,
         "top2_peak_ratio": 0.0,
         "duration_above_threshold": 0.0,
+        # --- Fitur Baru: Domain Frekuensi & Distribusi ---
+        "fft_high_low_ratio": 0.0,
+        "zcr": 0.0,
+        "kurtosis": 0.0,
+        "skewness": 0.0,
+        # --- Fitur Baru: Per-Axis Gyro (Pitch/Roll/Yaw) ---
+        "gyro_pitch_energy": 0.0,
+        "gyro_roll_energy": 0.0,
+        "gyro_yaw_energy": 0.0,
+        "gyro_pitch_roll_ratio": 0.0,
     }
 
     if raw_df is None or raw_df.empty:
@@ -358,6 +369,52 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
 
     accel_to_gyro_ratio = vertical_energy / (gyro_energy + 1e-6)
 
+    # ---------- Domain Frekuensi: FFT High/Low Ratio ----------
+    # Pothole  → energi dominan di frekuensi tinggi (>15 Hz)
+    # SpeedBump → energi dominan di frekuensi rendah (<5 Hz)
+    fft_high_low_ratio = 0.0
+    if fs > 0 and len(a_vert) >= 8:
+        try:
+            fft_vals  = np.abs(rfft(a_vert)) ** 2
+            fft_freqs = rfftfreq(len(a_vert), d=1.0 / fs)
+            energy_low  = float(np.sum(fft_vals[fft_freqs < 5.0]))
+            energy_high = float(np.sum(fft_vals[fft_freqs > 15.0]))
+            fft_high_low_ratio = energy_high / (energy_low + 1e-6)
+        except Exception:
+            fft_high_low_ratio = 0.0
+
+    # ---------- Zero Crossing Rate (ZCR) ----------
+    # Pothole → ZCR tinggi (sinyal kacau/chaotic)
+    # SpeedBump → ZCR rendah (sinyal lebih mulus)
+    zcr = 0.0
+    if len(a_vert) > 1:
+        zcr = float(np.sum(np.diff(np.sign(a_vert)) != 0)) / len(a_vert)
+
+    # ---------- Kurtosis & Skewness ----------
+    # Kurtosis tinggi → impulsive (pothole), rendah → smooth (speed bump)
+    kurtosis_val = float(sp_kurtosis(a_vert, fisher=True)) if len(a_vert) >= 4 else 0.0
+    skewness_val = float(sp_skew(a_vert))                   if len(a_vert) >= 4 else 0.0
+
+    # ---------- Per-Axis Gyro Energy (Pitch / Roll / Yaw) ----------
+    # SpeedBump → pitch dominant (motor menunduk-mendongak)
+    # Pothole   → roll bisa lebih tinggi (motor oleng ke samping)
+    gyro_pitch_energy = 0.0
+    gyro_roll_energy  = 0.0
+    gyro_yaw_energy   = 0.0
+    gyro_pitch_roll_ratio = 0.0
+    if has_gyro:
+        # Asumsi mounting standar motor:
+        #   Y = pitch (depan-belakang miring)
+        #   X = roll  (kiri-kanan oleng)
+        #   Z = yaw   (belok)
+        gy_arr = seg["gy"].fillna(0.0).astype(float).values
+        gx_arr = seg["gx"].fillna(0.0).astype(float).values
+        gz_arr = seg["gz"].fillna(0.0).astype(float).values
+        gyro_pitch_energy = float(np.sum(gy_arr ** 2))
+        gyro_roll_energy  = float(np.sum(gx_arr ** 2))
+        gyro_yaw_energy   = float(np.sum(gz_arr ** 2))
+        gyro_pitch_roll_ratio = gyro_pitch_energy / (gyro_roll_energy + 1e-6)
+
     return {
         "num_peaks_accel": num_peaks_accel,
         "num_peaks_gyro": num_peaks_gyro,
@@ -370,6 +427,14 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "local_duration": local_duration,
         "top2_peak_ratio": top2_peak_ratio,
         "duration_above_threshold": duration_above_threshold,
+        "fft_high_low_ratio": fft_high_low_ratio,
+        "zcr": zcr,
+        "kurtosis": kurtosis_val,
+        "skewness": skewness_val,
+        "gyro_pitch_energy": gyro_pitch_energy,
+        "gyro_roll_energy":  gyro_roll_energy,
+        "gyro_yaw_energy":   gyro_yaw_energy,
+        "gyro_pitch_roll_ratio": gyro_pitch_roll_ratio,
     }
     
 # ---------- MULTISENSOR CLUSTERING ----------
@@ -506,6 +571,15 @@ def cluster_peaks(peaks, raw_df=None):
             "gyro_energy":    shape_feats["gyro_energy"],
             "accel_to_gyro_ratio": shape_feats["accel_to_gyro_ratio"],
             "local_duration": shape_feats["local_duration"],
+            # --- Fitur Baru ---
+            "fft_high_low_ratio":  shape_feats["fft_high_low_ratio"],
+            "zcr":                 shape_feats["zcr"],
+            "kurtosis":            shape_feats["kurtosis"],
+            "skewness":            shape_feats["skewness"],
+            "gyro_pitch_energy":   shape_feats["gyro_pitch_energy"],
+            "gyro_roll_energy":    shape_feats["gyro_roll_energy"],
+            "gyro_yaw_energy":     shape_feats["gyro_yaw_energy"],
+            "gyro_pitch_roll_ratio": shape_feats["gyro_pitch_roll_ratio"],
             "level":          level,
         })
 
@@ -550,26 +624,16 @@ def score_events(events_df):
 
     df = events_df.copy()
 
-    # --- Speed factor (motor-specific context) ---
-    def _speed_factor(spd):
-        if spd != spd:  # NaN
-            return 0.5
-        if spd >= SPEED_HIGH_MS:
-            return 1.0
-        if spd >= SPEED_LOW_MS:
-            # Linear interpolation: [SPEED_LOW_MS, SPEED_HIGH_MS] -> [0.5, 1.0]
-            return 0.5 + 0.5 * (spd - SPEED_LOW_MS) / (SPEED_HIGH_MS - SPEED_LOW_MS)
-        # Below SPEED_LOW_MS: likely idle, but don't reject — just penalise
-        return 0.3
-
-    df["speed_factor"] = df["speed_mean"].apply(_speed_factor)
+    # --- Speed factor (REMOVED) ---
+    # We no longer apply a manual speed penalty. Low-speed events with high
+    # physical severity (e.g., potholes in traffic) must be prioritised.
+    df["speed_factor"] = 1.0  # Kept in dataframe for backward compatibility if needed
 
     # --- Normalise each component to [0, 1] using robust fixed bounds ---
     # Outliers (like 10G or 20G peaks) will no longer squash the scores of normal 4G-5G potholes
     n_accel = _robust_normalise(np.abs(df["peak_vertical_g"]).values, 3.0, 8.0)
     n_gyro  = _robust_normalise(df["peak_gyro_mag"].values, 0.0, 6.0)
     n_jerk  = _robust_normalise(df["vert_jrk"].values, 0.0, 15.0)
-    n_speed = df["speed_factor"].values  # already [0, 1]
     n_dur   = _robust_normalise(df["event_duration"].values, 0.0, 2.0)
 
     # --- Weighted composite score ---
@@ -577,7 +641,6 @@ def score_events(events_df):
         W_ACCEL    * n_accel
         + W_GYRO   * n_gyro
         + W_JERK   * n_jerk
-        + W_SPEED  * n_speed
         + W_DURATION * n_dur
     )
 
@@ -690,6 +753,10 @@ _LABELING_COLS = [
     "speed_mean", "event_duration", "vert_jrk",
     "num_peaks_accel", "num_peaks_gyro", "peak_interval_mean", "peak_interval_std",
     "asymmetry_score", "vertical_energy", "gyro_energy", "accel_to_gyro_ratio", "local_duration",
+    # --- Fitur Baru: Domain Frekuensi & Distribusi ---
+    "fft_high_low_ratio", "zcr", "kurtosis", "skewness",
+    # --- Fitur Baru: Per-Axis Gyro ---
+    "gyro_pitch_energy", "gyro_roll_energy", "gyro_yaw_energy", "gyro_pitch_roll_ratio",
     "score", "priority", "level",
     "trip_id", "label", "notes", "maps_link",
     "peak_mag", "peak_mag_g"
