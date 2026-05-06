@@ -2,9 +2,9 @@
     "trip_index": 1,
     "trip_id": "cc249e1a-62c0-4274-812f-0019a041760e",
     "labeled_at": "",
-    "notes": "Sesi 2 - Trip Index 1",
+    "notes": "Label Trip Index 1",
     "labels": {
-        "1": "",
+        "1": "Non-Event",
         "2": "",
         "3": "",
         "4": "",
@@ -97,6 +97,6 @@
         "91": "",
         "92": "",
         "93": "",
-        "94": ""
+        "94": "Non-Event"
     }
 }
