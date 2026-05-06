@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 
-_DIR       = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
-OUT_FOLDER = os.path.join(_DIR, "out")
+from config import OUT_FOLDER
 
 GT_PATH      = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
 WINDOWS_PATH = os.path.join(OUT_FOLDER, "windows_features.csv")

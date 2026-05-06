@@ -1,37 +1,22 @@
-# Environments
-.env
-.venv
+# venv
+.venv/
 env/
-venv/
 ENV/
 env.bak/
 venv.bak/
-artifacts/
-.tmp_labeling_compare/
-labeling-copilot/
-output-copilot/
-guardrail-verify/
-.agents/
 
-verify_labeling_output.py
+# Local pipeline outputs
+01_labeling_pipeline/out/
+02_dataset_pipeline/out/
+03_dataset_output/
+04_quality_control/out/
+04_quality_control/plots/
+
+# Temporary
+.tmp_labeling_compare/
+.agents/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IDEs
-.vscode/
-.idea/
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db

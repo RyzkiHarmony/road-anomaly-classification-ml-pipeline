@@ -17,15 +17,15 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
 
-# =========================
-# CONFIG
-# =========================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-OUT_DIR = os.path.join(BASE_DIR, "out", "separability")
+from config import OUT_FOLDER, get_logger
+
+logger = get_logger(__name__)
+
+OUT_DIR = os.path.join(OUT_FOLDER, "separability")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-CANDIDATES_PATH = os.path.join(BASE_DIR, "out", "candidates_events.csv")
-GT_PATH = os.path.join(BASE_DIR, "out", "ground_truth_labels.csv")
+CANDIDATES_PATH = os.path.join(OUT_FOLDER, "candidates_events.csv")
+GT_PATH         = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
 
 TARGET_CLASSES = ["Non-Event", "Pothole", "Speed Bump"]
 
@@ -34,7 +34,7 @@ TARGET_CLASSES = ["Non-Event", "Pothole", "Speed Bump"]
 FEATURE_CANDIDATES = [
     "peak_mag_g",
     "peak_gyro_mag",
-    "mag_jrk",
+    "vert_jrk",
     "event_duration",
     "speed_mean",
     "num_peaks_accel",
@@ -42,17 +42,22 @@ FEATURE_CANDIDATES = [
     "peak_interval_mean",
     "peak_interval_std",
     "asymmetry_score",
-    "accel_energy",
+    "vertical_energy",
     "gyro_energy",
     "accel_to_gyro_ratio",
     "local_duration",
     "score",
-    # --- Fitur Baru: Domain Frekuensi & Distribusi ---
+    # --- Fitur Shape ---
+    "top2_peak_ratio",
+    "duration_above_threshold",
+    "max_jerk",
+    "peak_to_peak",
+    # --- Fitur Domain Frekuensi & Distribusi ---
     "fft_high_low_ratio",
     "zcr",
     "kurtosis",
     "skewness",
-    # --- Fitur Baru: Per-Axis Gyro ---
+    # --- Per-Axis Gyro ---
     "gyro_pitch_energy",
     "gyro_roll_energy",
     "gyro_yaw_energy",

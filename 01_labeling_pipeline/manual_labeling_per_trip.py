@@ -177,7 +177,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 0   # <<< UBAH ANGKA INI
+PILIHAN_INDEX_TRIP = 1   # <<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
@@ -262,17 +262,18 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     gyro_val   = row.get("peak_gyro_mag", 0)
     level      = row["level"]
 
-    # --- Fitur Shape Baru ---
+    # --- Fitur Shape & Domain Baru (S-Tier) ---
     num_peaks_accel = row.get("num_peaks_accel", None)
     num_peaks_gyro  = row.get("num_peaks_gyro", None)
-    asym_score      = row.get("asymmetry_score", None)
-    loc_dur         = row.get("local_duration", None)
+    kurtosis_val    = row.get("kurtosis", None)
+    max_jerk_val    = row.get("max_jerk", None)
+    duration_thr    = row.get("duration_above_threshold", None)
+    fft_ratio       = row.get("fft_high_low_ratio", None)
 
     # Ambil kolom scoring (backward-compatible jika belum ada)
     score      = row.get("score", None)
     priority   = row.get("priority", None)
     speed_mean = row.get("speed_mean", None)
-    vert_jrk   = row.get("vert_jrk", None)
 
     # --- Get Sugesti ---
     suggested_lbl  = row.get("suggested_label", "")
@@ -301,28 +302,30 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     scoring_rows = ""
     if score is not None:
         speed_kmh = f"{speed_mean * 3.6:.1f} km/h" if speed_mean is not None and speed_mean == speed_mean else "N/A"
-        jrk_str   = f"{vert_jrk:.1f}" if vert_jrk is not None and vert_jrk == vert_jrk else "N/A"
         pri_color = "#dc2626" if priority == "high" else ("#d97706" if priority == "medium" else "#16a34a")
         scoring_rows += f"""
-          <tr><td>Score</td><td>: <b>{score:.3f}</b></td></tr>
-          <tr><td>Priority</td><td>: <b style='color:{pri_color};'>{priority}</b></td></tr>
+          <tr><td>Priority / Score</td><td>: <b style='color:{pri_color};'>{priority}</b> ({score:.3f})</td></tr>
           <tr><td>Speed</td><td>: {speed_kmh}</td></tr>
-          <tr><td>Vert Jerk</td><td>: {jrk_str} m/s²</td></tr>
         """
-        # ENFORCING BLIND LABELING
-        # if suggested_lbl:
-        #     scoring_rows += f"""
-        #       <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
-        #       <tr><td colspan='2'>🤖 <b>Suggested: <span style='color:#2563eb;'>[HIDDEN]</span></b></td></tr>
-        #       <tr><td colspan='2' style='font-size:10px;color:#555;'><i>(Blind Labeling Mode)</i></td></tr>
-        #     """
+        if suggested_lbl:
+            scoring_rows += f"""
+              <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
+              <tr><td colspan='2'>🤖 <b>Suggested: <span style='color:#8b5cf6;'>{suggested_lbl}</span></b> ({suggested_conf:.0%})</td></tr>
+              <tr><td colspan='2' style='font-size:10px;color:#555;'><i>{suggested_rsn}</i></td></tr>
+            """
         
-    if asym_score is not None and asym_score == asym_score: # NaN check
+    if kurtosis_val is not None and kurtosis_val == kurtosis_val: # NaN check
+        jrk_str = f"{max_jerk_val:.0f}" if max_jerk_val is not None else "N/A"
+        kur_str = f"{kurtosis_val:.1f}" if kurtosis_val is not None else "N/A"
+        fft_str = f"{fft_ratio:.1f}" if fft_ratio is not None else "N/A"
+        
         scoring_rows += f"""
           <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
-          <tr><td>Peaks (Acc/Gyr)</td><td>: {int(num_peaks_accel)} / <b>{int(num_peaks_gyro)}</b></td></tr>
-          <tr><td>Asymmetry</td><td>: <b>{asym_score:.2f}</b></td></tr>
-          <tr><td>Duration</td><td>: {loc_dur:.2f}s</td></tr>
+          <tr><td>Max Jerk</td><td>: <b>{jrk_str} m/s³</b> <span style='font-size:9px;color:#888'>(Tinggi=Pothole)</span></td></tr>
+          <tr><td>Kurtosis</td><td>: <b>{kur_str}</b> <span style='font-size:9px;color:#888'>(Tinggi=Pothole)</span></td></tr>
+          <tr><td>Duration</td><td>: <b>{duration_thr:.2f}s</b> <span style='font-size:9px;color:#888'>(Panjang=Bump)</span></td></tr>
+          <tr><td>FFT (Hi/Lo)</td><td>: {fft_str}</td></tr>
+          <tr><td>Peaks (Acc/Gyr)</td><td>: {int(num_peaks_accel)} / {int(num_peaks_gyro)}</td></tr>
         """
 
     nav_buttons = "<div style='margin-top: 8px; display: flex; justify-content: space-between;'>"
@@ -425,58 +428,88 @@ m
 
 # %% [markdown]
 # ## 3. Form Input Label (Ground Truth)
-# Cocokkan nomor event di peta dengan rekaman audio Anda, lalu isi label di bawah.
 # 
-# Label yang disarankan (konsisten bahasa Inggris):
-# - `"Non-Event"` — semua yang bukan event diskrit, termasuk rough road, engine vibration, maneuver, dan noise.
+# ### Cara kerja:
+# 1. Jalankan sel di bawah untuk memuat label dari file JSON
+#    (jika file belum ada, akan dibuat template kosong).
+# 2. Edit file JSON di `labels/<trip_id>_labels.json`.
+# 3. Jalankan sel ini lagi untuk memuat perubahan.
+# 4. Atau, edit dict `USER_LABELS` langsung di bawah lalu jalankan sel berikutnya.
+#
+# Label yang tersedia (konsisten bahasa Inggris):
+# - `"Non-Event"` — semua yang bukan event diskrit (rough road, engine vibration, maneuver, noise)
 # - `"Pothole"` — lubang jalan
 # - `"Speed Bump"` — polisi tidur
+
 # %%
-USER_LABELS = {
-    1: "Non-Event",
-    2: "Non-Event",
-    3: "Speed Bump", # potentialy
-    4: "Non-Event", 
-    5: "Non-Event",
-    6: "Non-Event",
-    7: "Non-Event",
-    8: "Speed Bump", # potentialy
-    9: "Pothole", 
-    10: "Non-Event",
-    11: "Non-Event",
-    12: "Non-Event",
-    13: "Non-Event",
-    14: "Non-Event",
-    15: "Speed Bump", # potentialy
-    16: "Pothole",
-    17: "Pothole", # Jalan Kasar
-    18: "Pothole",
-    19: "Pothole",
-    20: "Pothole",
-    21: "Non-Event",
-    22: "Non-Event",
-    23: "Non-Event",
-    24: "Non-Event",
-    25: "Non-Event",
-    26: "Non-Event",
-    27: "Non-Event",
-    28: "Non-Event",
-    29: "Pothole",
-    30: "Pothole",
-    31: "Non-Event",
-    32: "Non-Event", # bisa jadi speed bump
-    33: "Speed Bump", 
-    34: "Non-Event",
-    35: "Non-Event",
-    36: "Non-Event",
-    37: "Pothole", 
-    38: "Non-Event",
-    39: "Non-Event", # sambungan jalan
-    40: "Non-Event",
-    41: "Non-Event",
-    42: "Non-Event"
-    
-}
+LABELS_FOLDER = os.path.join(_DIR, "labels")
+os.makedirs(LABELS_FOLDER, exist_ok=True)
+
+
+def _label_file_path(trip_id):
+    """Generate path file label JSON berdasarkan trip_id."""
+    # Gunakan 8 karakter pertama UUID agar nama file tidak terlalu panjang
+    short_id = str(trip_id).split("-")[0] if "-" in str(trip_id) else str(trip_id)
+    return os.path.join(LABELS_FOLDER, f"{short_id}_labels.json")
+
+
+def load_labels_from_json(trip_id, trip_index=None):
+    """
+    Load USER_LABELS dari file JSON.
+    Jika file belum ada, buat template kosong dan kembalikan dict kosong.
+    """
+    path = _label_file_path(trip_id)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Konversi key string → int
+        labels = {int(k): v for k, v in data.get("labels", {}).items()}
+        print(f"[OK] Dimuat {len(labels)} label dari: {os.path.basename(path)}")
+        return labels
+
+    # Buat template kosong
+    template = {
+        "trip_index": trip_index if trip_index is not None else "?",
+        "trip_id": str(trip_id),
+        "labeled_at": "",
+        "notes": "Edit labels dict di bawah, lalu jalankan sel berikutnya.",
+        "labels": {}
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(template, f, indent=4, ensure_ascii=False)
+    print(f"[INFO] File label kosong dibuat: {os.path.basename(path)}")
+    print(f"       Edit file tersebut, lalu jalankan sel ini lagi.")
+    return {}
+
+
+def save_labels_to_json(trip_id, labels, trip_index=None, notes=""):
+    """Simpan USER_LABELS ke file JSON untuk referensi masa depan."""
+    path = _label_file_path(trip_id)
+    data = {
+        "trip_index": trip_index if trip_index is not None else "?",
+        "trip_id": str(trip_id),
+        "labeled_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "notes": notes,
+        "labels": {str(k): v for k, v in sorted(labels.items())}
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    print(f"[OK] {len(labels)} label disimpan ke: {os.path.basename(path)}")
+
+
+# Muat label dari file JSON (atau buat template kosong)
+USER_LABELS = load_labels_from_json(selected_trip, PILIHAN_INDEX_TRIP)
+
+# ──────────────────────────────────────────────────────────────────────
+# Jika lebih suka mengedit langsung di notebook, uncomment dan isi di sini:
+#
+# USER_LABELS = {
+#     1: "Non-Event",
+#     2: "Pothole",
+#     3: "Speed Bump",
+#     # ... tambahkan sesuai kebutuhan
+# }
+# ──────────────────────────────────────────────────────────────────────
 
 print(f"Total label sesi ini: {len(USER_LABELS)}")
 
@@ -484,6 +517,7 @@ print(f"Total label sesi ini: {len(USER_LABELS)}")
 # ## 4. Simpan ke Master Ground Truth
 # Label disimpan secara append-safe ke `ground_truth_labels.csv`.
 # Event yang di-relabel akan di-overwrite otomatis.
+# File JSON juga diperbarui sebagai backup.
 
 # %%
 if len(USER_LABELS) > 0:
@@ -509,7 +543,12 @@ if len(USER_LABELS) > 0:
 
     master_df.to_csv(MASTER_GT_PATH, index=False)
     print(f"\n Tersimpan! Total data ground truth: {len(master_df)}")
+
+    # Simpan juga ke file JSON sebagai backup
+    save_labels_to_json(selected_trip, USER_LABELS, PILIHAN_INDEX_TRIP)
 else:
     print("Belum ada label yang diisi di USER_LABELS.")
+    print(f"Edit file: {_label_file_path(selected_trip)}")
+    print("Lalu jalankan sel sebelumnya untuk memuat label.")
 
 # %%
