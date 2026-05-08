@@ -1,18 +1,7 @@
 import numpy as np
 import pandas as pd
-from scipy.signal import butter, filtfilt
-from config import TARGET_HZ, ACCEL_CLIP, GYRO_CLIP
-
-def clip_spikes(df, accel_max=ACCEL_CLIP, gyro_max=GYRO_CLIP):
-    """Clip extreme spikes before resampling to avoid interpolation smearing."""
-    df_clip = df.copy()
-    for col in ['ax', 'ay', 'az']:
-        if col in df_clip.columns:
-            df_clip[col] = df_clip[col].clip(-accel_max, accel_max)
-    for col in ['gx', 'gy', 'gz']:
-        if col in df_clip.columns:
-            df_clip[col] = df_clip[col].clip(-gyro_max, gyro_max)
-    return df_clip
+from scipy.signal import butter, lfilter, lfilter_zi
+from config import TARGET_HZ
 
 def resample_100hz(df, target_hz=TARGET_HZ):
     """Resample dataframe to TARGET_HZ (e.g. 100Hz = 10ms intervals) using linear interpolation."""
@@ -64,11 +53,15 @@ def butter_lowpass_filter(data, cutoff, fs, order=2):
         return data
         
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    # Padlen must be less than or equal to len(data) - 1
-    padlen = min(3 * max(len(a), len(b)), len(data) - 1)
-    if padlen < 1:
-        raise ValueError(f"Data length {len(data)} too short for filter padlen.")
-    y = filtfilt(b, a, data, padlen=padlen)
+    
+    # Initialize filter state to avoid start-up transients
+    # Since we can't look into the future (causal), we assume the signal
+    # starts near the first value to minimize the initial step response.
+    zi = lfilter_zi(b, a)
+    zi = zi * data[0]
+    
+    # Use causal lfilter instead of zero-phase filtfilt
+    y, _ = lfilter(b, a, data, zi=zi)
     return y
 
 def apply_sensor_fusion(df, cutoff_hz=0.5):
@@ -93,9 +86,7 @@ def apply_sensor_fusion(df, cutoff_hz=0.5):
         if nan_count > 0:
             df[col] = df[col].interpolate(method='linear').bfill().ffill()
 
-    # Preprocessing: Clip extreme noise first, THEN resample
-    # Clipping murni dilakukan pada kolom akselerasi/gyro mentah
-    df = clip_spikes(df)
+
     
     # Resampling ke grid waktu seragam
     # print("  [DEBUG] Resampling trip data to 100Hz...")

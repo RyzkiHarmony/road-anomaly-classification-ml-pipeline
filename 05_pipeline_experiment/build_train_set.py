@@ -70,9 +70,11 @@ for trip_id, w_group in df_windows.groupby("trip_id"):
         t0 = win["window_start"]
         t1 = win["window_end"]
 
-        # Event berlabel yang time_s-nya jatuh dalam rentang window ini
+        # Event berlabel yang time_s-nya jatuh di UJUNG akhir window (causal).
+        # Sistem live mendeteksi event sesaat setelah terjadi, sehingga
+        # event peak seharusnya berada di dekat t1 (akhir window).
         in_window = e_group[
-            (e_group["time_s"] >= t0) & (e_group["time_s"] < t1)
+            (e_group["time_s"] >= t1 - 0.3) & (e_group["time_s"] <= t1 + 0.1)
         ]
 
         if in_window.empty:

@@ -56,7 +56,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
     times = raw_df["timestamp"].astype(float).values / 1000.0
 
     t_start = event_time_s - window_s
-    t_end   = event_time_s + window_s
+    t_end   = event_time_s  # Trailing window, stopping at event_time_s
 
     mask = (times >= t_start) & (times <= t_end)
     seg  = raw_df[mask]
@@ -158,12 +158,11 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
     else:
         duration_above_threshold = 0.0
 
-    # ---------- Asymmetry (narrow window: ±0.3s dari peak) ----------
-    # Window sempit agar engine vibration tidak mendilusi sinyal event.
-    # Pothole → asimetris (energi terkonsentrasi di satu sisi)
-    # SpeedBump → simetris (naik-turun seimbang)
-    narrow_mask_left  = (t_rel >= -0.3) & (t_rel < 0)
-    narrow_mask_right = (t_rel > 0) & (t_rel <= 0.3)
+    # ---------- Asymmetry (trailing narrow window) ----------
+    # Window sempit dibagi dua pada sisi trailing untuk menangkap profil impact.
+    # Pothole → impact tajam di ujung window.
+    narrow_mask_left  = (t_rel >= -0.3) & (t_rel < -0.15)
+    narrow_mask_right = (t_rel >= -0.15) & (t_rel <= 0.0)
     left_energy  = float(np.sum(a_vert[narrow_mask_left] ** 2))
     right_energy = float(np.sum(a_vert[narrow_mask_right] ** 2))
     total_energy = left_energy + right_energy + 1e-6
@@ -213,11 +212,10 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
 
     # ---------- Kurtosis & Skewness ----------
     # Kurtosis tinggi → impulsive (pothole), rendah → smooth (speed bump)
-    # Skewness dihitung pada narrow window ±0.3s agar engine noise tidak
-    # mendilusi karakter event (pothole seharusnya negatif/ke bawah)
+    # Skewness dihitung pada narrow trailing window agar engine noise tidak mendilusi.
     kurtosis_val = float(sp_kurtosis(a_vert, fisher=True)) if len(a_vert) >= 4 else 0.0
 
-    narrow_mask = (t_rel >= -0.3) & (t_rel <= 0.3)
+    narrow_mask = (t_rel >= -0.3) & (t_rel <= 0.0)
     a_vert_narrow = a_vert[narrow_mask]
     skewness_val = float(sp_skew(a_vert_narrow)) if len(a_vert_narrow) >= 4 else 0.0
 
