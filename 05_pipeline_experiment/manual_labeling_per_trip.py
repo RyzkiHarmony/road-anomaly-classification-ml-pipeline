@@ -328,7 +328,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
           <tr><td>Peaks (Acc/Gyr)</td><td>: {int(num_peaks_accel)} / {int(num_peaks_gyro)}</td></tr>
         """
 
-    nav_buttons = "<div style='margin-top: 8px; display: flex; justify-content: space-between;'>"
+    nav_buttons = "<div style='margin-bottom: 8px; display: flex; justify-content: space-between;'>"
     if prev_nomor:
         nav_buttons += f"<button onclick='goToEvent({prev_nomor})' style='cursor:pointer; padding:2px 8px; font-size:11px;'>&laquo; Prev</button>"
     else:
@@ -348,6 +348,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
             <h4 style='margin:0 0 4px 0;'>Event #{nomor}</h4>
             <button onclick="copyGmaps('{gmaps_url}', this)" style='cursor:pointer; font-size:11px; color:#ffffff; background-color:#16a34a; padding:2px 6px; border:none; border-radius:3px;'>📍 Salin Maps URL</button>
         </div>
+        {nav_buttons}
         <hr style='margin:0 0 6px 0;'>
         <b style='color:#2563eb;'>🎧 Audio: Menit {menit:02d} Detik {detik:02d}</b><br>
         <span style='font-size:11px;color:#666;'>Waktu: {waktu_real} WIB</span><br>
@@ -358,7 +359,6 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
           {scoring_rows}
         </table>
         {chart_html}
-        {nav_buttons}
     </div>
     """
 
@@ -525,11 +525,22 @@ if len(USER_LABELS) > 0:
     for nomor, label in USER_LABELS.items():
         matched = df_trip[df_trip["nomor_event"] == nomor]
         if not matched.empty:
+            dur = float(matched.iloc[0].get("duration_above_threshold", 0.2))
+            if pd.isna(dur) or dur <= 0: dur = 0.2
+            t_peak = float(matched.iloc[0]["time_s"])
+            
             saved_rows.append({
-                "event_id":   int(matched.iloc[0]["event_id"]),
-                "trip_id":    selected_trip,
-                "label":      label,
-                "labeled_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "event_id":         int(matched.iloc[0]["event_id"]),
+                "trip_id":          selected_trip,
+                "label":            label,
+                "event_start":      t_peak - (dur / 2.0),
+                "event_peak":       t_peak,
+                "event_end":        t_peak + (dur / 2.0),
+                "confidence":       1.0,
+                "annotator":        "manual",
+                "notes":            "",
+                "created_at":       datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "pipeline_version": "05_pipeline_experiment"
             })
 
     new_gt_df = pd.DataFrame(saved_rows)

@@ -1,1 +1,1 @@
-event_id,trip_id,label,labeled_at
+event_id,trip_id,label,event_start,event_peak,event_end,confidence,annotator,notes,created_at,pipeline_version

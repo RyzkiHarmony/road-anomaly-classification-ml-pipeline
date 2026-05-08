@@ -39,19 +39,22 @@ def get_logger(name: str) -> logging.Logger:
     """
     return logging.getLogger(name)
 
-
+#Pipeline05
 # ---------- WINDOW & PEAK PARAMETERS ----------
-WINDOW_S            = 1.0   # detik per sliding window
-OVERLAP             = 0.5   # fraksi overlap antar window
-PEAK_MIN_DISTANCE_S = 0.2   # jarak minimum antar peak (detik)
-CLUSTER_TIME_S      = 2.0   # maksimum gap waktu dalam satu cluster
-CLUSTER_SPATIAL_M   = 10.0  # maksimum jarak GPS dalam satu cluster (meter)
+WINDOW_S              = 1.0   # detik per sliding window
+OVERLAP               = 0.5   # fraksi overlap antar window
+PEAK_MIN_DISTANCE_S   = 0.2   # jarak minimum antar peak (detik)
+REGION_WINDOW_S       = 0.2   # Trailing window untuk rolling energy (detik)
+REGION_MAD_MULTIPLIER = 2.0   # Adaptive threshold multiplier untuk region abnormal
+CLUSTER_TIME_S        = 0.8   # Maksimum gap waktu dalam satu cluster (detik) untuk latency < 1s
+CLUSTER_SPATIAL_M     = 10.0  # maksimum jarak GPS dalam satu cluster (meter)
 
 # ---------- ACCELEROMETER SEVERITY THRESHOLDS (G-force, a_vertical) ----------
 # Threshold berbasis G-force untuk konsistensi lintas perangkat.
+# Diturunkan untuk mengakomodasi atenuasi amplitudo dari filter kausal & resampling 100Hz
 NORMAL_VERT_G    = 3.0   # ambang bawah kandidat event
-CANDIDATE_VERT_G = 5.0   # event diprioritaskan untuk labeling
-HIGH_CONF_VERT_G = 8.0   # event sangat meyakinkan
+CANDIDATE_VERT_G = 4.0   # event diprioritaskan untuk labeling
+HIGH_CONF_VERT_G = 6.0   # event sangat meyakinkan
 
 G_TO_MS2           = 9.80665
 NORMAL_VERT_MS2    = NORMAL_VERT_G    * G_TO_MS2
@@ -61,7 +64,7 @@ HIGH_CONF_VERT_MS2 = HIGH_CONF_VERT_G * G_TO_MS2
 # ---------- GYROSCOPE SEVERITY THRESHOLDS (rad/s) ----------
 GYRO_NORMAL_RAD    = 3.0   # minimum untuk trigger peak detection
 GYRO_CANDIDATE_RAD = 4.0   # event dinaikan ke level candidate
-GYRO_HIGH_CONF_RAD = 8.0   # event dinaikan ke level high_conf
+GYRO_HIGH_CONF_RAD = 6.0   # event dinaikan ke level high_conf
 
 # ---------- SPEED CONTEXT THRESHOLDS (m/s) ----------
 # Pada motor, kecepatan rendah BUKAN berarti event tidak valid — bisa jadi
@@ -85,7 +88,7 @@ W_DURATION = 0.15
 SCORE_ACCEL_MIN_G = 3.0    # sama dengan NORMAL_VERT_G
 SCORE_ACCEL_MAX_G = 6.0    # Di-adjust dari 8.0 karena 100Hz signal smoothing
 SCORE_GYRO_MAX    = 6.0    # rad/s — gyro > 6 sangat jarang, dianggap saturasi
-SCORE_JERK_MAX    = 60.0   # m/s³ — Di-adjust dari 15.0 agar fitur Delta-A lebih diskriminatif
+SCORE_JERK_MAX    = 25.0   # m/s³ — Di-adjust dari 60.0 agar skor tidak collapse
 SCORE_DUR_MAX_S   = 2.0    # detik — event > 2s biasanya multi-event atau slip
 
 # ---------- PRIORITY THRESHOLDS ----------

@@ -62,42 +62,34 @@ def _classify_level(vert_g: float, gyro_rads: float) -> str:
     return "normal"
 
 
-def _compute_vert_jerk(raw_df, raw_times, time_centre_s: float) -> float:
-    """Compute peak jerk (m/s³) from raw a_vertical within ±0.5s of event centre."""
-    if raw_times is None:
-        return 0.0
-    jerk_mask = (raw_times >= time_centre_s - 0.5) & (raw_times <= time_centre_s + 0.5)
-    vert_segment = raw_df.loc[jerk_mask, "a_vertical"].astype(float).values
-    if len(vert_segment) > 1:
-        return float(np.max(np.abs(np.diff(vert_segment))))
-    return 0.0
 
 
 def _cluster_to_event_row(cluster: dict, raw_df, raw_times) -> dict:
     """Convert a cluster dict into one event feature row."""
-    max_accel_ms2    = float(np.max(cluster["mags"]))
+    # Gunakan peak vertikal terkuat sebagai representasi waktu utama event
     dominant_vert_idx = int(np.argmax(np.abs(cluster["mags_vert"])))
-    max_vert_ms2     = float(cluster["mags_vert"][dominant_vert_idx])
-    max_gyro_rads    = float(np.max(cluster["gyro_mags"]))
+    max_vert_ms2      = float(cluster["mags_vert"][dominant_vert_idx])
+    time_dominant     = float(cluster["times"][dominant_vert_idx])
+    
+    max_accel_ms2     = float(np.max(cluster["mags"]))
+    max_gyro_rads     = float(np.max(cluster["gyro_mags"]))
 
     accel_g = max_accel_ms2 / G_TO_MS2
     vert_g  = max_vert_ms2  / G_TO_MS2
 
-    time_centre = float(np.mean(cluster["times"]))
-
-    shape_features = extract_event_shape_features(raw_df, time_centre)
+    # Ekstraksi fitur shape berpusat pada peak terkuat
+    shape_features = extract_event_shape_features(raw_df, time_dominant)
 
     valid_speeds = [s for s in cluster["speeds"] if not np.isnan(s)]
     speed_mean   = float(np.mean(valid_speeds)) if valid_speeds else float("nan")
 
-    vert_jerk = _compute_vert_jerk(raw_df, raw_times, time_centre)
-    level     = _classify_level(vert_g, max_gyro_rads)
+    level = _classify_level(vert_g, max_gyro_rads)
 
     row = {
         "event_id":         cluster["event_id"],
-        "time_s":           time_centre,
-        "lat":              float(cluster["lats"][-1]),
-        "lon":              float(cluster["lons"][-1]),
+        "time_s":           time_dominant,
+        "lat":              float(cluster["lats"][dominant_vert_idx]),
+        "lon":              float(cluster["lons"][dominant_vert_idx]),
         "peak_mag":         max_accel_ms2,
         "peak_vertical":    max_vert_ms2,
         "peak_mag_g":       accel_g,
@@ -105,7 +97,7 @@ def _cluster_to_event_row(cluster: dict, raw_df, raw_times) -> dict:
         "peak_gyro_mag":    max_gyro_rads,
         "speed_mean":       speed_mean,
         "event_duration":   shape_features["duration_above_threshold"],
-        "vert_jrk":         vert_jerk,
+        "vert_jrk":         shape_features["max_jerk"], # Konsisten dengan extraction logic
         "level":            level,
     }
     # Merge all shape features (21 columns) into the row

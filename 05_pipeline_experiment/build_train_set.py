@@ -1,192 +1,110 @@
 import pandas as pd
 import numpy as np
 import os
+import glob
+from tqdm import tqdm
 
-from config import OUT_FOLDER
+from config import OUT_FOLDER, CSV_FOLDER, get_logger
+from sensor_fusion import apply_sensor_fusion
+from feature_extraction import extract_event_shape_features
+
+logger = get_logger(__name__)
 
 GT_PATH      = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
-WINDOWS_PATH = os.path.join(OUT_FOLDER, "windows_features.csv")
 EVENTS_PATH  = os.path.join(OUT_FOLDER, "candidates_events.csv")
 OUTPUT_PATH  = os.path.join(OUT_FOLDER, "manual_labeled_windows.csv")
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-# Rasio sampling background Non-Event terhadap jumlah window kelas positif
-# (Pothole + Speed Bump) yang berhasil di-link.
-# Contoh: BACKGROUND_RATIO=3 → jika ada 20 window Pothole+SpeedBump,
-#         maka kita tambahkan hingga 60 window background Non-Event.
-# Set ke None untuk menonaktifkan sampling (ambil SEMUA background yang tersedia).
-BACKGROUND_RATIO = 3
-
-# Seed untuk reproducibility
+# Rasio sampling background Non-Event tambahan jika data manual Non-Event sedikit.
+BACKGROUND_RATIO = 2 
 RANDOM_SEED = 42
 
-# ---------- LOAD ----------
-missing = [p for p in (GT_PATH, WINDOWS_PATH, EVENTS_PATH) if not os.path.exists(p)]
-if missing:
-    print("File berikut belum ditemukan:")
-    for p in missing:
-        print(f"  {p}")
-    raise SystemExit(1)
+def main():
+    if not os.path.exists(GT_PATH) or not os.path.exists(EVENTS_PATH):
+        logger.error("File ground_truth_labels.csv atau candidates_events.csv tidak ditemukan.")
+        return
 
-df_gt      = pd.read_csv(GT_PATH)       # event_id, label, trip_id, labeled_at
-df_windows = pd.read_csv(WINDOWS_PATH)  # window_start, window_end, trip_id, features...
-df_events  = pd.read_csv(EVENTS_PATH)   # event_id, time_s, peak_mag, trip_id, ...
+    df_gt = pd.read_csv(GT_PATH)
+    df_events = pd.read_csv(EVENTS_PATH)
 
-print(f"Ground truth rows   : {len(df_gt)}")
-print(f"Windows             : {len(df_windows)}")
-print(f"Candidate events    : {len(df_events)}")
+    # 1. ATTACH LABELS TO CANDIDATES
+    # Ini mencakup Pothole, Speed Bump, dan "Non-Event" yang ditolak labeler.
+    df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
+    
+    if df_labeled.empty:
+        logger.warning("Belum ada data yang dilabeli di ground_truth_labels.csv.")
+        return
 
-# ---------- ATTACH LABEL TO EVENTS ----------
-# Hanya event yang sudah dilabeli secara manual
-df_labeled_events = df_events.merge(
-    df_gt[["event_id", "label"]],
-    on="event_id",
-    how="inner",
-)
-print(f"Events dengan label : {len(df_labeled_events)}")
+    logger.info(f"Latih dari {len(df_labeled)} event yang sudah divalidasi manual.")
+    logger.info(df_labeled["label"].value_counts().to_string())
 
-if df_labeled_events.empty:
-    print("\n[INFO] Belum ada event yang dilabeli. Jalankan manual_labeling_per_trip.py terlebih dahulu.")
-    raise SystemExit(0)
+    # 2. GENERATE ADDITIONAL BACKGROUND (Optional Balance)
+    # Jika jumlah Non-Event manual masih sedikit, kita ambil sampel random dari jalan normal.
+    n_pos = len(df_labeled[df_labeled["label"].isin(["Pothole", "Speed Bump"])])
+    n_neg_manual = len(df_labeled[df_labeled["label"] == "Non-Event"])
+    
+    labeled_trip_ids = df_labeled["trip_id"].unique()
+    additional_bg_records = []
 
-# Trip yang sudah pernah direview oleh labeler
-labeled_trip_ids = set(df_labeled_events["trip_id"].unique())
-print(f"Trip yang sudah dilabeli: {len(labeled_trip_ids)}")
+    if n_neg_manual < n_pos * BACKGROUND_RATIO:
+        n_needed = (n_pos * BACKGROUND_RATIO) - n_neg_manual
+        logger.info(f"Mengambil {n_needed} sampel background tambahan untuk balancing...")
 
-# ---------- STRATEGI A: TEMPORAL LINKAGE (window → event label) ----------
+        # Ambil sampel dari trip yang sudah dilabeli agar distribusi sensor konsisten
+        for trip_id in labeled_trip_ids:
+            # Cari file CSV asli
+            csv_candidates = glob.glob(os.path.join(CSV_FOLDER, f"*{trip_id}*.csv"))
+            if not csv_candidates: continue
+            
+            try:
+                raw_df = pd.read_csv(csv_candidates[0])
+                raw_df = apply_sensor_fusion(raw_df)
+                
+                # Cari area yang jauh dari event apapun (min 5 detik)
+                event_times = df_events[df_events["trip_id"] == trip_id]["time_s"].values
+                duration = (raw_df["timestamp"].iloc[-1] - raw_df["timestamp"].iloc[0]) / 1000.0
+                
+                # Coba ambil 20 titik random per trip
+                attempts = 0
+                while len(additional_bg_records) < n_needed and attempts < 50:
+                    attempts += 1
+                    t_rand = raw_df["timestamp"].iloc[0]/1000.0 + np.random.uniform(5, duration - 5)
+                    
+                    # Cek jarak ke event terdekat
+                    if len(event_times) > 0:
+                        dist_to_event = np.min(np.abs(event_times - t_rand))
+                        if dist_to_event < 3.0: continue
+                    
+                    # Ekstrak fitur menggunakan logic yang SAMA dengan event
+                    feats = extract_event_shape_features(raw_df, t_rand)
+                    if feats["vertical_energy"] > 0:
+                        feats.update({
+                            "event_id": -1,
+                            "time_s": t_rand,
+                            "trip_id": trip_id,
+                            "label": "Non-Event",
+                            "source": "auto_background"
+                        })
+                        additional_bg_records.append(feats)
+                        if len(additional_bg_records) >= n_needed: break
+            except Exception as e:
+                logger.error(f"Gagal proses background untuk {trip_id}: {e}")
 
-records_labeled = []
-
-for trip_id, w_group in df_windows.groupby("trip_id"):
-    # Hanya proses trip yang sudah direview
-    if trip_id not in labeled_trip_ids:
-        continue
-
-    e_group = df_labeled_events[df_labeled_events["trip_id"] == trip_id]
-    if e_group.empty:
-        continue
-
-    for _, win in w_group.iterrows():
-        t0 = win["window_start"]
-        t1 = win["window_end"]
-
-        # Event berlabel yang time_s-nya jatuh di UJUNG akhir window (causal).
-        # Sistem live mendeteksi event sesaat setelah terjadi, sehingga
-        # event peak seharusnya berada di dekat t1 (akhir window).
-        in_window = e_group[
-            (e_group["time_s"] >= t1 - 0.3) & (e_group["time_s"] <= t1 + 0.1)
-        ]
-
-        if in_window.empty:
-            continue  # window ini tidak mengandung event berlabel
-
-        # Jika ada lebih dari satu event dalam window, ambil yang paling keras
-        dominant = in_window.loc[in_window["peak_mag"].idxmax()]
-
-        row = win.to_dict()
-        row["label"]    = dominant["label"]
-        row["event_id"] = int(dominant["event_id"])
-        row["source"]   = "event_labeled"
-        records_labeled.append(row)
-
-df_event_labeled = pd.DataFrame(records_labeled) if records_labeled else pd.DataFrame()
-print(f"\n[A] Window dengan label event : {len(df_event_labeled)}")
-if not df_event_labeled.empty:
-    print(df_event_labeled["label"].value_counts().to_string())
-
-# ---------- STRATEGI B: BACKGROUND NON-EVENT SAMPLING ----------
-# Cari window dari trip berlabel yang tidak mengandung event APAPUN
-# (baik yang berlabel maupun yang belum dilabeli).
-# Window semacam ini = segmen jalan normal yang aman dijadikan Non-Event.
-
-# Bangun lookup semua event time_s per trip (berlabel DAN tidak berlabel)
-# agar kita bisa mengecualikan window yang berpotensi mengandung anomali
-all_events_by_trip = (
-    df_events
-    .groupby("trip_id")["time_s"]
-    .apply(np.array)
-    .to_dict()
-)
-
-records_background = []
-
-for trip_id, w_group in df_windows.groupby("trip_id"):
-    # Hanya dari trip yang sudah direview labeler
-    if trip_id not in labeled_trip_ids:
-        continue
-
-    event_times = all_events_by_trip.get(trip_id, np.array([]))
-
-    for _, win in w_group.iterrows():
-        t0 = win["window_start"]
-        t1 = win["window_end"]
-
-        # Jika ada event apapun di dalam window ini, skip
-        # (bahkan yang belum dilabeli — kita tidak mau mengotori kelas Non-Event)
-        if len(event_times) > 0:
-            has_any_event = bool(np.any((event_times >= t0) & (event_times < t1)))
-        else:
-            has_any_event = False
-
-        if has_any_event:
-            continue
-
-        row = win.to_dict()
-        row["label"]    = "Non-Event"
-        row["event_id"] = -1          # sentinel: tidak ada event terkait
-        row["source"]   = "background"
-        records_background.append(row)
-
-df_background = pd.DataFrame(records_background) if records_background else pd.DataFrame()
-print(f"\n[B] Window background tersedia : {len(df_background)}")
-
-# --- Proportional sampling agar tidak terlalu mendominasi ---
-if not df_background.empty and BACKGROUND_RATIO is not None:
-    # Hitung jumlah window positif (Pothole + Speed Bump)
-    if not df_event_labeled.empty:
-        n_positive = int(
-            df_event_labeled["label"]
-            .isin(["Pothole", "Speed Bump"])
-            .sum()
-        )
+    # 3. COMBINE & SAVE
+    df_bg = pd.DataFrame(additional_bg_records)
+    if not df_bg.empty:
+        # Sinkronkan kolom agar bisa di-concat
+        common_cols = [c for c in df_labeled.columns if c in df_bg.columns]
+        df_final = pd.concat([df_labeled[common_cols], df_bg[common_cols]], ignore_index=True)
     else:
-        n_positive = 0
+        df_final = df_labeled
 
-    # Target minimum 30 background agar selalu ada representasi Non-Event
-    n_target = max(n_positive * BACKGROUND_RATIO, 30)
-    n_sample  = min(n_target, len(df_background))
+    # Simpan dataset
+    df_final.to_csv(OUTPUT_PATH, index=False)
+    logger.info(f"Dataset training disimpan di {OUTPUT_PATH} ({len(df_final)} baris)")
+    logger.info("Distribusi Akhir:")
+    logger.info(df_final["label"].value_counts().to_string())
 
-    df_background = df_background.sample(n=int(n_sample), random_state=RANDOM_SEED)
-    print(
-        f"    -> Di-sample {len(df_background)} window "
-        f"(target={n_target}, kelas positif={n_positive}, rasio={BACKGROUND_RATIO}x)"
-    )
+if __name__ == "__main__":
+    main()
 
-# ---------- GABUNGKAN A + B ----------
-parts = [d for d in [df_event_labeled, df_background] if not d.empty]
-if not parts:
-    print("\n[INFO] Tidak ada window yang bisa digabungkan.")
-    print("Pastikan timestamp di windows_features.csv dan candidates_events.csv berasal dari run yang sama.")
-    raise SystemExit(0)
-
-df_merged = pd.concat(parts, ignore_index=True)
-
-# ---------- RINGKASAN ----------
-print(f"\n{'='*50}")
-print(f"Windows total dalam training set : {len(df_merged)}")
-print("\nDistribusi label akhir:")
-print(df_merged["label"].value_counts().to_string())
-
-print("\nSumber data:")
-print(df_merged["source"].value_counts().to_string())
-
-# Rasio Non-Event vs positif untuk referensi
-n_pos  = int(df_merged["label"].isin(["Pothole", "Speed Bump"]).sum())
-n_neg  = int((df_merged["label"] == "Non-Event").sum())
-ratio  = n_neg / n_pos if n_pos > 0 else float("inf")
-print(f"\nRasio Non-Event : Positif = {n_neg} : {n_pos} ({ratio:.1f}x)")
-
-# ---------- SIMPAN ----------
-df_merged.to_csv(OUTPUT_PATH, index=False)
-print(f"\n[OK] Dataset siap training disimpan di: {OUTPUT_PATH}")
-print(f"     Shape: {df_merged.shape[0]} rows x {df_merged.shape[1]} columns")

@@ -29,11 +29,14 @@ def main():
     df = df.dropna(subset=['label'])
     
     # ---------- FEATURE SELECTION ----------
-    # Columns to exclude from feature matrix
-    exclude_cols = ['window_start', 'window_end', 'trip_id', 'event_id', 'source', 'label']
+    # Kita gunakan fitur yang sama dengan label_suggester.py untuk konsistensi
+    from label_suggester import ML_FEATURES
     
-    # All other columns are considered features
-    feature_cols = [c for c in df.columns if c not in exclude_cols]
+    # Tambahkan fitur tambahan jika tersedia di dataset baru
+    feature_cols = [c for c in df.columns if c in ML_FEATURES or c in [
+        "asymmetry_score", "kurtosis", "skewness", "fft_high_low_ratio", 
+        "zcr", "gyro_pitch_roll_ratio", "peak_to_peak"
+    ]]
     
     # Drop rows with NaN in features
     df = df.dropna(subset=feature_cols)
@@ -44,38 +47,22 @@ def main():
     y = df['label'].values
     groups = df['trip_id'].values
 
-    # Pastikan minimal ada 2 group (trip_id) agar GroupShuffleSplit berfungsi
+    # ---------- TRAIN/TEST SPLIT (GROUPED) ----------
     if len(np.unique(groups)) < 2:
-        logger.warning("Hanya ada 1 trip_id di dalam dataset. Menggunakan fallback random train_test_split (risiko data leakage).")
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     else:
-        # ---------- TRAIN/TEST SPLIT (GROUPED) ----------
-        # We use GroupShuffleSplit to ensure windows from the same trip do not 
-        # leak across the train and test sets.
         gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
         train_idx, test_idx = next(gss.split(X, y, groups))
-
         X_train, y_train = X[train_idx], y[train_idx]
         X_test, y_test = X[test_idx], y[test_idx]
 
     logger.info(f"Train set: {len(X_train)} samples")
     logger.info(f"Test set: {len(X_test)} samples")
 
-    # Pastikan data test dan train valid
-    if len(X_train) == 0 or len(X_test) == 0:
-        logger.error("Train atau Test set kosong setelah di split. Dataset terlalu kecil.")
-        return
-
-    # ---------- STRICT NORMALIZATION ----------
-    # Fit the scaler ONLY on the training set to prevent data leakage.
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    # ---------- MODEL TRAINING ----------
-    # Using balanced class weight to handle the Non-Event vs Event class imbalance.
-    logger.info("Training RandomForestClassifier...")
+    # ---------- MODEL TRAINING (NO SCALER) ----------
+    # RF tidak butuh scaling. Ini membuat model lebih "physically grounded".
+    logger.info("Training RandomForestClassifier (Scale-Invariant)...")
     rf_model = RandomForestClassifier(
         n_estimators=100, 
         random_state=42, 
@@ -84,35 +71,23 @@ def main():
         n_jobs=-1
     )
     
-    rf_model.fit(X_train_scaled, y_train)
+    rf_model.fit(X_train, y_train)
 
     # ---------- EVALUATION ----------
     logger.info("Evaluating model on test set...")
-    y_pred = rf_model.predict(X_test_scaled)
+    y_pred = rf_model.predict(X_test)
 
     print("\n" + "="*50)
     print("CLASSIFICATION REPORT")
     print("="*50)
     print(classification_report(y_test, y_pred))
 
-    print("\n" + "="*50)
-    print("CONFUSION MATRIX")
-    print("="*50)
-    cm = confusion_matrix(y_test, y_pred, labels=rf_model.classes_)
-    cm_df = pd.DataFrame(cm, index=rf_model.classes_, columns=rf_model.classes_)
-    print(cm_df)
-
     # ---------- EXPORT ARTIFACTS ----------
     model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
     os.makedirs(model_dir, exist_ok=True)
 
-    scaler_path = os.path.join(model_dir, "scaler.pkl")
     model_path = os.path.join(model_dir, "rf_model.pkl")
-
-    joblib.dump(scaler, scaler_path)
     joblib.dump(rf_model, model_path)
-
-    logger.info(f"Scaler saved to {scaler_path}")
     logger.info(f"Model saved to {model_path}")
 
 if __name__ == "__main__":

@@ -27,9 +27,9 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     
     interval = f"{int(1000/target_hz)}ms"
     
-    # Resample & Interpolate (limit=10 means max 100ms gap filled)
+    # Resample & Causal Fill (ffill=10 means max 100ms gap filled)
     df_num = df_res[numeric_cols].resample(interval).mean()
-    df_num = df_num.interpolate(method='linear', limit=10)
+    df_num = df_num.ffill(limit=10) # Strictly causal filling
     
     if len(non_numeric_cols) > 0:
         df_non_num = df_res[non_numeric_cols].resample(interval).ffill(limit=10)
