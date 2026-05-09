@@ -54,7 +54,9 @@ _RAW_TO_FINAL = {
 ML_FEATURES = [
     "peak_vertical_g", "num_peaks_accel", "num_peaks_gyro",
     "asymmetry_score", "local_duration", "vertical_energy", "gyro_energy",
-    "speed_mean", "vert_jrk"
+    "speed_mean", "vert_jrk", "fft_high_low_ratio", "max_jerk",
+    "gyro_pitch_energy", "gyro_roll_energy", "gyro_pitch_roll_ratio",
+    "kurtosis", "skewness", "zcr"
 ]
 
 # ---------- SUGGESTION SCHEMA ----------
@@ -167,6 +169,17 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
     npg = int(_f(row, "num_peaks_gyro", 0))
     asym = _f(row, "asymmetry_score")
     dur = _f(row, "local_duration")
+    fft_ratio = _f(row, "fft_high_low_ratio", 0.0)
+    max_jrk = _f(row, "max_jerk", 0.0)
+    p_mag = _f(row, "peak_mag", 0.0)
+    
+    # S-Tier Features
+    pitch_e = _f(row, "gyro_pitch_energy", 0.0)
+    roll_e = _f(row, "gyro_roll_energy", 0.0)
+    pr_ratio = _f(row, "gyro_pitch_roll_ratio", 0.0)
+    skew = _f(row, "skewness", 0.0)
+    kur = _f(row, "kurtosis", 0.0)
+    zcr = _f(row, "zcr", 0.0)
 
     best_confidence = 0.0
     best_label = "Non-Event"
@@ -240,49 +253,54 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
     confidence = 0.40
     needs_review = True
 
+    # R10 — Extreme Shock: Amplitudo raksasa (> 45 m/s²)
+    if (p_mag >= 45):
+        # Speed Bump WAJIB punya energi pitch yang dominan
+        if pr_ratio > 1.8 and pitch_e > 40:
+            raw_label = "Speed Bump"
+            reason = f"Extreme shock ({p_mag:.1f} m/s²) + High Pitch/Roll Ratio ({pr_ratio:.1f}) → Speed Bump"
+        else:
+            raw_label = "Pothole"
+            reason = f"Extreme shock ({p_mag:.1f} m/s²) + Low Pitch/Roll Ratio ({pr_ratio:.1f}) → Pothole"
+        kind = "event"
+        rule = "R10"
+        confidence = 0.98
+        needs_review = False
+
     # R5 — Maneuver: gyro dominan + asimetri tinggi
-    if (npg >= 3) and (asym > 0.55):
+    elif (npg >= 3) and (asym > 0.60) and (a < 12):
         raw_label = "Maneuver"
         kind = "condition_like"
         rule = "R5"
-        reason = "gyro dominan + asimetri tinggi → maneuver (Non-Event)"
+        reason = "gyro dominan + asimetri tinggi + low accel → maneuver (Non-Event)"
         confidence = 0.88
         needs_review = False
 
-    # R3 — Speed Bump: multi-peak terstruktur + durasi panjang + simetris
-    elif (a >= 6) and (npa >= 2) and (dur > 0.20) and (asym < 0.40):
-        raw_label = "Speed Bump"
-        kind = "event"
-        rule = "R3"
-        reason = "multi-peak terstruktur + durasi lebih panjang + shape relatif simetris"
-        confidence = 0.90
-        needs_review = False
-
-    # R1 — Pothole: impulse tajam + durasi pendek + accel dominan
-    elif (a >= 8) and (npa <= 2) and (dur <= 0.30) and (asym <= 0.65):
+    # R1 — Pothole: impulse tajam + high freq energy + negative skew
+    elif (a >= 15) and (fft_ratio >= 10.0 or skew < -0.5):
         raw_label = "Pothole"
         kind = "event"
         rule = "R1"
-        reason = "impulse tajam + durasi pendek + accel dominan"
+        reason = f"impulse tajam + FFT High ({fft_ratio:.1f}) + Skewness ({skew:.2f}) → Pothole"
         confidence = 0.95
         needs_review = False
 
-    # R4 — Crack / sambungan kecil → Non-Event
-    elif (a >= 5) and (npa == 1) and (dur <= 0.15):
-        raw_label = "Crack"
-        kind = "condition_like"
-        rule = "R4"
-        reason = "spike kecil/rapat + durasi sangat singkat → Non-Event"
-        confidence = 0.76
-        needs_review = True
+    # R3 — Speed Bump: low freq energy + pitch energy dominant
+    elif (a >= 12) and (fft_ratio < 5.0) and (pr_ratio > 1.5):
+        raw_label = "Speed Bump"
+        kind = "event"
+        rule = "R3"
+        reason = f"low frequency energy (FFT < 5) + Pitch Dominant (P/R Ratio: {pr_ratio:.1f})"
+        confidence = 0.92
+        needs_review = False
 
-    # R7 — Rough Road → Non-Event
-    elif (npa >= 3) and (dur > 0.4) and (_in_range(asym, 0.30, 0.70)):
+    # R7 — Rough Road: Guncangan kontinu tapi tidak ekstrem → Non-Event
+    elif (a >= 10) and (npa >= 3) and (dur > 0.4):
         raw_label = "Rough Road"
         kind = "condition_like"
         rule = "R7"
-        reason = "struktur kontinu panjang + noisy/dense → Non-Event"
-        confidence = 0.72
+        reason = "struktur kontinu panjang + low-mid magnitude → Rough Road (Non-Event)"
+        confidence = 0.75
         needs_review = True
 
     # R6 — Normal / background vibration

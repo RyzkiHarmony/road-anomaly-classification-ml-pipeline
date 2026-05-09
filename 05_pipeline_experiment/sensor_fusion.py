@@ -27,8 +27,8 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     
     interval = f"{int(1000/target_hz)}ms"
     
-    # Resample & Causal Fill (ffill=10 means max 100ms gap filled)
-    df_num = df_res[numeric_cols].resample(interval).mean()
+    # Resample & Interpolate (Preserves peaks much better than .mean())
+    df_num = df_res[numeric_cols].resample(interval).interpolate(method='linear')
     df_num = df_num.ffill(limit=10) # Strictly causal filling
     
     if len(non_numeric_cols) > 0:
@@ -43,7 +43,7 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     
     # Ekstrak timestamp secara aman tanpa terpengaruh internal resolution pandas
     df_out['timestamp'] = (df_out.index - pd.Timestamp("1970-01-01")) // pd.Timedelta('1ms')
-    return df_out.reset_index(drop=True)
+    return df_out
 
 def butter_lowpass_filter(data, cutoff, fs, order=2):
     nyq = 0.5 * fs
@@ -64,11 +64,10 @@ def butter_lowpass_filter(data, cutoff, fs, order=2):
     y, _ = lfilter(b, a, data, zi=zi)
     return y
 
-def apply_sensor_fusion(df, cutoff_hz=0.5):
+def apply_sensor_fusion(df, cutoff_hz=2.0):
     """
-    Applies sensor fusion to separate gravity from linear acceleration.
-    Calculates a_vertical (projection of linear accel on gravity) and a_horizontal.
-    Raises ValueError if data is insufficient or too noisy.
+    Applies real-time (causal) sensor fusion to separate gravity from linear acceleration.
+    Uses a higher cutoff (2.0 Hz) to reduce group delay for better alignment.
     """
     df = df.copy()
     

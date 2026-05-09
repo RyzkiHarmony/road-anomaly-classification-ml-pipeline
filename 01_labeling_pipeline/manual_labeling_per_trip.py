@@ -500,17 +500,6 @@ def save_labels_to_json(trip_id, labels, trip_index=None, notes=""):
 # Muat label dari file JSON (atau buat template kosong)
 USER_LABELS = load_labels_from_json(selected_trip, PILIHAN_INDEX_TRIP)
 
-# ──────────────────────────────────────────────────────────────────────
-# Jika lebih suka mengedit langsung di notebook, uncomment dan isi di sini:
-#
-# USER_LABELS = {
-#     1: "Non-Event",
-#     2: "Pothole",
-#     3: "Speed Bump",
-#     # ... tambahkan sesuai kebutuhan
-# }
-# ──────────────────────────────────────────────────────────────────────
-
 print(f"Total label sesi ini: {len(USER_LABELS)}")
 
 # %% [markdown]

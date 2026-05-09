@@ -97,5 +97,3 @@ PRIORITY_MEDIUM_THRESHOLD = 0.30
 
 # ---------- PREPROCESSING PARAMETERS ----------
 TARGET_HZ  = 100      # Target resampling frequency (10ms)
-ACCEL_CLIP = 40.0     # m/s^2 limit
-GYRO_CLIP  = 10.0     # rad/s limit

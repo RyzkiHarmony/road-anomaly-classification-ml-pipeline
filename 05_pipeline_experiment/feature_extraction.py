@@ -55,8 +55,8 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
 
     times = raw_df["timestamp"].astype(float).values / 1000.0
 
-    t_start = event_time_s - 0.7
-    t_end   = event_time_s + 0.3  # Buffer 300ms ke depan untuk menangkap fase recovery
+    t_start = event_time_s - 1.0
+    t_end   = event_time_s + 1.0  # Buffer 300ms ke depan untuk menangkap fase recovery
 
     mask = (times >= t_start) & (times <= t_end)
     seg  = raw_df[mask]
@@ -100,7 +100,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
     accel_peaks, props = find_peaks(
         mags_smooth,
         height=accel_thr,
-        prominence=0.8,
+        prominence=0.5,
         distance=min_dist,
     )
 

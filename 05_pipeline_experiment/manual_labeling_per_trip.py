@@ -13,6 +13,7 @@ matplotlib.use("Agg")  # non-interactive backend, aman untuk batch rendering
 import matplotlib.pyplot as plt
 from label_suggester import apply_label_suggestions, save_label_suggestions
 from sensor_fusion import apply_sensor_fusion
+from helpers import load_trip_meta
 
 _DIR        = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 OUT_FOLDER  = os.path.join(_DIR, "out")
@@ -186,8 +187,19 @@ df_trip       = df_trip.sort_values(by="time_s")
 if "suggested_label" not in df_trip.columns:
     df_trip = apply_label_suggestions(df_trip)
 
-start_time          = df_trip["time_s"].min()
-df_trip["detik_ke"] = df_trip["time_s"] - start_time
+# Muat metadata untuk mendapatkan startTime absolut
+raw_csv_path = TRIP_CSV_MAP.get(selected_trip)
+_, meta = load_trip_meta(raw_csv_path) if raw_csv_path else (None, None)
+
+if meta and "startTime" in meta:
+    trip_start_s = meta["startTime"] / 1000.0
+    df_trip["detik_ke"] = df_trip["time_s"] - trip_start_s
+    print(f"Menggunakan startTime metadata sebagai Detik 0: {meta['startTimeReadable']}")
+else:
+    start_time          = df_trip["time_s"].min()
+    df_trip["detik_ke"] = df_trip["time_s"] - start_time
+    print("[WARN] Metadata tidak ditemukan atau startTime tidak ada. Menggunakan event pertama sebagai Detik 0.")
+
 df_trip["nomor_event"] = range(1, len(df_trip) + 1)
 
 print(f"=== Trip: {selected_trip} ===")
@@ -499,17 +511,6 @@ def save_labels_to_json(trip_id, labels, trip_index=None, notes=""):
 
 # Muat label dari file JSON (atau buat template kosong)
 USER_LABELS = load_labels_from_json(selected_trip, PILIHAN_INDEX_TRIP)
-
-# ──────────────────────────────────────────────────────────────────────
-# Jika lebih suka mengedit langsung di notebook, uncomment dan isi di sini:
-#
-# USER_LABELS = {
-#     1: "Non-Event",
-#     2: "Pothole",
-#     3: "Speed Bump",
-#     # ... tambahkan sesuai kebutuhan
-# }
-# ──────────────────────────────────────────────────────────────────────
 
 print(f"Total label sesi ini: {len(USER_LABELS)}")
 
