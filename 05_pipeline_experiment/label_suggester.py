@@ -52,11 +52,13 @@ _RAW_TO_FINAL = {
 
 # ---------- ML FEATURES ----------
 ML_FEATURES = [
-    "peak_vertical_g", "num_peaks_accel", "num_peaks_gyro",
-    "asymmetry_score", "local_duration", "vertical_energy", "gyro_energy",
-    "speed_mean", "vert_jrk", "fft_high_low_ratio", "max_jerk",
-    "gyro_pitch_energy", "gyro_roll_energy", "gyro_pitch_roll_ratio",
-    "kurtosis", "skewness", "zcr"
+    "peak_mag", "peak_vertical_g", "peak_gyro_mag", "speed_mean",
+    "event_duration", "vert_jrk", "num_peaks_accel", "num_peaks_gyro",
+    "peak_interval_mean", "peak_interval_std", "asymmetry_score", "vertical_energy", 
+    "gyro_energy", "accel_to_gyro_ratio", "local_duration", "top2_peak_ratio", 
+    "duration_above_threshold", "max_jerk", "peak_to_peak", "fft_high_low_ratio", 
+    "zcr", "kurtosis", "skewness", "gyro_pitch_energy", "gyro_roll_energy", 
+    "gyro_yaw_energy", "gyro_pitch_roll_ratio"
 ]
 
 # ---------- SUGGESTION SCHEMA ----------
@@ -252,6 +254,15 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
     reason = "fallback"
     confidence = 0.40
     needs_review = True
+
+    # R11 — Anti-Gravel: Banyak puncak gyro + energi tinggi (Mencegah False Positive Pothole)
+    if (npg >= 4) and (row.get("gyro_energy", 0) > 400):
+        raw_label = "Rough Road"
+        kind = "condition_like"
+        rule = "R11"
+        reason = f"Repetitive gyro peaks ({npg}) + high energy → Likely Gravel/Rough Road"
+        confidence = 0.90
+        needs_review = False
 
     # R10 — Extreme Shock: Amplitudo raksasa (> 45 m/s²)
     if (p_mag >= 45):
