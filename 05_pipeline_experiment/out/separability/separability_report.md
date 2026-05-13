@@ -3,23 +3,23 @@
 ## Ringkasan Data
 
 class
-Non-Event     163
-Pothole        45
-Speed Bump      1
+Non-Event     494
+Pothole       134
+Speed Bump      5
 
 ## Top Features by Separability
 
          feature    kruskal_p  max_abs_cohen_d  mean_abs_cohen_d
-    peak_to_peak 9.266549e-09         1.030512          1.030512
- vertical_energy 8.335747e-08         0.718421          0.718421
-           score 9.857916e-08         1.128882          1.128882
-gyro_roll_energy 1.086921e-07         0.630573          0.630573
-     gyro_energy 3.532150e-07         0.574313          0.574313
-      peak_mag_g 4.547093e-07         0.988585          0.988585
-        vert_jrk 6.189860e-07         0.876810          0.876810
-        max_jerk 6.189860e-07         0.876810          0.876810
-   peak_gyro_mag 1.327550e-06         1.089275          1.089275
- gyro_yaw_energy 4.228747e-06         0.616388          0.616388
+    peak_to_peak 1.923299e-25         1.382296          0.932524
+           score 1.652626e-24         1.665957          1.096869
+      peak_mag_g 2.043523e-22         1.137059          0.762688
+        vert_jrk 7.914774e-22         1.743053          1.199330
+        max_jerk 7.914774e-22         1.743053          1.199330
+ vertical_energy 1.220700e-20         1.156091          0.839647
+ gyro_yaw_energy 7.876391e-19         0.656868          0.441344
+     gyro_energy 2.353405e-17         0.633590          0.461136
+        kurtosis 6.665747e-17         0.924242          0.590951
+gyro_roll_energy 8.013310e-16         0.745405          0.549979
 
 ## Interpretasi Cepat
 

@@ -2,7 +2,10 @@ import pandas as pd
 import numpy as np
 import os
 import glob
-from tqdm import tqdm
+
+# Removing tqdm dependency
+def tqdm(iterable, **kwargs):
+    return iterable
 
 from config import OUT_FOLDER, CSV_FOLDER, get_logger
 from sensor_fusion import apply_sensor_fusion
