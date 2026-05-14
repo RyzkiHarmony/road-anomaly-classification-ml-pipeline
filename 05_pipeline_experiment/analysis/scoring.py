@@ -8,6 +8,12 @@
 # Semua bounds normalisation dan threshold priority didefinisikan di config.py
 # agar dapat di-tune tanpa mengubah logic di sini.
 
+import sys
+import os
+# Ensure parent directory is in path for modules
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(_SCRIPT_DIR))
+
 import numpy as np
 import pandas as pd
 

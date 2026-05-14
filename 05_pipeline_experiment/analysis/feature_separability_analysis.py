@@ -2,7 +2,12 @@
 # Analisis separabilitas fitur event-level untuk klasifikasi:
 # Normal vs Pothole (Lubang) vs Speed Bump (Polisi Tidur)
 
+import sys
 import os
+# Ensure parent directory is in path for modules
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(_SCRIPT_DIR))
+
 import itertools
 import numpy as np
 import pandas as pd
@@ -21,11 +26,12 @@ from config import OUT_FOLDER, get_logger
 
 logger = get_logger(__name__)
 
-OUT_DIR = os.path.join(OUT_FOLDER, "separability")
+# Resolve absolute paths
+OUT_DIR = os.path.abspath(os.path.join(OUT_FOLDER, "separability"))
 os.makedirs(OUT_DIR, exist_ok=True)
 
-CANDIDATES_PATH = os.path.join(OUT_FOLDER, "candidates_events.csv")
-GT_PATH         = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
+CANDIDATES_PATH = os.path.abspath(os.path.join(OUT_FOLDER, "candidates_events.csv"))
+GT_PATH         = os.path.abspath(os.path.join(OUT_FOLDER, "ground_truth_labels.csv"))
 
 TARGET_CLASSES = ["Non-Event", "Pothole", "Speed Bump"]
 

@@ -3,7 +3,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def main():
-    csv_path = 'out/candidates_events.csv'
+    # Resolve absolute paths relative to script location
+    _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.abspath(os.path.join(_SCRIPT_DIR, '..', 'out', 'candidates_events.csv'))
+    
     if not os.path.exists(csv_path):
         print(f"File not found: {csv_path}")
         return
@@ -32,7 +35,7 @@ def main():
         axes[2].set_xlabel('Score')
 
     plt.tight_layout()
-    out_file = 'out/score_distribution.png'
+    out_file = os.path.abspath(os.path.join(_SCRIPT_DIR, '..', 'out', 'score_distribution.png'))
     plt.savefig(out_file)
     print(f"Saved to {out_file}")
 

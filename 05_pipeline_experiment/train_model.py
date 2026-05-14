@@ -60,35 +60,90 @@ def main():
     logger.info(f"Train set: {len(X_train)} samples")
     logger.info(f"Test set: {len(X_test)} samples")
 
-    # ---------- MODEL TRAINING (NO SCALER) ----------
-    # RF tidak butuh scaling. Ini membuat model lebih "physically grounded".
-    logger.info("Training RandomForestClassifier (Scale-Invariant)...")
-    rf_model = RandomForestClassifier(
-        n_estimators=100, 
-        random_state=42, 
-        class_weight='balanced',
-        max_depth=10,
-        n_jobs=-1
-    )
+    # ---------- MODEL ARENA (RF vs XGB vs LGBM) ----------
+    from xgboost import XGBClassifier
+    from lightgbm import LGBMClassifier
+    from sklearn.metrics import average_precision_score
+    from sklearn.preprocessing import LabelEncoder, label_binarize
     
-    rf_model.fit(X_train, y_train)
+    # Label Encoding for multi-class
+    le = LabelEncoder()
+    le.fit(y)
+    y_encoded = le.transform(y)
+    y_train_enc = le.transform(y_train)
+    y_test_enc = le.transform(y_test)
+    classes = le.classes_
 
-    # ---------- EVALUATION ----------
-    logger.info("Evaluating model on test set...")
-    y_pred = rf_model.predict(X_test)
+    models = {
+        "Random Forest": RandomForestClassifier(
+            n_estimators=100, random_state=42, class_weight='balanced', max_depth=10, n_jobs=-1
+        ),
+        "XGBoost": XGBClassifier(
+            n_estimators=100, random_state=42, max_depth=6, learning_rate=0.1,
+            objective='multi:softprob', eval_metric='mlogloss', n_jobs=-1
+        ),
+        "LightGBM": LGBMClassifier(
+            n_estimators=100, random_state=42, max_depth=6, learning_rate=0.1,
+            class_weight='balanced', n_jobs=-1, verbose=-1
+        )
+    }
+
+    best_model_name = None
+    best_f1 = -1
+    best_model_obj = None
 
     print("\n" + "="*50)
-    print("CLASSIFICATION REPORT")
+    print("ALGORITHM COMPARISON ARENA")
     print("="*50)
-    print(classification_report(y_test, y_pred))
+
+    # Prepare binarized labels for PR-AUC
+    y_test_bin = label_binarize(y_test, classes=classes)
+
+    for name, model in models.items():
+        logger.info(f"Training {name}...")
+        
+        # XGBoost handles weights differently
+        if name == "XGBoost":
+            from sklearn.utils.class_weight import compute_sample_weight
+            sample_weights = compute_sample_weight(class_weight='balanced', y=y_train_enc)
+            model.fit(X_train, y_train_enc, sample_weight=sample_weights)
+            y_pred_enc = model.predict(X_test)
+            y_pred = le.inverse_transform(y_pred_enc)
+            y_pred_proba = model.predict_proba(X_test)
+        else:
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            y_pred_proba = model.predict_proba(X_test)
+        
+        print(f"\n--- {name} ---")
+        report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+        print(classification_report(y_test, y_pred, zero_division=0))
+        
+        # Calculate PR-AUC for Pothole
+        try:
+            p_idx = list(classes).index("Pothole")
+            prauc = average_precision_score(y_test_bin[:, p_idx], y_pred_proba[:, p_idx])
+            print(f"Pothole PR-AUC: {prauc:.3f}")
+        except Exception:
+            prauc = 0
+
+        # Optimization Target: Pothole F1
+        p_f1 = report.get('Pothole', {}).get('f1-score', 0)
+        if p_f1 > best_f1:
+            best_f1 = p_f1
+            best_model_name = name
+            best_model_obj = model
+
+    print("="*50)
+    logger.info(f"🏆 Best Model for Potholes: {best_model_name} (F1: {best_f1:.2f})")
 
     # ---------- EXPORT ARTIFACTS ----------
     model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
     os.makedirs(model_dir, exist_ok=True)
 
-    model_path = os.path.join(model_dir, "rf_model.pkl")
-    joblib.dump(rf_model, model_path)
-    logger.info(f"Model saved to {model_path}")
+    joblib.dump(best_model_obj, os.path.join(model_dir, "best_model.pkl"))
+    joblib.dump(le, os.path.join(model_dir, "label_encoder.pkl"))
+    logger.info(f"Best model ({best_model_name}) and encoder saved to {model_dir}")
 
 if __name__ == "__main__":
     main()
