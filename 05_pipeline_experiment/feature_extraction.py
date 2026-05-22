@@ -48,6 +48,10 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "gyro_roll_energy": 0.0,
         "gyro_yaw_energy": 0.0,
         "gyro_pitch_roll_ratio": 0.0,
+        # --- Fitur Rekomendasi Senior ML: Interaction & PSD ---
+        "energy_psd_2_10": 0.0,
+        "speed_vert_interaction": 0.0,
+        "speed_normalized_p2p": 0.0,
     }
 
     if raw_df is None or raw_df.empty:
@@ -240,6 +244,23 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         gyro_yaw_energy   = float(np.sum(gz_arr ** 2))
         gyro_pitch_roll_ratio = gyro_pitch_energy / (gyro_roll_energy + 1e-6)
 
+    # ---------- Fitur Rekomendasi Senior ML: Interaction & PSD ----------
+    # 1. Speed Interaction & Normalization
+    speed_mean = seg["speed"].mean() if "speed" in seg.columns else 0.0
+    speed_vert_interaction = vertical_energy * speed_mean
+    speed_normalized_p2p = peak_to_peak / (speed_mean + 1.0) # Avoid div by zero
+
+    # 2. Power Spectral Density (PSD) di rentang resonansi suspensi (2-10 Hz)
+    energy_psd_2_10 = 0.0
+    if fs > 0 and len(a_vert) >= 16:
+        try:
+            fft_vals  = np.abs(rfft(a_vert)) ** 2
+            fft_freqs = rfftfreq(len(a_vert), d=1.0 / fs)
+            # Fokus pada 2-10 Hz di mana suspensi motor biasanya beresonansi
+            energy_psd_2_10 = float(np.sum(fft_vals[(fft_freqs >= 2.0) & (fft_freqs <= 10.0)]))
+        except Exception:
+            pass
+
     return {
         "num_peaks_accel": num_peaks_accel,
         "num_peaks_gyro": num_peaks_gyro,
@@ -262,6 +283,9 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "gyro_roll_energy":  gyro_roll_energy,
         "gyro_yaw_energy":   gyro_yaw_energy,
         "gyro_pitch_roll_ratio": gyro_pitch_roll_ratio,
+        "energy_psd_2_10": energy_psd_2_10,
+        "speed_vert_interaction": speed_vert_interaction,
+        "speed_normalized_p2p": speed_normalized_p2p,
     }
 
 

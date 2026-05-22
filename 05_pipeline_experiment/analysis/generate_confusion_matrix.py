@@ -6,6 +6,8 @@ sys.path.append(os.path.dirname(_SCRIPT_DIR))
 
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
@@ -27,12 +29,13 @@ df = pd.read_csv(DATA_PATH)
 model = joblib.load(MODEL_PATH)
 le = joblib.load(ENCODER_PATH)
 
-# Re-create the Test Split
-from label_suggester import ML_FEATURES
-feature_cols = [c for c in df.columns if c in ML_FEATURES or c in [
-    "asymmetry_score", "kurtosis", "skewness", "fft_high_low_ratio", 
-    "zcr", "gyro_pitch_roll_ratio", "peak_to_peak"
-]]
+# Re-create the Test Split using same BEST_FEATURES as training
+BEST_FEATURES = [
+    "event_duration", "speed_normalized_p2p", "peak_interval_std", 
+    "vert_jrk", "kurtosis", "peak_mag", "peak_interval_mean", 
+    "skewness", "gyro_roll_energy", "num_peaks_accel"
+]
+feature_cols = [c for c in df.columns if c in BEST_FEATURES]
 df = df.dropna(subset=feature_cols + ['label'])
 
 X = df[feature_cols].values
@@ -41,7 +44,14 @@ groups = df['trip_id'].values
 
 gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 _, test_idx = next(gss.split(X, y, groups))
-X_test, y_test = X[test_idx], y[test_idx]
+
+# Crucial ML fix: Evaluate ONLY on original (non-augmented) test data
+# to measure true real-world generalization performance.
+test_df = df.iloc[test_idx]
+original_mask = test_df['source'].isna() | (~test_df['source'].str.contains('augmented', na=True))
+test_df_original = test_df[original_mask]
+
+X_test, y_test = test_df_original[feature_cols].values, test_df_original['label'].values
 
 # Predict
 y_pred = model.predict(X_test)

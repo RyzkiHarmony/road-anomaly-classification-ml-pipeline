@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.signal import butter, lfilter, lfilter_zi
+from scipy.signal import butter, lfilter, lfilter_zi, filtfilt
 from config import TARGET_HZ
 
 def resample_100hz(df, target_hz=TARGET_HZ):
@@ -45,7 +45,7 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     df_out['timestamp'] = (df_out.index - pd.Timestamp("1970-01-01")) // pd.Timedelta('1ms')
     return df_out
 
-def butter_lowpass_filter(data, cutoff, fs, order=2):
+def butter_lowpass_filter(data, cutoff, fs, order=2, offline=False):
     nyq = 0.5 * fs
     normal_cutoff = cutoff / nyq
     # Handle case where normal_cutoff >= 1.0
@@ -54,20 +54,25 @@ def butter_lowpass_filter(data, cutoff, fs, order=2):
         
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     
-    # Initialize filter state to avoid start-up transients
-    # Since we can't look into the future (causal), we assume the signal
-    # starts near the first value to minimize the initial step response.
-    zi = lfilter_zi(b, a)
-    zi = zi * data[0]
-    
-    # Use causal lfilter instead of zero-phase filtfilt
-    y, _ = lfilter(b, a, data, zi=zi)
-    return y
+    if offline:
+        # Use zero-phase filtfilt to eliminate lag entirely for offline analysis
+        return filtfilt(b, a, data)
+    else:
+        # Initialize filter state to avoid start-up transients
+        # Since we can't look into the future (causal), we assume the signal
+        # starts near the first value to minimize the initial step response.
+        zi = lfilter_zi(b, a)
+        zi = zi * data[0]
+        
+        # Use causal lfilter instead of zero-phase filtfilt
+        y, _ = lfilter(b, a, data, zi=zi)
+        return y
 
-def apply_sensor_fusion(df, cutoff_hz=2.0):
+def apply_sensor_fusion(df, cutoff_hz=2.0, offline=True):
     """
-    Applies real-time (causal) sensor fusion to separate gravity from linear acceleration.
-    Uses a higher cutoff (2.0 Hz) to reduce group delay for better alignment.
+    Applies sensor fusion to separate gravity from linear acceleration.
+    For offline training dataset creation, offline=True uses zero-phase filtering (filtfilt)
+    to eliminate LPF delay, matching Android's real-time hardware fusion performance.
     """
     df = df.copy()
     
@@ -101,9 +106,9 @@ def apply_sensor_fusion(df, cutoff_hz=2.0):
 
     # Low-pass filter to estimate gravity
     try:
-        gx_est = butter_lowpass_filter(df["ax"].values, cutoff_hz, fs)
-        gy_est = butter_lowpass_filter(df["ay"].values, cutoff_hz, fs)
-        gz_est = butter_lowpass_filter(df["az"].values, cutoff_hz, fs)
+        gx_est = butter_lowpass_filter(df["ax"].values, cutoff_hz, fs, offline=offline)
+        gy_est = butter_lowpass_filter(df["ay"].values, cutoff_hz, fs, offline=offline)
+        gz_est = butter_lowpass_filter(df["az"].values, cutoff_hz, fs, offline=offline)
     except Exception as e:
         raise ValueError(f"Sensor fusion filtering failed: {str(e)}")
         

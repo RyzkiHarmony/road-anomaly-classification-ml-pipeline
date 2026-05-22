@@ -58,7 +58,8 @@ ML_FEATURES = [
     "gyro_energy", "accel_to_gyro_ratio", "local_duration", "top2_peak_ratio", 
     "duration_above_threshold", "max_jerk", "peak_to_peak", "fft_high_low_ratio", 
     "zcr", "kurtosis", "skewness", "gyro_pitch_energy", "gyro_roll_energy", 
-    "gyro_yaw_energy", "gyro_pitch_roll_ratio"
+    "gyro_yaw_energy", "gyro_pitch_roll_ratio",
+    "energy_psd_2_10", "speed_vert_interaction", "speed_normalized_p2p"
 ]
 
 # ---------- SUGGESTION SCHEMA ----------

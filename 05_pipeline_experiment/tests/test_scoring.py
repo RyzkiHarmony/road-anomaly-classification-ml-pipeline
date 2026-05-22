@@ -57,9 +57,9 @@ class TestScoreEvents:
     def test_high_severity_event_gets_high_priority(self):
         """An event with max accel, high gyro, high jerk → priority 'high'."""
         df = _make_events(
-            peak_vertical_g=[8.5],   # above SCORE_ACCEL_MAX_G = 8.0
+            peak_vertical_g=[8.5],   # above SCORE_ACCEL_MAX_G = 6.0
             peak_gyro_mag  =[7.0],   # above SCORE_GYRO_MAX = 6.0
-            vert_jrk       =[20.0],  # above SCORE_JERK_MAX = 15.0
+            vert_jrk       =[30.0],  # above SCORE_JERK_MAX = 25.0
             event_duration =[3.0],   # above SCORE_DUR_MAX_S = 2.0
         )
         result = score_events(df)
