@@ -13,6 +13,7 @@ import seaborn as sns
 import joblib
 from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.model_selection import GroupShuffleSplit
+from config import BEST_FEATURES
 
 # Adjust paths to use absolute locations relative to this script
 DATA_PATH = os.path.abspath(os.path.join(_SCRIPT_DIR, '..', 'out', 'manual_labeled_windows.csv'))
@@ -29,12 +30,7 @@ df = pd.read_csv(DATA_PATH)
 model = joblib.load(MODEL_PATH)
 le = joblib.load(ENCODER_PATH)
 
-# Re-create the Test Split using same BEST_FEATURES as training
-BEST_FEATURES = [
-    "event_duration", "speed_normalized_p2p", "peak_interval_std", 
-    "vert_jrk", "kurtosis", "peak_mag", "peak_interval_mean", 
-    "skewness", "gyro_roll_energy", "num_peaks_accel"
-]
+# Re-create the Test Split using same BEST_FEATURES as training (diimport dari config.py)
 feature_cols = [c for c in df.columns if c in BEST_FEATURES]
 df = df.dropna(subset=feature_cols + ['label'])
 
@@ -54,9 +50,10 @@ test_df_original = test_df[original_mask]
 X_test, y_test = test_df_original[feature_cols].values, test_df_original['label'].values
 
 # Predict
-y_pred = model.predict(X_test)
-if isinstance(y_pred[0], (np.int32, np.int64, int)):
-    y_pred = le.inverse_transform(y_pred)
+# Predict using probability and argmax, as objective is multi:softprob
+y_proba = model.predict_proba(X_test)
+y_pred_idx = np.argmax(y_proba, axis=1)
+y_pred = le.inverse_transform(y_pred_idx)
 
 # --- Confusion Matrix ---
 classes = le.classes_

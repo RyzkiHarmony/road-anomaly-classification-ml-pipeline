@@ -54,28 +54,82 @@ def butter_lowpass_filter(data, cutoff, fs, order=2, offline=False):
         
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
     
+    # Safely convert to numpy array to avoid pandas index issues
+    data_arr = np.asarray(data)
+    
     if offline:
         # Use zero-phase filtfilt to eliminate lag entirely for offline analysis
-        return filtfilt(b, a, data)
+        return filtfilt(b, a, data_arr)
     else:
         # Initialize filter state to avoid start-up transients
         # Since we can't look into the future (causal), we assume the signal
         # starts near the first value to minimize the initial step response.
         zi = lfilter_zi(b, a)
-        zi = zi * data[0]
+        zi = zi * data_arr[0]
         
         # Use causal lfilter instead of zero-phase filtfilt
-        y, _ = lfilter(b, a, data, zi=zi)
+        y, _ = lfilter(b, a, data_arr, zi=zi)
         return y
 
-def apply_sensor_fusion(df, cutoff_hz=2.0, offline=True):
+def apply_sensor_fusion(df, cutoff_hz=2.0, offline=False):
     """
     Applies sensor fusion to separate gravity from linear acceleration.
     For offline training dataset creation, offline=True uses zero-phase filtering (filtfilt)
     to eliminate LPF delay, matching Android's real-time hardware fusion performance.
+    Supports hybrid execution: if Android native hardware fusion columns are present,
+    uses them directly. Otherwise, falls back to Butterworth software filter.
     """
     df = df.copy()
     
+    # Check if native hardware fusion columns exist
+    native_cols = ["lin_ax", "lin_ay", "lin_az", "grav_x", "grav_y", "grav_z"]
+    has_native = all(col in df.columns for col in native_cols)
+    
+    if has_native:
+        # Strict Validation for native columns: Interpolate small NaNs, fail on too many NaNs
+        for col in native_cols:
+            nan_count = df[col].isna().sum()
+            if nan_count > len(df) * 0.1:
+                raise ValueError(f"Too many NaNs in native column {col} (>{len(df)*0.1})")
+            if nan_count > 0:
+                df[col] = df[col].interpolate(method='linear').bfill().ffill()
+                
+        # Resampling trip data to 100Hz
+        df = resample_100hz(df)
+        
+        if len(df) < 50:
+            raise ValueError("Insufficient data length for reliable sensor fusion (minimum 50 samples required).")
+            
+        gx_est = df["grav_x"].values
+        gy_est = df["grav_y"].values
+        gz_est = df["grav_z"].values
+        
+        # Calculate gravity magnitude for projection
+        g_mag = np.sqrt(gx_est**2 + gy_est**2 + gz_est**2)
+        g_mag[g_mag == 0] = 1.0
+        
+        # Project native linear acceleration onto native gravity vector to get vertical acceleration
+        a_vert_raw = df["lin_ax"] * (gx_est / g_mag) + df["lin_ay"] * (gy_est / g_mag) + df["lin_az"] * (gz_est / g_mag)
+        
+        # Horizontal acceleration (magnitude of the remaining linear acceleration vector)
+        lin_mag_sq = df["lin_ax"]**2 + df["lin_ay"]**2 + df["lin_az"]**2
+        a_horiz_raw_sq = np.maximum(0, lin_mag_sq - a_vert_raw**2)
+        a_horiz_raw = np.sqrt(a_horiz_raw_sq)
+        
+        # ENGINE DENOISING: LPF Butterworth 6Hz Pasca-Proyeksi
+        fs = float(TARGET_HZ)
+        cutoff_denoise = 6.0  # Denoise high-frequency engine vibration (>12Hz)
+        
+        df["a_vertical"] = butter_lowpass_filter(a_vert_raw, cutoff=cutoff_denoise, fs=fs, offline=offline)
+        df["a_horizontal"] = butter_lowpass_filter(a_horiz_raw, cutoff=cutoff_denoise, fs=fs, offline=offline)
+        
+        if "magnitude" not in df.columns:
+            df["magnitude"] = np.sqrt(df["ax"]**2 + df["ay"]**2 + df["az"]**2)
+            
+        df["a_linear_mag"] = np.sqrt(df["a_vertical"]**2 + df["a_horizontal"]**2)
+        return df
+
+    # --- Fallback to traditional software separation (for legacy data) ---
     # Strict Validation: Check required columns
     required_cols = ["ax", "ay", "az"]
     for col in required_cols:
@@ -90,10 +144,7 @@ def apply_sensor_fusion(df, cutoff_hz=2.0, offline=True):
         if nan_count > 0:
             df[col] = df[col].interpolate(method='linear').bfill().ffill()
 
-
-    
     # Resampling ke grid waktu seragam
-    # print("  [DEBUG] Resampling trip data to 100Hz...")
     df = resample_100hz(df)
 
     if len(df) < 50:
@@ -142,4 +193,5 @@ def apply_sensor_fusion(df, cutoff_hz=2.0, offline=True):
     if "magnitude" not in df.columns:
         df["magnitude"] = np.sqrt(df["ax"]**2 + df["ay"]**2 + df["az"]**2)
 
+    df["a_linear_mag"] = np.sqrt(df["a_vertical"]**2 + df["a_horizontal"]**2)
     return df

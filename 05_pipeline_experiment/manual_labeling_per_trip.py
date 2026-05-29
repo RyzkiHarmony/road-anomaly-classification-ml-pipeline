@@ -17,8 +17,8 @@ from helpers import load_trip_meta
 
 _DIR        = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 OUT_FOLDER  = os.path.join(_DIR, "out")
-CSV_FOLDER  = os.path.join(_DIR, "data", "csv")
-META_FOLDER = os.path.join(_DIR, "data", "meta")
+CSV_FOLDER  = os.path.join(_DIR, "new-data", "csv")
+META_FOLDER = os.path.join(_DIR, "new-data", "meta")
 
 CANDIDATE_PATH = os.path.join(OUT_FOLDER, "candidates_events.csv")
 MASTER_GT_PATH = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
@@ -108,11 +108,25 @@ def generate_event_chart_b64(raw_df, event_time_s):
 
     # --- Vertical acceleration subplot ---
     if has_vertical:
-        a_vert = seg["a_vertical"].astype(float).values
-        axes[ax_idx].plot(t_rel, a_vert, color="#a855f7", linewidth=1.0)
+        a_vert_g = seg["a_vertical"].astype(float).values / 9.80665
+        axes[ax_idx].plot(t_rel, a_vert_g, color="#a855f7", linewidth=1.0)
         axes[ax_idx].axhline(0, color="gray", linewidth=0.5, linestyle=":")
-        axes[ax_idx].set_ylabel("a_vert", fontsize=6)
-        axes[ax_idx].set_title("Vertical Accel (m/s², +up/-down)", fontsize=8, pad=2)
+        
+        # Tambahkan panduan visual untuk threshold kausal yang baru direkalibrasi
+        axes[ax_idx].axhline(1.0, color="green", linewidth=0.5, linestyle="--", alpha=0.5)
+        axes[ax_idx].axhline(-1.0, color="green", linewidth=0.5, linestyle="--", alpha=0.5)
+        axes[ax_idx].axhline(1.4, color="orange", linewidth=0.5, linestyle="--", alpha=0.5)
+        axes[ax_idx].axhline(-1.4, color="orange", linewidth=0.5, linestyle="--", alpha=0.5)
+        axes[ax_idx].axhline(1.8, color="red", linewidth=0.5, linestyle="--", alpha=0.5)
+        axes[ax_idx].axhline(-1.8, color="red", linewidth=0.5, linestyle="--", alpha=0.5)
+        
+        axes[ax_idx].set_ylabel("a_vert (G)", fontsize=6)
+        axes[ax_idx].set_title("Vertical Accel (G, +up/-down) | Green: 1.0G, Orange: 1.4G, Red: 1.8G", fontsize=8, pad=2)
+        
+        # Kunci limit sumbu Y agar threshold selalu terlihat
+        y_max = max(2.0, np.max(np.abs(a_vert_g)) * 1.2)
+        axes[ax_idx].set_ylim(-y_max, y_max)
+        
         ax_idx += 1
 
     # --- Gyroscope subplots ---
@@ -178,7 +192,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 0   # <<< PILIH TRIP / GANTI DATA
+PILIHAN_INDEX_TRIP = 0  # <<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
@@ -365,7 +379,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
         <b style='color:#2563eb;'>🎧 Audio: Menit {menit:02d} Detik {detik:02d}</b><br>
         <span style='font-size:11px;color:#666;'>Waktu: {waktu_real} WIB</span><br>
         <table style='font-size:11px;margin-top:4px;'>
-          <tr><td>Vert (peak)</td><td>: <b>{vert_val:.2f} G</b> {vert_dir_str}</td></tr>
+          <tr><td>Vert (peak)</td><td>: <b>{vert_val:.2f} G</b> <span style='color:#888'>({vert_val * 9.80665:.1f} m/s²)</span> {vert_dir_str}</td></tr>
           <tr><td>Gyro</td><td>: <b>{gyro_val:.2f} rad/s</b></td></tr>
           <tr><td>Level</td><td>: {level}</td></tr>
           {scoring_rows}

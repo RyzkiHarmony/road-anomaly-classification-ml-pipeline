@@ -9,8 +9,8 @@ import logging
 
 # ---------- PATHS ----------
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_FOLDER  = os.path.join(_SCRIPT_DIR, "data", "csv")
-META_FOLDER = os.path.join(_SCRIPT_DIR, "data", "meta")
+CSV_FOLDER  = os.path.join(_SCRIPT_DIR, "new-data", "csv")
+META_FOLDER = os.path.join(_SCRIPT_DIR, "new-data", "meta")
 OUT_FOLDER  = os.path.join(_SCRIPT_DIR, "out")
 LABELS_FOLDER = os.path.join(_SCRIPT_DIR, "labels")
 
@@ -45,16 +45,16 @@ WINDOW_S              = 1.0   # detik per sliding window
 OVERLAP               = 0.5   # fraksi overlap antar window
 PEAK_MIN_DISTANCE_S   = 0.2   # jarak minimum antar peak (detik)
 REGION_WINDOW_S       = 0.2   # Trailing window untuk rolling energy (detik)
-REGION_MAD_MULTIPLIER = 2.0   # Adaptive threshold multiplier untuk region abnormal
+REGION_MAD_MULTIPLIER = 1.2   # Adaptive threshold multiplier untuk region abnormal
 CLUSTER_TIME_S        = 0.8   # Maksimum gap waktu dalam satu cluster (detik) untuk latency < 1s
 CLUSTER_SPATIAL_M     = 10.0  # maksimum jarak GPS dalam satu cluster (meter)
 
 # ---------- ACCELEROMETER SEVERITY THRESHOLDS (G-force, a_vertical) ----------
 # Threshold berbasis G-force untuk konsistensi lintas perangkat.
 # Diturunkan untuk mengakomodasi atenuasi amplitudo dari filter kausal & resampling 100Hz
-NORMAL_VERT_G    = 3.0   # ambang bawah kandidat event
-CANDIDATE_VERT_G = 4.0   # event diprioritaskan untuk labeling
-HIGH_CONF_VERT_G = 6.0   # event sangat meyakinkan
+NORMAL_VERT_G    = 1.0   # ambang bawah kandidat event
+CANDIDATE_VERT_G = 1.4   # event diprioritaskan untuk labeling
+HIGH_CONF_VERT_G = 1.8   # event sangat meyakinkan
 
 G_TO_MS2           = 9.80665
 NORMAL_VERT_MS2    = NORMAL_VERT_G    * G_TO_MS2
@@ -62,7 +62,7 @@ CANDIDATE_VERT_MS2 = CANDIDATE_VERT_G * G_TO_MS2
 HIGH_CONF_VERT_MS2 = HIGH_CONF_VERT_G * G_TO_MS2
 
 # ---------- GYROSCOPE SEVERITY THRESHOLDS (rad/s) ----------
-GYRO_NORMAL_RAD    = 3.0   # minimum untuk trigger peak detection
+GYRO_NORMAL_RAD    = 1.5   # minimum untuk trigger peak detection
 GYRO_CANDIDATE_RAD = 4.0   # event dinaikan ke level candidate
 GYRO_HIGH_CONF_RAD = 6.0   # event dinaikan ke level high_conf
 
@@ -85,11 +85,11 @@ W_DURATION = 0.15
 # Batas untuk robust_normalise() di scoring.score_events().
 # Nilai di bawah SCORE_*_MIN dikip ke nol; di atas SCORE_*_MAX dikip ke satu.
 # Bounds dipilih berdasarkan distribusi empiris dari 12 trip (92.75 km).
-SCORE_ACCEL_MIN_G = 3.0    # sama dengan NORMAL_VERT_G
-SCORE_ACCEL_MAX_G = 6.0    # Di-adjust dari 8.0 karena 100Hz signal smoothing
+SCORE_ACCEL_MIN_G = 1.0    # sama dengan NORMAL_VERT_G
+SCORE_ACCEL_MAX_G = 1.8    # Di-adjust dari 6.0 karena causal 100Hz signal smoothing
 SCORE_GYRO_MAX    = 6.0    # rad/s — gyro > 6 sangat jarang, dianggap saturasi
-SCORE_JERK_MAX    = 25.0   # m/s³ — Di-adjust dari 60.0 agar skor tidak collapse
-SCORE_DUR_MAX_S   = 2.0    # detik — event > 2s biasanya multi-event atau slip
+SCORE_JERK_MAX    = 400.0  # m/s³ (Direkalibrasi dari 25.0, karena fs 100Hz membuat turunan jerk sangat tinggi)
+SCORE_DUR_MAX_S   = 0.15   # detik (Direkalibrasi dari 2.0s karena perhitungan kontigu membuat durasi jauh lebih presisi/pendek)
 
 # ---------- PRIORITY THRESHOLDS ----------
 PRIORITY_HIGH_THRESHOLD   = 0.50
@@ -97,3 +97,11 @@ PRIORITY_MEDIUM_THRESHOLD = 0.30
 
 # ---------- PREPROCESSING PARAMETERS ----------
 TARGET_HZ  = 100      # Target resampling frequency (10ms)
+
+# ---------- ML MODEL FEATURES (SINGLE SOURCE OF TRUTH) ----------
+BEST_FEATURES = [
+    "event_duration", "speed_normalized_p2p", "peak_interval_std", 
+    "vert_jrk", "kurtosis", "peak_mag", "peak_interval_mean", 
+    "skewness", "gyro_roll_energy", "num_peaks_accel",
+    "horizontal_to_vertical_ratio", "grav_y_std", "grav_z_std", "linear_jerk_3d_max"
+]

@@ -22,7 +22,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
 
-from config import OUT_FOLDER, get_logger
+from config import OUT_FOLDER, get_logger, BEST_FEATURES
 
 logger = get_logger(__name__)
 
@@ -35,40 +35,7 @@ GT_PATH         = os.path.abspath(os.path.join(OUT_FOLDER, "ground_truth_labels.
 
 TARGET_CLASSES = ["Non-Event", "Pothole", "Speed Bump"]
 
-# Fitur kandidat yang akan dianalisis.
-# Tambahkan atau kurangi sesuai kolom yang memang ada di CSV kamu.
-FEATURE_CANDIDATES = [
-    "peak_mag_g",
-    "peak_gyro_mag",
-    "vert_jrk",
-    "event_duration",
-    "speed_mean",
-    "num_peaks_accel",
-    "num_peaks_gyro",
-    "peak_interval_mean",
-    "peak_interval_std",
-    "asymmetry_score",
-    "vertical_energy",
-    "gyro_energy",
-    "accel_to_gyro_ratio",
-    "local_duration",
-    "score",
-    # --- Fitur Shape ---
-    "top2_peak_ratio",
-    "duration_above_threshold",
-    "max_jerk",
-    "peak_to_peak",
-    # --- Fitur Domain Frekuensi & Distribusi ---
-    "fft_high_low_ratio",
-    "zcr",
-    "kurtosis",
-    "skewness",
-    # --- Per-Axis Gyro ---
-    "gyro_pitch_energy",
-    "gyro_roll_energy",
-    "gyro_yaw_energy",
-    "gyro_pitch_roll_ratio",
-]
+# Fitur kandidat yang akan dianalisis sekarang menggunakan BEST_FEATURES dari config.py
 
 # Alias label yang sering muncul
 NON_EVENT_ALIASES = {
@@ -157,7 +124,7 @@ def load_and_merge():
         raise ValueError("Tidak ada data yang cocok setelah merge dan normalisasi label.")
 
     # Pastikan feature numerik
-    for c in FEATURE_CANDIDATES:
+    for c in BEST_FEATURES:
         if c in merged.columns:
             merged[c] = pd.to_numeric(merged[c], errors="coerce")
 
@@ -165,9 +132,9 @@ def load_and_merge():
 
 
 def choose_available_features(df):
-    feats = [c for c in FEATURE_CANDIDATES if c in df.columns]
+    feats = [c for c in BEST_FEATURES if c in df.columns]
     if not feats:
-        raise ValueError("Tidak ada fitur yang tersedia dari FEATURE_CANDIDATES di dataset.")
+        raise ValueError("Tidak ada fitur yang tersedia dari BEST_FEATURES di dataset.")
     return feats
 
 

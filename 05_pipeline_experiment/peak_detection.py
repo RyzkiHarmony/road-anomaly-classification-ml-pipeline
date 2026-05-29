@@ -40,7 +40,7 @@ def detect_peaks(df):
     """
     df    = df.sort_values("timestamp").reset_index(drop=True)
     times = df["timestamp"].astype(float) / 1000.0
-    mags_raw_vert = df["a_vertical"].astype(float).values
+    mags_raw_vert = df["a_linear_mag"].astype(float).values
 
     if len(df) < 3:
         return pd.DataFrame(), 0.0, None, 50.0
@@ -89,7 +89,7 @@ def detect_peaks(df):
         
         gyro_thr_causal = ema_g + (REGION_MAD_MULTIPLIER * 2.5) * ema_g_dev
         # Tetap gunakan min bound 1.0 agar tidak trigger di jalan yang terlalu mulus (noise lantai)
-        is_active = is_active | (rolling_gyro > gyro_thr_causal).values | (rolling_gyro > 3.0)
+        is_active = is_active | (rolling_gyro > gyro_thr_causal).values | (rolling_gyro > GYRO_NORMAL_RAD)
         
         # Untuk logging, kita ambil rata-rata threshold terakhir
         gyro_thr = float(gyro_thr_causal.mean())
@@ -120,7 +120,7 @@ def detect_peaks(df):
 
     peaks                  = df.iloc[combined_idx].copy().reset_index(drop=True)
     peaks["peak_mag"]      = df["magnitude"].values[combined_idx]
-    peaks["peak_vertical"] = mags_raw_vert[combined_idx]
+    peaks["peak_vertical"] = df["a_vertical"].values[combined_idx]
     peaks["peak_gyro_mag"] = gyro_mags[combined_idx]
     peaks["time_s"]        = peaks["timestamp"].astype(float) / 1000.0
 

@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 
-from config import OUT_FOLDER, get_logger
+from config import OUT_FOLDER, get_logger, BEST_FEATURES
 
 logger = get_logger(__name__)
 
@@ -28,13 +28,9 @@ def main():
     # Menghapus row yang memiliki NaN pada kolom fitur atau label
     df = df.dropna(subset=['label'])
     
-    # ---------- FEATURE SELECTION (TOP 10 ONLY) ----------
+    # ---------- FEATURE SELECTION (TOP 14 ONLY) ----------
     # Berdasarkan audit Senior ML Engineer, kita pangkas fitur noise.
-    BEST_FEATURES = [
-        "event_duration", "speed_normalized_p2p", "peak_interval_std", 
-        "vert_jrk", "kurtosis", "peak_mag", "peak_interval_mean", 
-        "skewness", "gyro_roll_energy", "num_peaks_accel"
-    ]
+    # BEST_FEATURES diimport dari config.py agar tersentralisasi sebagai SSOT
     
     feature_cols = [c for c in df.columns if c in BEST_FEATURES]
     df = df.dropna(subset=feature_cols)
@@ -46,7 +42,10 @@ def main():
     groups = df['trip_id'].values
     
     # Save source column as array to easily filter out augmented twins in validation
-    source_values = df['source'].fillna('original').values
+    if 'source' in df.columns:
+        source_values = df['source'].fillna('original').values
+    else:
+        source_values = np.array(['original'] * len(df))
 
     # ---------- CROSS-VALIDATION (STRATIFIED GROUP K-FOLD) ----------
     from sklearn.model_selection import StratifiedGroupKFold
@@ -55,23 +54,34 @@ def main():
     from sklearn.preprocessing import LabelEncoder
     from sklearn.utils.class_weight import compute_sample_weight
 
-    n_folds = 5
-    sgkf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=42)
-    
     le = LabelEncoder()
     y_enc = le.fit_transform(y)
     classes = le.classes_
     p_idx = list(classes).index("Pothole")
 
+    # Adapt folds count to unique groups count
+    unique_groups = len(np.unique(groups))
+    n_folds = min(5, unique_groups) if unique_groups >= 2 else 5
+    
+    # Choose cross-validation strategy: if trip count is too low, fall back to standard StratifiedKFold to prevent group validation mirages
+    if unique_groups >= 2:
+        from sklearn.model_selection import StratifiedGroupKFold
+        cv_strategy = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=42)
+        cv_name = f"{n_folds}-FOLD STRATIFIED GROUP K-FOLD"
+    else:
+        from sklearn.model_selection import StratifiedKFold
+        cv_strategy = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+        cv_name = f"{n_folds}-FOLD STRATIFIED K-FOLD (FALLBACK)"
+
     print("\n" + "="*60)
-    print(f"{'5-FOLD CROSS VALIDATION STRATEGY (UNBIASED)':^60}")
+    print(f"{cv_name:^60}")
     print("="*60)
 
     fold_metrics = []
     best_overall_f1 = -1
     best_fold_model = None
 
-    for fold, (train_idx, test_idx) in enumerate(sgkf.split(X, y_enc, groups)):
+    for fold, (train_idx, test_idx) in enumerate(cv_strategy.split(X, y_enc, groups)):
         # 1. Train Set: Keep both original and augmented events
         X_train, y_train = X[train_idx], y_enc[train_idx]
         
@@ -80,6 +90,15 @@ def main():
         clean_test_idx = test_idx[is_original_test]
         
         X_test, y_test = X[clean_test_idx], y_enc[clean_test_idx]
+
+        # Inject missing classes in the training split if a class is entirely absent
+        missing_classes = set(range(len(classes))) - set(y_train)
+        if missing_classes:
+            for mc in missing_classes:
+                # Find index of this class in the global y_enc
+                global_idx = np.where(y_enc == mc)[0][0]
+                X_train = np.vstack([X_train, X[global_idx]])
+                y_train = np.append(y_train, mc)
 
         # Handle Class Imbalance
         sw = compute_sample_weight(class_weight='balanced', y=y_train)
@@ -92,6 +111,7 @@ def main():
             subsample=0.8,
             colsample_bytree=0.8,
             objective='multi:softprob',
+            num_class=len(classes),
             eval_metric='mlogloss',
             random_state=42,
             n_jobs=-1
@@ -101,7 +121,7 @@ def main():
         
         # Predictions on the clean, un-augmented test split
         y_proba = model.predict_proba(X_test)
-        y_pred = model.predict(X_test)
+        y_pred = np.argmax(y_proba, axis=1)
         
         # Metric: Pothole F1
         report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
@@ -139,7 +159,8 @@ def main():
     print(f"Expected -> Precision: {precisions[idx]:.4f}, Recall: {recalls[idx]:.4f}")
 
     # ---------- FINAL REPORT (BEST FOLD) ----------
-    y_test_pred = best_fold_model.predict(X_test)
+    y_test_proba = best_fold_model.predict_proba(X_test)
+    y_test_pred = np.argmax(y_test_proba, axis=1)
     print("\nFinal Report (Best Fold - Unbiased Original):")
     print(classification_report(y_test, y_test_pred, target_names=classes, zero_division=0))
 
@@ -154,6 +175,7 @@ def main():
         subsample=0.8,
         colsample_bytree=0.8,
         objective='multi:softprob',
+        num_class=len(classes),
         eval_metric='mlogloss',
         random_state=42,
         n_jobs=-1

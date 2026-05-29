@@ -55,10 +55,17 @@ def score_events(events_df: pd.DataFrame) -> pd.DataFrame:
 
     df = events_df.copy()
 
-    # Speed penalty dihapus — event kecepatan rendah (pothole di gang, dll)
-    # tidak boleh otomatis mendapat skor lebih rendah karena impact fisiknya
-    # sama berbahayanya. Kolom dipertahankan untuk backward compatibility.
-    df["speed_factor"] = 1.0
+    # --- Fisika Kecepatan (Low-Speed Boost) ---
+    # Guncangan tinggi di kecepatan rendah membutuhkan energi/impact yang jauh lebih masif (lubang sangat dalam).
+    # Oleh karena itu, kita memberikan "Boost" eksponensial untuk event dengan kecepatan rendah,
+    # dan menetapkan kecepatan normal/tinggi sebagai baseline (1.0).
+    speed_kph = df["speed_mean"].values * 3.6 if "speed_mean" in df.columns else np.full(len(df), 30.0)
+    
+    # Fungsi eksponensial terbalik: 
+    # v = 0 km/j -> boost maksimal (x1.5)
+    # v >= 30 km/j -> mendekati baseline (x1.0)
+    speed_boost = np.where(speed_kph < 30.0, 1.0 + 0.5 * np.exp(-speed_kph / 10.0), 1.0)
+    df["speed_factor"] = speed_boost
 
     # Normalise each component to [0, 1] using robust fixed bounds from config
     n_accel = robust_normalise(
@@ -68,12 +75,16 @@ def score_events(events_df: pd.DataFrame) -> pd.DataFrame:
     n_jerk = robust_normalise(df["vert_jrk"].values, 0.0, SCORE_JERK_MAX)
     n_dur  = robust_normalise(df["event_duration"].values, 0.0, SCORE_DUR_MAX_S)
 
-    df["score"] = (
+    # Base score [0, 1]
+    base_score = (
         W_ACCEL    * n_accel
         + W_GYRO   * n_gyro
         + W_JERK   * n_jerk
         + W_DURATION * n_dur
     )
+    
+    # Kalikan dengan speed_boost dan batasi maksimal 1.0 agar tetap ternormalisasi
+    df["score"] = np.clip(base_score * df["speed_factor"], 0.0, 1.0)
 
     def _to_priority(score: float) -> str:
         if score >= PRIORITY_HIGH_THRESHOLD:

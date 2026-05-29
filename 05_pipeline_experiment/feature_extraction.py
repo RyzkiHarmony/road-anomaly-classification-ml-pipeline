@@ -38,20 +38,21 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "duration_above_threshold": 0.0,
         "max_jerk": 0.0,
         "peak_to_peak": 0.0,
-        # --- Fitur Baru: Domain Frekuensi & Distribusi ---
         "fft_high_low_ratio": 0.0,
         "zcr": 0.0,
         "kurtosis": 0.0,
         "skewness": 0.0,
-        # --- Fitur Baru: Per-Axis Gyro (Pitch/Roll/Yaw) ---
         "gyro_pitch_energy": 0.0,
         "gyro_roll_energy": 0.0,
         "gyro_yaw_energy": 0.0,
         "gyro_pitch_roll_ratio": 0.0,
-        # --- Fitur Rekomendasi Senior ML: Interaction & PSD ---
         "energy_psd_2_10": 0.0,
         "speed_vert_interaction": 0.0,
         "speed_normalized_p2p": 0.0,
+        "horizontal_to_vertical_ratio": 0.0,
+        "grav_y_std": 0.0,
+        "grav_z_std": 0.0,
+        "linear_jerk_3d_max": 0.0,
     }
 
     if raw_df is None or raw_df.empty:
@@ -94,10 +95,13 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
     # Menggunakan Trailing Moving Average untuk menghindari non-causal lookahead dari Gaussian filter.
     mags_smooth = pd.Series(mags_norm).rolling(window=5, min_periods=1).mean().values
 
-    # ---------- Adaptive threshold (ROBUST) ----------
-    med = np.median(mags_smooth)
-    mad = median_abs_deviation(mags_smooth, scale="normal")
-    accel_thr = med + 3.0 * (mad if mad > 0 else 1.0)
+    # ---------- Causal Adaptive Thresholding (EMA) ----------
+    # Menggunakan Causal EMA agar selaras dengan peak_detection dan ramah Kotlin (O(1)).
+    s_mags = pd.Series(mags_smooth)
+    ema_baseline = s_mags.ewm(alpha=0.05, adjust=False).mean()
+    ema_dev = (s_mags - ema_baseline).abs().ewm(alpha=0.05, adjust=False).mean()
+    # Threshold dinamis per-sampel
+    accel_thr = (ema_baseline + 3.0 * ema_dev).values
 
     min_dist = max(1, int(0.15 * fs))
 
@@ -122,9 +126,10 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
 
     # ---------- Gyro peaks ----------
     if has_gyro:
-        med_g = np.median(gyro_mag)
-        mad_g = median_abs_deviation(gyro_mag, scale="normal")
-        gyro_thr = med_g + 2.5 * (mad_g if mad_g > 0 else 0.1)
+        s_gyro = pd.Series(gyro_mag)
+        ema_g_base = s_gyro.ewm(alpha=0.05, adjust=False).mean()
+        ema_g_dev = (s_gyro - ema_g_base).abs().ewm(alpha=0.05, adjust=False).mean()
+        gyro_thr = (ema_g_base + 2.5 * ema_g_dev).values
 
         gyro_peaks, _ = find_peaks(
             gyro_mag,
@@ -156,12 +161,29 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
     else:
         top2_peak_ratio = 0.0
 
-    # ---------- Duration above threshold ----------
+    # ---------- Duration above threshold (Continuous) ----------
+    # Mencegah penggabungan multi-pothole dengan mencari segmen kontigu terpanjang 
+    # di sekitar pusat event (menghindari label leakage).
     above_thr = mags_smooth > accel_thr
+    duration_above_threshold = 0.0
     if np.any(above_thr):
-        duration_above_threshold = float(np.sum(above_thr) / fs)
-    else:
-        duration_above_threshold = 0.0
+        edges = np.diff(np.concatenate(([0], above_thr.astype(int), [0])))
+        starts = np.where(edges == 1)[0]
+        ends   = np.where(edges == -1)[0]
+        
+        # Cari segmen yang bersinggungan/mengandung puncak utama
+        center_idx = dominant_idx if num_peaks_accel > 0 else len(mags_smooth) // 2
+        
+        valid_durations = []
+        for s, e in zip(starts, ends):
+            # Jika puncak berada di dalam atau sangat dekat dengan segmen ini
+            if s <= center_idx <= e or abs(s - center_idx) < min_dist or abs(e - center_idx) < min_dist:
+                valid_durations.append(e - s)
+        
+        if valid_durations:
+            duration_above_threshold = float(max(valid_durations)) / fs
+        else:
+            duration_above_threshold = float(np.max(ends - starts)) / fs
 
     # ---------- Asymmetry (trailing narrow window) ----------
     # Window sempit dibagi dua pada sisi trailing untuk menangkap profil impact.
@@ -261,6 +283,30 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         except Exception:
             pass
 
+    # ---------- Fitur Eksklusif Sensor Native (Senior ML Recommendations) ----------
+    # 1. Rasio Energi Horizontal terhadap Vertikal
+    a_horiz = seg["a_horizontal"].astype(float).values
+    horiz_energy = float(np.sum(a_horiz ** 2))
+    horizontal_to_vertical_ratio = horiz_energy / (vertical_energy + 1e-6)
+
+    # 2. Standar Deviasi Gravitasi (Pitch/Rotasi Stabilitas Rangka)
+    has_native_grav = all(c in seg.columns for c in ("grav_x", "grav_y", "grav_z"))
+    grav_y_std = 0.0
+    grav_z_std = 0.0
+    if has_native_grav:
+        grav_y_std = float(seg["grav_y"].std())
+        grav_z_std = float(seg["grav_z"].std())
+
+    # 3. Magnitudo Jerk Linier 3D (Dynamic 3D Jerk)
+    linear_jerk_3d_max = 0.0
+    has_native_lin = all(c in seg.columns for c in ("lin_ax", "lin_ay", "lin_az"))
+    if has_native_lin and len(seg) > 1 and fs > 0:
+        d_lax = np.diff(seg["lin_ax"].values) * fs
+        d_lay = np.diff(seg["lin_ay"].values) * fs
+        d_laz = np.diff(seg["lin_az"].values) * fs
+        jerk_3d_mags = np.sqrt(d_lax**2 + d_lay**2 + d_laz**2)
+        linear_jerk_3d_max = float(np.max(jerk_3d_mags))
+
     return {
         "num_peaks_accel": num_peaks_accel,
         "num_peaks_gyro": num_peaks_gyro,
@@ -286,6 +332,10 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "energy_psd_2_10": energy_psd_2_10,
         "speed_vert_interaction": speed_vert_interaction,
         "speed_normalized_p2p": speed_normalized_p2p,
+        "horizontal_to_vertical_ratio": horizontal_to_vertical_ratio,
+        "grav_y_std": grav_y_std,
+        "grav_z_std": grav_z_std,
+        "linear_jerk_3d_max": linear_jerk_3d_max,
     }
 
 
