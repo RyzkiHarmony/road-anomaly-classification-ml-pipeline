@@ -113,24 +113,33 @@ def main(do_augment=False):
     # [CRITICAL] Re-extract features to include new Senior ML Engineer recommendations
     logger.info("Re-extracting features for labeled events to include new features (PSD, Interaction)...")
     re_extracted_records = []
-    for _, row in df_labeled.iterrows():
-        trip_id = row["trip_id"]
-        t_event = row["time_s"]
+    
+    # GROUP BY TRIP TO AVOID RE-READING AND RE-PROCESSING FILES
+    grouped_by_trip = df_labeled.groupby("trip_id")
+    for trip_id, group in grouped_by_trip:
         csv_path = get_csv_path_for_trip(trip_id)
         if csv_path:
             try:
                 raw_df = pd.read_csv(csv_path)
                 raw_df = apply_sensor_fusion(raw_df)
-                feats = extract_event_shape_features(raw_df, t_event)
-                # Update with identification and label
-                row_dict = row.to_dict()
-                row_dict.update(feats)
-                re_extracted_records.append(row_dict)
+                for _, row in group.iterrows():
+                    t_event = row["time_s"]
+                    try:
+                        feats = extract_event_shape_features(raw_df, t_event)
+                        row_dict = row.to_dict()
+                        row_dict.update(feats)
+                        re_extracted_records.append(row_dict)
+                    except Exception as e:
+                        logger.error(f"Failed re-extraction for event {row['event_id']}: {e}")
+                        re_extracted_records.append(row.to_dict())
             except Exception as e:
-                logger.error(f"Failed re-extraction for event {row['event_id']}: {e}")
-                re_extracted_records.append(row.to_dict())
+                logger.error(f"Failed to load or fuse trip {trip_id}: {e}")
+                for _, row in group.iterrows():
+                    re_extracted_records.append(row.to_dict())
         else:
-            re_extracted_records.append(row.to_dict())
+            for _, row in group.iterrows():
+                re_extracted_records.append(row.to_dict())
+                
     df_labeled = pd.DataFrame(re_extracted_records)
 
     logger.info(f"Basis data: {len(df_labeled)} event.")
@@ -204,6 +213,30 @@ def main(do_augment=False):
         dfs_to_concat.append(df_bg)
         
     df_final = pd.concat(dfs_to_concat, ignore_index=True)
+
+    # 3.5 CLEAN LABEL NOISE
+    # Hapus Non-Event yang secara fisik adalah Pothole/Speed Bump (Label Noise)
+    before_clean = len(df_final)
+    is_non_event = df_final['label'] == 'Non-Event'
+    # Buang Non-Event yang punya lonjakan ekstrem (peak_mag > 30 m/s2), sangat runcing (crest_factor > 4), atau terisolasi (snr_vertical > 20)
+    is_noisy = is_non_event & ((df_final['peak_mag'] > 30.0) | (df_final['crest_factor'] > 4.0) | (df_final['snr_vertical'] > 20.0))
+    
+    df_final = df_final[~is_noisy]
+    after_clean = len(df_final)
+    if before_clean > after_clean:
+        logger.warning(f"[DATA CLEANSING] Membuang {before_clean - after_clean} sampel Non-Event (Label Noise yang ekstrem)!")
+
+    # 3.6 UNDERSAMPLING NON-EVENT (To fight extreme imbalance)
+    n_anomalies = len(df_final[df_final["label"].isin(["Pothole", "Speed Bump"])])
+    max_non_events = int(n_anomalies * 1.5)  # Batasi Non-Event maksimal 1.5x dari total anomali
+    
+    df_anomalies = df_final[df_final["label"].isin(["Pothole", "Speed Bump"])]
+    df_non_event = df_final[df_final["label"] == "Non-Event"]
+    
+    if len(df_non_event) > max_non_events:
+        df_non_event_sampled = df_non_event.sample(n=max_non_events, random_state=RANDOM_SEED)
+        df_final = pd.concat([df_anomalies, df_non_event_sampled]).sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
+        logger.info(f"[UNDERSAMPLING] Mengurangi Non-Event dari {len(df_non_event)} menjadi {max_non_events} agar kelas lebih seimbang.")
 
     # Simpan dataset
     df_final.to_csv(OUTPUT_PATH, index=False)

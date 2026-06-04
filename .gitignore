@@ -20,3 +20,7 @@ venv.bak/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Large files
+05_pipeline_experiment/out/map/
+

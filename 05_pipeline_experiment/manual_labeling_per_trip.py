@@ -1,6 +1,7 @@
 # %%
 import pandas as pd
 import numpy as np
+# pyrefly: ignore [missing-import]
 import folium
 import os
 import glob
@@ -11,12 +12,14 @@ from io import BytesIO
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend, aman untuk batch rendering
 import matplotlib.pyplot as plt
+from IPython.display import display
 from label_suggester import apply_label_suggestions, save_label_suggestions
 from sensor_fusion import apply_sensor_fusion
 from helpers import load_trip_meta
 
 _DIR        = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 OUT_FOLDER  = os.path.join(_DIR, "out")
+MAP_FOLDER  = os.path.join(_DIR, "out", "maps")
 CSV_FOLDER  = os.path.join(_DIR, "new-data", "csv")
 META_FOLDER = os.path.join(_DIR, "new-data", "meta")
 
@@ -192,7 +195,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 0  # <<< PILIH TRIP / GANTI DATA
+PILIHAN_INDEX_TRIP = 7  # <<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
@@ -450,7 +453,21 @@ function copyGmaps(url, btn) {
 m.get_root().html.add_child(folium.Element(js_script))
 
 print(f"Selesai. {chart_count}/{len(df_trip)} event memiliki grafik sensor.")
-m
+
+# Menyimpan peta ke file HTML untuk menghindari crash/disconnect pada kernel Jupyter
+# karena ukuran payload yang sangat besar jika memiliki ratusan gambar base64.
+map_filename = f"map_trip_{selected_trip}.html"
+map_path = os.path.join(MAP_FOLDER, map_filename)
+m.save(map_path)
+print(f"\\n[PENTING] Peta interaktif telah disimpan ke: {map_path}")
+print("Silakan buka file HTML tersebut di browser Anda untuk melihat peta dan grafik (Klik kanan file -> Open in Default Browser).")
+
+# Jika jumlah event terlalu banyak, jangan tampilkan peta secara langsung di notebook cell
+if len(df_trip) > 200:
+    print(f"\\n[INFO] Menghindari render peta di cell karena jumlah event ({len(df_trip)}) melebihi 200.")
+    print("Menampilkan peta sebesar ini di cell dapat menyebabkan kernel Jupyter ter-disconnect.")
+else:
+    display(m)
 
 # %% [markdown]
 # ## 3. Form Input Label (Ground Truth)

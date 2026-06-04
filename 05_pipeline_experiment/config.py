@@ -41,7 +41,7 @@ def get_logger(name: str) -> logging.Logger:
 
 #Pipeline05
 # ---------- WINDOW & PEAK PARAMETERS ----------
-WINDOW_S              = 1.0   # detik per sliding window
+WINDOW_S              = 2.0   # detik per sliding window
 OVERLAP               = 0.5   # fraksi overlap antar window
 PEAK_MIN_DISTANCE_S   = 0.2   # jarak minimum antar peak (detik)
 REGION_WINDOW_S       = 0.2   # Trailing window untuk rolling energy (detik)
@@ -100,8 +100,19 @@ TARGET_HZ  = 100      # Target resampling frequency (10ms)
 
 # ---------- ML MODEL FEATURES (SINGLE SOURCE OF TRUTH) ----------
 BEST_FEATURES = [
-    "event_duration", "speed_normalized_p2p", "peak_interval_std", 
-    "vert_jrk", "kurtosis", "peak_mag", "peak_interval_mean", 
-    "skewness", "gyro_roll_energy", "num_peaks_accel",
-    "horizontal_to_vertical_ratio", "grav_y_std", "grav_z_std", "linear_jerk_3d_max"
+    "event_duration", 
+    "gyro_roll_energy", 
+    "peak_interval_std", 
+    "hjorth_activity", 
+    "linear_jerk_3d_max", 
+    "snr_vertical", 
+    "num_peaks_accel", 
+    "peak_interval_mean", 
+    "corr_xy", 
+    "crest_factor",
+    "skewness",
+    "min_z_to_max_z_ratio",
+    "first_peak_polarity",
+    "corr_xz",
+    "corr_yz"
 ]

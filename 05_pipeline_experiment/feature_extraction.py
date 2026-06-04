@@ -53,6 +53,20 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "grav_y_std": 0.0,
         "grav_z_std": 0.0,
         "linear_jerk_3d_max": 0.0,
+        "snr_vertical": 0.0,
+        "crest_factor": 0.0,
+        "hjorth_activity": 0.0,
+        "hjorth_mobility": 0.0,
+        "hjorth_complexity": 0.0,
+        "corr_xy": 0.0,
+        "corr_xz": 0.0,
+        "corr_yz": 0.0,
+        "impulse_factor": 0.0,
+        "clearance_factor": 0.0,
+        "shape_factor": 0.0,
+        "time_center_of_mass": 0.0,
+        "min_z_to_max_z_ratio": 0.0,
+        "first_peak_polarity": 0.0,
     }
 
     if raw_df is None or raw_df.empty:
@@ -307,6 +321,95 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         jerk_3d_mags = np.sqrt(d_lax**2 + d_lay**2 + d_laz**2)
         linear_jerk_3d_max = float(np.max(jerk_3d_mags))
 
+    # ---------- Contextual Features (SNR & Crest Factor) ----------
+    # 1. Signal-to-Noise Ratio (SNR)
+    # Background Context (-5s to -1s and +1s to +5s)
+    bg_mask = ((times >= event_time_s - 5.0) & (times < event_time_s - 1.0)) | \
+              ((times > event_time_s + 1.0) & (times <= event_time_s + 5.0))
+    bg_seg = raw_df[bg_mask]
+    
+    if len(bg_seg) > 10 and len(seg) > 5:
+        bg_a_vert = bg_seg["a_vertical"].astype(float).values
+        bg_energy_rate = float(np.sum(bg_a_vert ** 2)) / len(bg_a_vert)
+        event_energy_rate = float(np.sum(a_vert ** 2)) / len(a_vert)
+        snr_vertical = event_energy_rate / (bg_energy_rate + 1e-6)
+    else:
+        snr_vertical = 1.0 # Default fallback if no background found (e.g., at edges)
+
+    # 2. Crest Factor (Peak-to-RMS Ratio) & Other Shape Metrics
+    rms_val = float(np.sqrt(np.mean(a_vert**2))) if len(a_vert) > 0 else 0.0
+    mean_abs_val = float(np.mean(np.abs(a_vert))) if len(a_vert) > 0 else 0.0
+    mean_sqrt_abs_val = float(np.mean(np.sqrt(np.abs(a_vert)))) if len(a_vert) > 0 else 0.0
+    max_abs_val = float(np.max(np.abs(a_vert))) if len(a_vert) > 0 else 0.0
+    
+    crest_factor = max_abs_val / (rms_val + 1e-6)
+    impulse_factor = max_abs_val / (mean_abs_val + 1e-6)
+    clearance_factor = max_abs_val / ((mean_sqrt_abs_val**2) + 1e-6)
+    shape_factor = rms_val / (mean_abs_val + 1e-6)
+    
+    # Time Center of Mass (Energy concentration relative to the dominant peak)
+    time_center_of_mass = 0.0
+    if len(a_vert) > 0:
+        sum_abs = np.sum(np.abs(a_vert))
+        if sum_abs > 0:
+            time_center_of_mass = float(np.sum(t_rel * np.abs(a_vert)) / sum_abs)
+
+    # ---------- Z-Accel Polarity & Ratio Features (Direction-Aware) ----------
+    min_z_to_max_z_ratio = 0.0
+    first_peak_polarity = 0.0
+    if len(a_vert) > 0:
+        min_z = float(np.min(a_vert))
+        max_z = float(np.max(a_vert))
+        if max_z > 0:
+            min_z_to_max_z_ratio = min_z / (max_z + 1e-6)
+            
+        idx_min = np.argmin(a_vert)
+        idx_max = np.argmax(a_vert)
+        # Pothole: drop (min) happens before bounce (max)
+        first_peak_polarity = 1.0 if idx_min < idx_max else -1.0
+
+    # ---------- 3. Hjorth Parameters (Activity, Mobility, Complexity) ----------
+    hjorth_activity = 0.0
+    hjorth_mobility = 0.0
+    hjorth_complexity = 0.0
+    
+    if len(a_vert) > 2:
+        hjorth_activity = float(np.var(a_vert))
+        
+        diff1 = np.diff(a_vert)
+        diff2 = np.diff(diff1)
+        
+        var_y = np.var(a_vert)
+        var_d1 = np.var(diff1)
+        var_d2 = np.var(diff2)
+        
+        if var_y > 0:
+            hjorth_mobility = float(np.sqrt(var_d1 / var_y))
+            if var_d1 > 0:
+                hjorth_complexity = float(np.sqrt(var_d2 / var_d1) / hjorth_mobility)
+                
+    # ---------- 4. Cross-Correlation (X, Y, Z) ----------
+    corr_xy = 0.0
+    corr_xz = 0.0
+    corr_yz = 0.0
+    
+    if len(seg) > 5 and has_native_lin:
+        lax = seg["lin_ax"].astype(float).values
+        lay = seg["lin_ay"].astype(float).values
+        laz = seg["lin_az"].astype(float).values
+        
+        try:
+            corr_xy = float(np.corrcoef(lax, lay)[0, 1])
+            corr_xz = float(np.corrcoef(lax, laz)[0, 1])
+            corr_yz = float(np.corrcoef(lay, laz)[0, 1])
+            
+            # Handle NaNs from constant signals
+            if np.isnan(corr_xy): corr_xy = 0.0
+            if np.isnan(corr_xz): corr_xz = 0.0
+            if np.isnan(corr_yz): corr_yz = 0.0
+        except Exception:
+            pass
+
     return {
         "num_peaks_accel": num_peaks_accel,
         "num_peaks_gyro": num_peaks_gyro,
@@ -336,6 +439,20 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "grav_y_std": grav_y_std,
         "grav_z_std": grav_z_std,
         "linear_jerk_3d_max": linear_jerk_3d_max,
+        "snr_vertical": snr_vertical,
+        "crest_factor": crest_factor,
+        "hjorth_activity": hjorth_activity,
+        "hjorth_mobility": hjorth_mobility,
+        "hjorth_complexity": hjorth_complexity,
+        "corr_xy": corr_xy,
+        "corr_xz": corr_xz,
+        "corr_yz": corr_yz,
+        "impulse_factor": impulse_factor,
+        "clearance_factor": clearance_factor,
+        "shape_factor": shape_factor,
+        "time_center_of_mass": time_center_of_mass,
+        "min_z_to_max_z_ratio": min_z_to_max_z_ratio,
+        "first_peak_polarity": first_peak_polarity,
     }
 
 
