@@ -195,7 +195,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 7  # <<< PILIH TRIP / GANTI DATA
+PILIHAN_INDEX_TRIP = 12  # <<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
@@ -463,7 +463,7 @@ print(f"\\n[PENTING] Peta interaktif telah disimpan ke: {map_path}")
 print("Silakan buka file HTML tersebut di browser Anda untuk melihat peta dan grafik (Klik kanan file -> Open in Default Browser).")
 
 # Jika jumlah event terlalu banyak, jangan tampilkan peta secara langsung di notebook cell
-if len(df_trip) > 200:
+if len(df_trip) > 100:
     print(f"\\n[INFO] Menghindari render peta di cell karena jumlah event ({len(df_trip)}) melebihi 200.")
     print("Menampilkan peta sebesar ini di cell dapat menyebabkan kernel Jupyter ter-disconnect.")
 else:

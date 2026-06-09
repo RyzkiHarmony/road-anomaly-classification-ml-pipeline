@@ -61,17 +61,28 @@ def score_events(events_df: pd.DataFrame) -> pd.DataFrame:
 
     df = events_df.copy()
 
-    # Speed penalty dihapus — event kecepatan rendah (pothole di gang, dll)
-    # tidak boleh otomatis mendapat skor lebih rendah karena impact fisiknya
-    # sama berbahayanya. Kolom dipertahankan untuk backward compatibility.
-    df["speed_factor"] = 1.0
+    # --- Speed Normalization (Physically Correct) ---
+    # Impact force scales with velocity. To compare bumps hit at different speeds fairly,
+    # we must scale the impact metric DOWN for high speeds and UP for low speeds,
+    # anchoring around a reference speed (e.g., 30 km/h = 8.33 m/s).
+    # We clip speed to minimum 2.0 m/s (~7 km/h) to prevent explosive scores near 0 speed.
+    V_REF = 8.33
+    
+    if "speed_mean" in df.columns:
+        v_clip = np.clip(df["speed_mean"].values, 2.0, None)
+        df["speed_factor"] = V_REF / v_clip
+    else:
+        df["speed_factor"] = 1.0
+
+    # Apply speed_factor to the physical metrics before normalization
+    accel_adjusted = np.abs(df["peak_vertical_g"].values) * df["speed_factor"].values
+    gyro_adjusted = df["peak_gyro_mag"].values * df["speed_factor"].values
+    jerk_adjusted = df["vert_jrk"].values * df["speed_factor"].values
 
     # Normalise each component to [0, 1] using robust fixed bounds from config
-    n_accel = robust_normalise(
-        np.abs(df["peak_vertical_g"]).values, SCORE_ACCEL_MIN_G, SCORE_ACCEL_MAX_G
-    )
-    n_gyro = robust_normalise(df["peak_gyro_mag"].values, 0.0, SCORE_GYRO_MAX)
-    n_jerk = robust_normalise(df["vert_jrk"].values, 0.0, SCORE_JERK_MAX)
+    n_accel = robust_normalise(accel_adjusted, SCORE_ACCEL_MIN_G, SCORE_ACCEL_MAX_G)
+    n_gyro = robust_normalise(gyro_adjusted, 0.0, SCORE_GYRO_MAX)
+    n_jerk = robust_normalise(jerk_adjusted, 0.0, SCORE_JERK_MAX)
     n_dur  = robust_normalise(df["event_duration"].values, 0.0, SCORE_DUR_MAX_S)
 
     df["score"] = (

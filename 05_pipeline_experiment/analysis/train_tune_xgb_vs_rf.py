@@ -85,13 +85,16 @@ def main():
     print("PHASE 1: BASELINE EVALUATION (Default Parameters)")
     print("="*60)
     
-    smote_rf = ImbPipeline([
-        ('smote', SMOTE(random_state=42, k_neighbors=min(5, min(np.bincount(y_enc)) - 1))),
+    from sklearn.pipeline import Pipeline
+    
+    # SENIOR ML ENGINEER FIX: SMOTE dihapus. Menggabungkan dua fitur pothole 
+    # menciptakan data fisika hantu yang tidak pernah ada di dunia nyata.
+    # Nama variabel tetap 'smote_rf' agar tidak merusak baris kode di bawahnya.
+    smote_rf = Pipeline([
         ('clf', RandomForestClassifier(random_state=42, n_jobs=-1, class_weight='balanced_subsample'))
     ])
     
-    smote_xgb = ImbPipeline([
-        ('smote', SMOTE(random_state=42, k_neighbors=min(5, min(np.bincount(y_enc)) - 1))),
+    smote_xgb = Pipeline([
         ('clf', XGBClassifier(random_state=42, eval_metric='mlogloss', n_jobs=-1))
     ])
     

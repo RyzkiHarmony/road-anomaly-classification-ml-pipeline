@@ -67,6 +67,9 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "time_center_of_mass": 0.0,
         "min_z_to_max_z_ratio": 0.0,
         "first_peak_polarity": 0.0,
+        "rise_time_ratio": 0.0,
+        "peak_asymmetry": 0.0,
+        "waveform_complexity": 0.0,
     }
 
     if raw_df is None or raw_df.empty:
@@ -75,7 +78,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
     times = raw_df["timestamp"].astype(float).values / 1000.0
 
     t_start = event_time_s - 1.0
-    t_end   = event_time_s + 1.0  # Buffer 300ms ke depan untuk menangkap fase recovery
+    t_end   = event_time_s + 1.0  
 
     mask = (times >= t_start) & (times <= t_end)
     seg  = raw_df[mask]
@@ -410,6 +413,41 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         except Exception:
             pass
 
+    # ---------- 5. Shape-Aware Temporal Features ----------
+    # These features capture the MORPHOLOGY (shape) of the waveform,
+    # not just statistical aggregates. Critical for Pothole vs Speed Bump.
+
+    # 5a. Rise Time Ratio: time_to_peak / time_from_peak
+    # Speed Bump: gradual rise → ratio ~1.0 (symmetric hill)
+    # Pothole: instant drop then slow recovery → ratio << 1.0 or >> 1.0
+    rise_time_ratio = 0.0
+    if len(a_vert) > 5:
+        abs_peak_idx = np.argmax(np.abs(a_vert))
+        time_to_peak = abs_peak_idx  # samples from start to abs peak
+        time_from_peak = len(a_vert) - 1 - abs_peak_idx  # samples from abs peak to end
+        rise_time_ratio = float(time_to_peak) / (float(time_from_peak) + 1e-6)
+
+    # 5b. Peak Asymmetry: energy ratio before vs after the absolute peak
+    # Speed Bump: energy is roughly equal on both sides (~0.5)
+    # Pothole: energy concentrated on one side (drop or bounce)
+    peak_asymmetry = 0.0
+    if len(a_vert) > 5:
+        abs_peak_idx = np.argmax(np.abs(a_vert))
+        energy_before = float(np.sum(a_vert[:abs_peak_idx] ** 2))
+        energy_after = float(np.sum(a_vert[abs_peak_idx + 1:] ** 2))
+        total = energy_before + energy_after + 1e-6
+        peak_asymmetry = (energy_after - energy_before) / total  # [-1, +1]
+
+    # 5c. Waveform Complexity: arc_length / straight_line_distance
+    # Smooth hill (Speed Bump): complexity ~1.0
+    # Chaotic spikes (Pothole): complexity >> 1.0
+    # O(N), trivial to implement in Kotlin: sum of abs(diff)
+    waveform_complexity = 0.0
+    if len(a_vert) > 2:
+        arc_length = float(np.sum(np.abs(np.diff(a_vert))))
+        straight_dist = float(np.abs(a_vert[-1] - a_vert[0]))
+        waveform_complexity = arc_length / (straight_dist + 1e-6)
+
     return {
         "num_peaks_accel": num_peaks_accel,
         "num_peaks_gyro": num_peaks_gyro,
@@ -453,6 +491,9 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "time_center_of_mass": time_center_of_mass,
         "min_z_to_max_z_ratio": min_z_to_max_z_ratio,
         "first_peak_polarity": first_peak_polarity,
+        "rise_time_ratio": rise_time_ratio,
+        "peak_asymmetry": peak_asymmetry,
+        "waveform_complexity": waveform_complexity,
     }
 
 

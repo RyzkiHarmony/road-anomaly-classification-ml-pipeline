@@ -21,7 +21,6 @@ from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
-
 from config import OUT_FOLDER, get_logger, BEST_FEATURES
 
 logger = get_logger(__name__)
