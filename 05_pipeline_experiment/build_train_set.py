@@ -7,7 +7,7 @@ import glob
 def tqdm(iterable, **kwargs):
     return iterable
 
-from config import OUT_FOLDER, CSV_FOLDER, get_logger
+from config import OUT_FOLDER, CSV_FOLDER, get_logger, WINDOW_SIZE_S
 from sensor_fusion import apply_sensor_fusion
 from feature_extraction import extract_event_shape_features
 
@@ -63,8 +63,10 @@ def augment_anomalies(df_labeled):
             raw_df = pd.read_csv(csv_path)
             raw_df = apply_sensor_fusion(raw_df)
             
-            # Identify columns to scale (sensors)
-            cols_to_scale = [c for c in raw_df.columns if c in ['magnitude', 'a_vertical', 'gx', 'gy', 'gz']]
+            # Identify columns to scale (sensors). 
+            # Senior ML Fix: Added a_horizontal and a_linear_mag. Omitting these caused data corruption 
+            # where the vertical axis was scaled but horizontal wasn't, changing the physical angle of the shock!
+            cols_to_scale = [c for c in raw_df.columns if c in ['magnitude', 'a_vertical', 'a_horizontal', 'a_linear_mag', 'gx', 'gy', 'gz', 'lin_ax', 'lin_ay', 'lin_az']]
             
             for _, row in group.iterrows():
                 t_event = row['time_s']
@@ -75,7 +77,10 @@ def augment_anomalies(df_labeled):
                     scaled_df[cols_to_scale] *= factor
                     
                     # Re-extract features from scaled signal
-                    feats = extract_event_shape_features(scaled_df, t_event)
+                    times_scaled = scaled_df["timestamp"].astype(float).values / 1000.0
+                    mask = (times_scaled >= t_event - (WINDOW_SIZE_S / 2.0)) & (times_scaled <= t_event + (WINDOW_SIZE_S / 2.0))
+                    window_df = scaled_df[mask]
+                    feats = extract_event_shape_features(window_df)
                     
                     # Ensure legacy features are preserved
                     feats.update({
@@ -125,7 +130,10 @@ def main(do_augment=False):
                 for _, row in group.iterrows():
                     t_event = row["time_s"]
                     try:
-                        feats = extract_event_shape_features(raw_df, t_event)
+                        times_raw = raw_df["timestamp"].astype(float).values / 1000.0
+                        mask = (times_raw >= t_event - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_event + (WINDOW_SIZE_S / 2.0))
+                        window_df = raw_df[mask]
+                        feats = extract_event_shape_features(window_df)
                         row_dict = row.to_dict()
                         row_dict.update(feats)
                         re_extracted_records.append(row_dict)
@@ -190,7 +198,10 @@ def main(do_augment=False):
                     if speed_mean <= 2.0:
                         continue # Skip because vehicle is idle or slow
                         
-                    feats = extract_event_shape_features(raw_df, t_rand)
+                    times_raw = raw_df["timestamp"].astype(float).values / 1000.0
+                    mask = (times_raw >= t_rand - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_rand + (WINDOW_SIZE_S / 2.0))
+                    window_df = raw_df[mask]
+                    feats = extract_event_shape_features(window_df)
                     if feats["vertical_energy"] > 0:
                         feats.update({
                             "event_id": -1, "time_s": t_rand, "trip_id": trip_id,
@@ -215,28 +226,10 @@ def main(do_augment=False):
     df_final = pd.concat(dfs_to_concat, ignore_index=True)
 
     # 3.5 CLEAN LABEL NOISE
-    # Hapus Non-Event yang secara fisik adalah Pothole/Speed Bump (Label Noise)
+    # PERHATIAN: Pembuangan Hard Negatives (Non-Event ekstrem) TELAH DIHENTIKAN.
+    # Membuang hard negatives membuat model tidak bisa mengenali guncangan kuat yang bukan pothole.
+    # Biarkan model belajar membedakan guncangan ekstrem palsu vs anomali asli.
     before_clean = len(df_final)
-    is_non_event = df_final['label'] == 'Non-Event'
-    # Buang Non-Event yang punya lonjakan ekstrem (peak_mag > 30 m/s2), sangat runcing (crest_factor > 4), atau terisolasi (snr_vertical > 20)
-    is_noisy = is_non_event & ((df_final['peak_mag'] > 30.0) | (df_final['crest_factor'] > 4.0) | (df_final['snr_vertical'] > 20.0))
-    
-    df_final = df_final[~is_noisy]
-    after_clean = len(df_final)
-    if before_clean > after_clean:
-        logger.warning(f"[DATA CLEANSING] Membuang {before_clean - after_clean} sampel Non-Event (Label Noise yang ekstrem)!")
-
-    # 3.6 UNDERSAMPLING NON-EVENT (To fight extreme imbalance)
-    n_anomalies = len(df_final[df_final["label"].isin(["Pothole", "Speed Bump"])])
-    max_non_events = int(n_anomalies * 1.5)  # Batasi Non-Event maksimal 1.5x dari total anomali
-    
-    df_anomalies = df_final[df_final["label"].isin(["Pothole", "Speed Bump"])]
-    df_non_event = df_final[df_final["label"] == "Non-Event"]
-    
-    if len(df_non_event) > max_non_events:
-        df_non_event_sampled = df_non_event.sample(n=max_non_events, random_state=RANDOM_SEED)
-        df_final = pd.concat([df_anomalies, df_non_event_sampled]).sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
-        logger.info(f"[UNDERSAMPLING] Mengurangi Non-Event dari {len(df_non_event)} menjadi {max_non_events} agar kelas lebih seimbang.")
 
     # Simpan dataset
     df_final.to_csv(OUTPUT_PATH, index=False)

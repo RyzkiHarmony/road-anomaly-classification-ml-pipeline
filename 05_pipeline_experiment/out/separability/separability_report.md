@@ -3,23 +3,21 @@
 ## Ringkasan Data
 
 class
-Non-Event     3331
-Pothole        264
-Speed Bump      96
+Non-Event     4292
+Pothole        285
+Speed Bump     249
 
 ## Top Features by Separability
 
-             feature     kruskal_p  max_abs_cohen_d  mean_abs_cohen_d
-            max_jerk 1.469090e-152         2.475628          1.608995
-        peak_to_peak 6.533404e-151         2.404824          1.583593
-     hjorth_activity 4.298015e-134         2.071857          1.377685
-     vertical_energy 2.273653e-116         1.870835          1.245236
-speed_normalized_p2p 2.250463e-115         1.953291          1.192823
-  linear_jerk_3d_max  3.726224e-93         1.422281          0.959472
-    gyro_roll_energy  1.095856e-83         1.123215          0.723405
-        snr_vertical  5.485262e-83         2.388970          1.392550
-        crest_factor  8.073220e-71         1.243849          0.828989
-   gyro_pitch_energy  1.221545e-68         0.853963          0.552895
+                     feature     kruskal_p  max_abs_cohen_d  mean_abs_cohen_d
+             hjorth_activity 3.750241e-200         2.236675          1.459400
+          linear_jerk_3d_max 3.484161e-129         1.504145          0.997248
+                crest_factor 9.436803e-112         1.288463          0.850545
+horizontal_to_vertical_ratio 2.589279e-108         1.007834          0.721198
+         waveform_complexity  2.096093e-16         0.049739          0.022483
+                  grav_y_std  6.324190e-14         0.357362          0.235603
+             rise_time_ratio  1.737640e-10         0.129892          0.120109
+         first_peak_polarity  7.738244e-02         0.137863          0.092036
 
 ## Interpretasi Cepat
 

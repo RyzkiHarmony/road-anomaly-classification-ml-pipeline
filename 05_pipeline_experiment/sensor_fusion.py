@@ -12,12 +12,12 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     df_res['timestamp'] = df_res['timestamp'].astype(float)
     df_res = df_res.drop_duplicates(subset=['timestamp'])
     
-    # Deteksi gap ekstrim (> 5 detik) untuk mencegah ledakan memori saat resampling
+    # Deteksi gap ekstrim (> 5 detik)
+    # Peringatan Senior ML: Jika ada gap besar, kita TIDAK BOLEH menginterpolasi secara buta.
+    # Interpolasi buta akan menciptakan ribuan data palsu yang akan merusak filter LPF.
     diffs = np.diff(df_res['timestamp'].values)
     if np.any(diffs > 5000):
-        # Jika ada gap besar, kita tetap lakukan resampling tapi limit interpolasi
-        # agar tidak 'menghubungkan' dua titik yang terlalu jauh.
-        pass
+        pass # Kami akan menangani ini dengan membatasi limit interpolasi di bawah.
 
     df_res['datetime'] = pd.to_datetime(df_res['timestamp'], unit='ms')
     df_res = df_res.set_index('datetime')
@@ -28,8 +28,11 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     interval = f"{int(1000/target_hz)}ms"
     
     # Resample & Interpolate (Preserves peaks much better than .mean())
-    df_num = df_res[numeric_cols].resample(interval).interpolate(method='linear')
-    df_num = df_num.ffill(limit=10) # Strictly causal filling
+    # [CRITICAL FIX]: limit=5 means we ONLY interpolate gaps up to 50ms (5 samples).
+    # If the gap is larger than 50ms, the physics of the pothole are lost anyway. 
+    # Leaving it as NaN ensures it gets dropped instead of hallucinated.
+    df_num = df_res[numeric_cols].resample(interval).interpolate(method='linear', limit=5)
+    df_num = df_num.ffill(limit=5) # Strictly causal filling for trailing edges
     
     if len(non_numeric_cols) > 0:
         df_non_num = df_res[non_numeric_cols].resample(interval).ffill(limit=10)
@@ -116,9 +119,8 @@ def apply_sensor_fusion(df, cutoff_hz=2.0, offline=False):
         a_horiz_raw_sq = np.maximum(0, lin_mag_sq - a_vert_raw**2)
         a_horiz_raw = np.sqrt(a_horiz_raw_sq)
         
-        # ENGINE DENOISING: LPF Butterworth 6Hz Pasca-Proyeksi
         fs = float(TARGET_HZ)
-        cutoff_denoise = 6.0  # Denoise high-frequency engine vibration (>12Hz)
+        cutoff_denoise = 6.0
         
         df["a_vertical"] = butter_lowpass_filter(a_vert_raw, cutoff=cutoff_denoise, fs=fs, offline=offline)
         df["a_horizontal"] = butter_lowpass_filter(a_horiz_raw, cutoff=cutoff_denoise, fs=fs, offline=offline)

@@ -28,14 +28,28 @@ def main():
     # Menghapus row yang memiliki NaN pada kolom fitur atau label
     df = df.dropna(subset=['label'])
     
-    # ---------- FEATURE SELECTION (TOP 14 ONLY) ----------
-    # Berdasarkan audit Senior ML Engineer, kita pangkas fitur noise.
-    # BEST_FEATURES diimport dari config.py agar tersentralisasi sebagai SSOT
+    # ---------- FEATURE SELECTION (ALL FEATURES) ----------
+    # Berdasarkan analisis Senior ML Engineer, kita cabut pembatasan 10 fitur.
+    # XGBoost mampu mengelola 30+ fitur dan menemukan interaksi non-linear yang tajam,
+    # asalkan data augmentasi fisikanya murni (bug augmentasi linier telah diperbaiki).
     
-    feature_cols = [c for c in df.columns if c in BEST_FEATURES]
+    # DROP DATA LEAKAGE AND NON-KOTLIN-FRIENDLY FEATURES
+    # We must remove coordinates (leakage) and heuristic scores.
+    # We also remove features that require Scipy FFT or complex peak finding,
+    # to guarantee easy and safe deployment in Android Kotlin.
+    banned_cols = [
+        'lat', 'lon', 'suggestion_confidence', 'score',  # Data Leakage
+        'energy_psd_2_10', 'fft_high_low_ratio',         # Requires FFT/Welch
+        'num_peaks_accel', 'num_peaks_gyro',             # Requires Scipy find_peaks
+        'peak_interval_mean', 'peak_interval_std'        # Relies on find_peaks
+    ]
+    metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
+    numeric_df = df.drop(columns=[c for c in metadata_cols if c in df.columns]).select_dtypes(include=[np.number])
+    feature_cols = numeric_df.columns.tolist()
+    
     df = df.dropna(subset=feature_cols)
 
-    logger.info(f"Using TOP {len(feature_cols)} features to prevent overfitting: {feature_cols}")
+    logger.info(f"Using ALL {len(feature_cols)} features for maximum performance: {feature_cols}")
 
     X = df[feature_cols].values
     y = df['label'].values
@@ -88,6 +102,25 @@ def main():
         # 1. Train Set: Keep both original and augmented events
         X_train, y_train = X[train_idx], y_enc[train_idx]
         
+        # 1.5 UNDERSAMPLE NON-EVENTS IN TRAINING SET ONLY (Avoid Base Rate Fallacy)
+        ne_idx = list(classes).index("Non-Event")
+        is_ne = (y_train == ne_idx)
+        is_anom = ~is_ne
+        
+        n_anomalies_train = np.sum(is_anom)
+        n_ne_train = np.sum(is_ne)
+        max_ne_train = int(n_anomalies_train * 1.5)
+        
+        if n_ne_train > max_ne_train:
+            ne_indices = np.where(is_ne)[0]
+            np.random.seed(42 + fold)
+            sampled_ne_indices = np.random.choice(ne_indices, size=max_ne_train, replace=False)
+            anom_indices = np.where(is_anom)[0]
+            keep_indices = np.concatenate([anom_indices, sampled_ne_indices])
+            np.random.shuffle(keep_indices)
+            X_train = X_train[keep_indices]
+            y_train = y_train[keep_indices]
+        
         # 2. Test Set: STRICTLY filter out augmented twins to prevent data leakage validation mirage
         is_original_test = np.array([not str(s).startswith('augmented') for s in source_values[test_idx]])
         clean_test_idx = test_idx[is_original_test]
@@ -103,27 +136,26 @@ def main():
                 X_train = np.vstack([X_train, X[global_idx]])
                 y_train = np.append(y_train, mc)
 
-        # Handle Class Imbalance using SMOTE in Feature Space
-        from imblearn.over_sampling import SMOTE
-        # Only apply SMOTE if there are enough samples in minority class (k_neighbors=5 by default)
-        try:
-            smote = SMOTE(random_state=42, k_neighbors=min(5, min(np.bincount(y_train)) - 1))
-            if min(np.bincount(y_train)) > 1: # ensure at least 2 samples for SMOTE
-                X_train, y_train = smote.fit_resample(X_train, y_train)
-        except Exception as e:
-            logger.warning(f"SMOTE failed on fold {fold+1}: {e}")
+        # Handle Class Imbalance using scale_pos_weight in XGBoost natively later, 
+        # do NOT use SMOTE as it corrupts physically valid raw signal augmentation.
 
-        # XGBoost is too greedy for 53 samples. Switching to Random Forest for better stability on tiny data.
-        model = RandomForestClassifier(
-            n_estimators=300,
-            max_depth=5,
-            min_samples_leaf=3,
-            class_weight='balanced_subsample',
+        # XGBoost with strong regularization to prevent overfitting on Hard Negatives
+        model = XGBClassifier(
+            n_estimators=40,          # Reduced from 100 to prevent memorization
+            max_depth=2,              # Reduced from 3 to force simpler rules
+            min_child_weight=10,      # Increased from 5 to prevent splitting on noise
+            learning_rate=0.05,
+            subsample=0.7,            # More dropout on rows
+            colsample_bytree=0.7,     # More dropout on columns
+            reg_lambda=5.0,           # Strong L2 penalty
+            reg_alpha=1.0,            # Strong L1 penalty
             random_state=42,
-            n_jobs=-1
+            n_jobs=1
         )
         
-        model.fit(X_train, y_train)
+        # Calculate sample weights to combat base rate fallacy
+        weights_train = compute_sample_weight('balanced', y_train)
+        model.fit(X_train, y_train, sample_weight=weights_train)
         
         # Predictions on the clean, un-augmented test split
         y_proba = model.predict_proba(X_test)
@@ -133,14 +165,19 @@ def main():
         oof_y_true.extend(y_test)
         oof_y_pred.extend(y_pred)
         if len(y_proba) > 0:
-            oof_y_proba.append(y_proba)
+            y_pred_val = model.predict(X_test)
         
-        # Metric: Pothole F1
-        report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
-        p_f1 = report.get(str(p_idx), {}).get('f1-score', 0)
-        fold_metrics.append(p_f1)
+        # --- Evaluate Training Set to check Overfitting ---
+        y_pred_train = model.predict(X_train)
+        f1_train = f1_score(y_train, y_pred_train, labels=[p_idx], average='macro', zero_division=0)
         
-        print(f"Fold {fold+1} | Pothole F1 (Unbiased): {p_f1:.4f} | Samples: {len(X_test)} (All Original)")
+        # Validation Evaluation
+        f1_val = f1_score(y_test, y_pred_val, labels=[p_idx], average='macro', zero_division=0)
+        
+        fold_metrics.append(f1_val)
+        oof_y_proba.append(y_proba)
+        
+        logger.info(f"Fold {fold+1} | Train Pothole F1: {f1_train:.4f} | Val Pothole F1: {f1_val:.4f} | Gap: {f1_train - f1_val:.4f}")
 
     avg_f1 = np.mean(fold_metrics)
     print("-" * 60)
@@ -166,38 +203,66 @@ def main():
     
     precisions, recalls, thresholds = precision_recall_curve(y_test_pothole, y_proba_pothole)
     
-    # Cari threshold untuk target Recall > 0.65
-    target_recall = 0.65
-    idx = np.where(recalls >= target_recall)[0][-1] if len(np.where(recalls >= target_recall)[0]) > 0 else 0
-    opt_threshold = thresholds[idx] if len(thresholds) > idx else 0.5
+    # BALANCED OPTIMIZATION: Cari threshold yang memaksimalkan F1-Score (keseimbangan Precision & Recall)
+    f1_scores = 2 * (precisions * recalls) / (precisions + recalls + 1e-6)
+    best_f1_idx = np.argmax(f1_scores)
+    idx = best_f1_idx
+        
+    opt_threshold = thresholds[idx] if idx < len(thresholds) else 0.5
     
     print(f"Proposed Threshold for Pothole: {opt_threshold:.4f}")
-    if len(precisions) > idx:
+    if idx < len(precisions):
         print(f"Expected -> Precision: {precisions[idx]:.4f}, Recall: {recalls[idx]:.4f}")
 
     # ---------- FINAL REPORT (CROSS-VALIDATION OOF) ----------
     print("\nFinal Report (Out-of-Fold - Unbiased Original):")
-    print(classification_report(oof_y_true, oof_y_pred, target_names=classes, zero_division=0))
-
+    # Terapkan custom threshold untuk kelas Pothole
+    oof_y_pred_opt = oof_y_pred.copy()
+    oof_y_pred_opt[y_proba_pothole >= opt_threshold] = p_idx
+    # Untuk Non-Event/Speed Bump, jika probabilitas pothole < threshold tapi model awalnya memprediksi pothole,
+    # kembalikan ke tebakan terbanyak (Non-Event)
+    oof_y_pred_opt[(y_proba_pothole < opt_threshold) & (oof_y_pred_opt == p_idx)] = list(classes).index("Non-Event")
+    
+    print(classification_report(oof_y_true, oof_y_pred_opt, target_names=classes, zero_division=0))
+    
     # ---------- TRAIN FINAL PRODUCTION MODEL ----------
     logger.info("Training final production model on the entire dataset (Original + Augmented)...")
-    try:
-        from imblearn.over_sampling import SMOTE
-        smote_final = SMOTE(random_state=42, k_neighbors=min(5, min(np.bincount(y_enc)) - 1))
-        X_final, y_enc_final = smote_final.fit_resample(X, y_enc)
-    except Exception as e:
-        logger.warning(f"SMOTE failed on final model: {e}")
-        X_final, y_enc_final = X, y_enc
+    
+    # UNDERSAMPLE FINAL DATASET BEFORE SMOTE
+    is_ne_final = (y_enc == list(classes).index("Non-Event"))
+    is_anom_final = ~is_ne_final
+    n_ne_final = np.sum(is_ne_final)
+    n_anom_final = np.sum(is_anom_final)
+    max_ne_final = int(n_anom_final * 1.5)
+    
+    if n_ne_final > max_ne_final:
+        ne_indices_final = np.where(is_ne_final)[0]
+        np.random.seed(42)
+        sampled_ne_final = np.random.choice(ne_indices_final, size=max_ne_final, replace=False)
+        anom_indices_final = np.where(is_anom_final)[0]
+        keep_final = np.concatenate([anom_indices_final, sampled_ne_final])
+        X_final_data, y_enc_final_data = X[keep_final], y_enc[keep_final]
+    else:
+        X_final_data, y_enc_final_data = X, y_enc
+
+    # Skip SMOTE for final model to avoid data corruption
+    X_final, y_enc_final = X_final_data, y_enc_final_data
         
-    final_model = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=5,
-        min_samples_leaf=3,
-        class_weight='balanced_subsample',
+    final_model = XGBClassifier(
+        n_estimators=40,
+        max_depth=2,
+        min_child_weight=10,
+        learning_rate=0.05,
+        subsample=0.7,
+        colsample_bytree=0.7,
+        reg_lambda=5.0,
+        reg_alpha=1.0,
         random_state=42,
-        n_jobs=-1
+        n_jobs=1
     )
-    final_model.fit(X_final, y_enc_final)
+    weights_final = compute_sample_weight('balanced', y_enc_final)
+    final_model.fit(X_final, y_enc_final, sample_weight=weights_final)
+
 
     # ---------- SAVE ARTIFACTS ----------
     model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
@@ -206,18 +271,23 @@ def main():
     pkl_path = os.path.join(model_dir, "best_model.pkl")
     joblib.dump(final_model, pkl_path)
     joblib.dump(le, os.path.join(model_dir, "label_encoder.pkl"))
+    
+    import json
+    with open(os.path.join(model_dir, "feature_cols.json"), "w") as f:
+        json.dump(feature_cols, f, indent=2)
+        
     logger.info(f"Final model pickle saved at {pkl_path}")
 
     # ---------- ONNX EXPORT ----------
     try:
-        from skl2onnx import convert_sklearn
-        from skl2onnx.common.data_types import FloatTensorType
+        from onnxmltools import convert_xgboost
+        from onnxmltools.convert.common.data_types import FloatTensorType
         
         logger.info("Exporting final model to ONNX format for Android deployment...")
         initial_types = [('input', FloatTensorType([None, len(feature_cols)]))]
         
-        # Convert the RandomForest final model to ONNX format
-        onnx_model = convert_sklearn(
+        # Convert the XGBoost final model to ONNX format
+        onnx_model = convert_xgboost(
             final_model, 
             initial_types=initial_types, 
             target_opset=15

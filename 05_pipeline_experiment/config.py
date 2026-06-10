@@ -9,10 +9,15 @@ import logging
 
 # ---------- PATHS ----------
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# ---------- PATHS ----------
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_FOLDER  = os.path.join(_SCRIPT_DIR, "new-data", "csv")
 META_FOLDER = os.path.join(_SCRIPT_DIR, "new-data", "meta")
 OUT_FOLDER  = os.path.join(_SCRIPT_DIR, "out")
 LABELS_FOLDER = os.path.join(_SCRIPT_DIR, "labels")
+
+# WINDOW CONFIGURATION
+WINDOW_SIZE_S = 2.0  # Durasi total window (detik) untuk ekstraksi fitur
 
 os.makedirs(OUT_FOLDER, exist_ok=True)
 os.makedirs(LABELS_FOLDER, exist_ok=True)
@@ -100,19 +105,14 @@ TARGET_HZ  = 100      # Target resampling frequency (10ms)
 
 # ---------- ML MODEL FEATURES (SINGLE SOURCE OF TRUTH) ----------
 BEST_FEATURES = [
-    "event_duration", 
-    "gyro_roll_energy", 
-    "peak_interval_std", 
-    "hjorth_activity", 
-    "linear_jerk_3d_max", 
-    "snr_vertical", 
-    "num_peaks_accel", 
-    "peak_interval_mean", 
-    "corr_xy", 
-    "crest_factor",
-    "skewness",
-    "min_z_to_max_z_ratio",
-    "first_peak_polarity",
-    "corr_xz",
-    "corr_yz"
+    "brake_to_bump_ratio",         # Hard braking killer
+    "down_up_asymmetry",           # Pothole (down then up) vs Bump (up then down) vs Drop (up only)
+    "horizontal_to_vertical_ratio",# Cornering/Swerve killer
+    "grav_y_std",                  # Pitching / chassis tilt killer
+    "first_peak_polarity",         # Instant direction
+    "linear_jerk_3d_max",          # Peak impact strength
+    "crest_factor",                # Sharpness
+    "rise_time_ratio",             # Asymmetry of the shock
+    "waveform_complexity",         # Chaos
+    "hjorth_activity"              # Overall energy
 ]

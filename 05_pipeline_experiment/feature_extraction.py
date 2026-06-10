@@ -18,12 +18,11 @@ from scipy.ndimage import gaussian_filter1d
 from config import WINDOW_S, OVERLAP
 
 
-def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
+def extract_event_shape_features(window_df, bg_df=None):
     """
-    Final refined version:
-    Robust, noise-resistant, and classification-oriented shape features.
+    Ekstrak 10-15 fitur matematis dari sebuah window waktu (misalnya 2 detik).
+    Fungsi ini bersifat murni Window-Level (tidak melakukan pemotongan time-series).
     """
-
     EMPTY = {
         "num_peaks_accel": 0,
         "num_peaks_gyro": 0,
@@ -70,22 +69,14 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "rise_time_ratio": 0.0,
         "peak_asymmetry": 0.0,
         "waveform_complexity": 0.0,
+        "brake_to_bump_ratio": 0.0,
+        "down_up_asymmetry": 0.0,
     }
 
-    if raw_df is None or raw_df.empty:
+    if window_df is None or window_df.empty:
         return EMPTY
 
-    times = raw_df["timestamp"].astype(float).values / 1000.0
-
-    t_start = event_time_s - 1.0
-    t_end   = event_time_s + 1.0  
-
-    mask = (times >= t_start) & (times <= t_end)
-    seg  = raw_df[mask]
-
-    if len(seg) < 5:
-        return EMPTY
-
+    seg = window_df
     t = seg["timestamp"].astype(float).values / 1000.0
     mags = seg["magnitude"].astype(float).values
     a_vert = seg["a_vertical"].astype(float).values
@@ -137,7 +128,7 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         dominant_idx = accel_peaks[np.argmax(peak_heights)]
         t_center = t[dominant_idx]
     else:
-        t_center = event_time_s
+        t_center = t[len(t)//2] if len(t) > 0 else 0.0
 
     t_rel = t - t_center
 
@@ -326,10 +317,8 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
 
     # ---------- Contextual Features (SNR & Crest Factor) ----------
     # 1. Signal-to-Noise Ratio (SNR)
-    # Background Context (-5s to -1s and +1s to +5s)
-    bg_mask = ((times >= event_time_s - 5.0) & (times < event_time_s - 1.0)) | \
-              ((times > event_time_s + 1.0) & (times <= event_time_s + 5.0))
-    bg_seg = raw_df[bg_mask]
+    # Background Context (-5s to -1s) passed directly if available
+    bg_seg = bg_df if bg_df is not None else pd.DataFrame()
     
     if len(bg_seg) > 10 and len(seg) > 5:
         bg_a_vert = bg_seg["a_vertical"].astype(float).values
@@ -448,6 +437,19 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         straight_dist = float(np.abs(a_vert[-1] - a_vert[0]))
         waveform_complexity = arc_length / (straight_dist + 1e-6)
 
+    # 6. EXCLUSIVE FIXED-MOUNT DIRECTIONAL FEATURES (Hard Negative Killers)
+    brake_to_bump_ratio = 0.0
+    if has_native_lin and vertical_energy > 0:
+        ay_arr = seg["lin_ay"].astype(float).values
+        brake_energy = float(np.sum(ay_arr ** 2))
+        brake_to_bump_ratio = brake_energy / (vertical_energy + 1e-6)
+        
+    down_up_asymmetry = 0.0
+    if len(a_vert) > 0:
+        down_energy = float(np.sum(a_vert[a_vert < 0] ** 2))
+        up_energy = float(np.sum(a_vert[a_vert > 0] ** 2))
+        down_up_asymmetry = down_energy / (up_energy + 1e-6)
+
     return {
         "num_peaks_accel": num_peaks_accel,
         "num_peaks_gyro": num_peaks_gyro,
@@ -494,6 +496,8 @@ def extract_event_shape_features(raw_df, event_time_s, window_s=1.0):
         "rise_time_ratio": rise_time_ratio,
         "peak_asymmetry": peak_asymmetry,
         "waveform_complexity": waveform_complexity,
+        "brake_to_bump_ratio": brake_to_bump_ratio,
+        "down_up_asymmetry": down_up_asymmetry,
     }
 
 
