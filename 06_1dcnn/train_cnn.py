@@ -22,7 +22,7 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 
 EPOCHS = 30
 BATCH_SIZE = 64
-LR = 0.001
+LR = 0.000828659730834538
 
 def main():
     X_path = os.path.join(DATA_DIR, "X.npy")
@@ -69,7 +69,8 @@ def main():
         class_weights = compute_class_weight('balanced', classes=np.unique(y_train.numpy()), y=y_train.numpy())
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
-        model = Lightweight1DCNN(in_channels=3, num_classes=len(classes)).to(device)
+        model = Lightweight1DCNN(in_channels=3, num_classes=len(classes),
+                                 conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
         criterion = nn.CrossEntropyLoss(weight=class_weights)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         
@@ -197,7 +198,8 @@ def main():
     class_weights_full = compute_class_weight('balanced', classes=np.unique(y), y=y)
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
-    final_model = Lightweight1DCNN(in_channels=3, num_classes=len(classes)).to(device)
+    final_model = Lightweight1DCNN(in_channels=3, num_classes=len(classes),
+                                   conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
     criterion_full = nn.CrossEntropyLoss(weight=class_weights_full)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
     

@@ -28,7 +28,8 @@ def main():
     classes = np.load(classes_path)
     
     # Initialize model
-    model = Lightweight1DCNN(in_channels=3, num_classes=len(classes))
+    model = Lightweight1DCNN(in_channels=3, num_classes=len(classes),
+                             conv1_filters=32, conv2_filters=64, dropout_rate=0.169)
     model.load_state_dict(torch.load(pth_path, map_location='cpu'))
     model.eval()
     
