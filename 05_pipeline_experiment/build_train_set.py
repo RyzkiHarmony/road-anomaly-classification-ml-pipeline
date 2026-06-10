@@ -42,65 +42,8 @@ def get_csv_path_for_trip(trip_id):
             continue
     return None
 
-def augment_anomalies(df_labeled):
-    """
-    Generate synthetic variations of minority class samples by scaling raw signals.
-    """
-    augmented_records = []
-    minority_df = df_labeled[df_labeled['label'].isin(["Pothole", "Speed Bump"])]
-    
-    if minority_df.empty:
-        return pd.DataFrame()
-
-    logger.info(f"Augmenting {len(minority_df)} minority class samples...")
-    
-    grouped = minority_df.groupby("trip_id")
-    for trip_id, group in grouped:
-        csv_path = get_csv_path_for_trip(trip_id)
-        if not csv_path: continue
-        
-        try:
-            raw_df = pd.read_csv(csv_path)
-            raw_df = apply_sensor_fusion(raw_df)
-            
-            # Identify columns to scale (sensors). 
-            # Senior ML Fix: Added a_horizontal and a_linear_mag. Omitting these caused data corruption 
-            # where the vertical axis was scaled but horizontal wasn't, changing the physical angle of the shock!
-            cols_to_scale = [c for c in raw_df.columns if c in ['magnitude', 'a_vertical', 'a_horizontal', 'a_linear_mag', 'gx', 'gy', 'gz', 'lin_ax', 'lin_ay', 'lin_az']]
-            
-            for _, row in group.iterrows():
-                t_event = row['time_s']
-                label = row['label']
-                
-                for factor, suffix in [(1.15, "_up"), (0.85, "_down")]:
-                    scaled_df = raw_df.copy()
-                    scaled_df[cols_to_scale] *= factor
-                    
-                    # Re-extract features from scaled signal
-                    times_scaled = scaled_df["timestamp"].astype(float).values / 1000.0
-                    mask = (times_scaled >= t_event - (WINDOW_SIZE_S / 2.0)) & (times_scaled <= t_event + (WINDOW_SIZE_S / 2.0))
-                    window_df = scaled_df[mask]
-                    feats = extract_event_shape_features(window_df)
-                    
-                    # Ensure legacy features are preserved
-                    feats.update({
-                        "event_id": f"{row['event_id']}{suffix}",
-                        "time_s": t_event,
-                        "trip_id": trip_id,
-                        "label": label,
-                        "source": f"augmented_{suffix[1:]}",
-                        "speed_mean": row.get('speed_mean', 0),
-                        "peak_mag": row.get('peak_mag', 0) * factor,
-                        "peak_vertical_g": row.get('peak_vertical_g', 0) * factor
-                    })
-                    augmented_records.append(feats)
-                    
-        except Exception as e:
-            logger.error(f"Failed to augment trip {trip_id}: {e}")
-            
-    return pd.DataFrame(augmented_records)
-
-def main(do_augment=False):
+# Augmentasi linear telah dihapus secara permanen (menghindari bias fisika)
+def main():
     if not os.path.exists(GT_PATH) or not os.path.exists(EVENTS_PATH):
         logger.error("File ground_truth_labels.csv atau candidates_events.csv tidak ditemukan.")
         return
@@ -131,7 +74,13 @@ def main(do_augment=False):
                     t_event = row["time_s"]
                     try:
                         times_raw = raw_df["timestamp"].astype(float).values / 1000.0
-                        mask = (times_raw >= t_event - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_event + (WINDOW_SIZE_S / 2.0))
+                        
+                        # [CRITICAL] Random Jittering to prevent Alignment Bias
+                        # Geser window secara acak antara -0.5 hingga 0.5 detik dari pusat event
+                        jitter = np.random.uniform(-0.5, 0.5)
+                        t_window_center = t_event + jitter
+                        
+                        mask = (times_raw >= t_window_center - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_window_center + (WINDOW_SIZE_S / 2.0))
                         window_df = raw_df[mask]
                         feats = extract_event_shape_features(window_df)
                         row_dict = row.to_dict()
@@ -152,12 +101,8 @@ def main(do_augment=False):
 
     logger.info(f"Basis data: {len(df_labeled)} event.")
 
-    # 2. AUGMENTATION
-    df_augmented = pd.DataFrame()
-    if do_augment:
-        df_augmented = augment_anomalies(df_labeled)
-        if not df_augmented.empty:
-            logger.info(f"Berhasil membuat {len(df_augmented)} sampel augmentasi.")
+    # 2. AUGMENTATION (Dihapus karena naif secara fisika)
+    # df_augmented = pd.DataFrame()
 
     # 3. GENERATE ADDITIONAL BACKGROUND
     # ... (Logic background tetap sama) ...
@@ -216,10 +161,8 @@ def main(do_augment=False):
     # 4. COMBINE & SAVE
     df_bg = pd.DataFrame(additional_bg_records)
     
-    # Gabungkan semua (Asli + Augmentasi + Background)
+    # Gabungkan semua (Asli + Background)
     dfs_to_concat = [df_labeled]
-    if not df_augmented.empty:
-        dfs_to_concat.append(df_augmented)
     if not df_bg.empty:
         dfs_to_concat.append(df_bg)
         
@@ -238,8 +181,5 @@ def main(do_augment=False):
     logger.info(df_final["label"].value_counts().to_string())
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--augment", action="store_true", help="Lakukan augmentasi sinyal fisik")
-    args = parser.parse_args()
-    main(do_augment=args.augment)
+    main()
 

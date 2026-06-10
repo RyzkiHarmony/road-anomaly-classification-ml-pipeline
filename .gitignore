@@ -20,7 +20,10 @@ venv.bak/
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
 
 # Large files
 05_pipeline_experiment/out/maps/
+06_1dcnn/data/
+06_1dcnn/models/
 

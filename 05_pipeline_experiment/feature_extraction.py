@@ -10,9 +10,7 @@
 
 import numpy as np
 import pandas as pd
-from scipy.signal import find_peaks
 from scipy.stats import median_abs_deviation, kurtosis as sp_kurtosis, skew as sp_skew
-from scipy.fft import rfft, rfftfreq
 from scipy.ndimage import gaussian_filter1d
 
 from config import WINDOW_S, OVERLAP
@@ -113,61 +111,29 @@ def extract_event_shape_features(window_df, bg_df=None):
 
     min_dist = max(1, int(0.15 * fs))
 
-    accel_peaks, props = find_peaks(
-        mags_smooth,
-        height=accel_thr,
-        prominence=0.5,
-        distance=min_dist,
-    )
-
-    num_peaks_accel = len(accel_peaks)
-
-    # ---------- Dominant peak as event center ----------
-    if num_peaks_accel > 0:
-        peak_heights = props["peak_heights"]
-        dominant_idx = accel_peaks[np.argmax(peak_heights)]
+    # ---------- Dominant peak as event center (Kotlin-friendly O(N)) ----------
+    # Alih-alih find_peaks, kita cukup cari index dengan nilai absolut vertikal tertinggi.
+    if len(a_vert) > 0:
+        dominant_idx = int(np.argmax(np.abs(a_vert)))
         t_center = t[dominant_idx]
     else:
-        t_center = t[len(t)//2] if len(t) > 0 else 0.0
+        dominant_idx = 0
+        t_center = 0.0
+        
+    num_peaks_accel = 0 # DEPRECATED (Not Kotlin Friendly)
 
     t_rel = t - t_center
 
     # ---------- Gyro peaks ----------
-    if has_gyro:
-        s_gyro = pd.Series(gyro_mag)
-        ema_g_base = s_gyro.ewm(alpha=0.05, adjust=False).mean()
-        ema_g_dev = (s_gyro - ema_g_base).abs().ewm(alpha=0.05, adjust=False).mean()
-        gyro_thr = (ema_g_base + 2.5 * ema_g_dev).values
-
-        gyro_peaks, _ = find_peaks(
-            gyro_mag,
-            height=gyro_thr,
-            prominence=0.5,
-            distance=min_dist,
-        )
-        num_peaks_gyro = len(gyro_peaks)
-    else:
-        num_peaks_gyro = 0
+    num_peaks_gyro = 0 # DEPRECATED
 
     # ---------- Peak interval ----------
-    if num_peaks_accel > 1:
-        peak_times = t_rel[accel_peaks]
-        intervals  = np.diff(peak_times)
-
-        peak_interval_mean = float(np.mean(intervals))
-        peak_interval_std  = float(np.std(intervals))
-        local_duration     = float(peak_times[-1] - peak_times[0])
-    else:
-        peak_interval_mean = 0.0
-        peak_interval_std  = 0.0
-        local_duration     = 0.1 if num_peaks_accel == 1 else 0.0
+    peak_interval_mean = 0.0 # DEPRECATED
+    peak_interval_std  = 0.0 # DEPRECATED
+    local_duration     = float(t[-1] - t[0]) if len(t) > 0 else 0.0
 
     # ---------- Top-2 peak ratio ----------
-    if num_peaks_accel >= 2:
-        sorted_peaks = np.sort(props["peak_heights"])[::-1]
-        top2_peak_ratio = float(sorted_peaks[1] / (sorted_peaks[0] + 1e-6))
-    else:
-        top2_peak_ratio = 0.0
+    top2_peak_ratio = 0.0 # DEPRECATED
 
     # ---------- Duration above threshold (Continuous) ----------
     # Mencegah penggabungan multi-pothole dengan mencari segmen kontigu terpanjang 
@@ -180,7 +146,7 @@ def extract_event_shape_features(window_df, bg_df=None):
         ends   = np.where(edges == -1)[0]
         
         # Cari segmen yang bersinggungan/mengandung puncak utama
-        center_idx = dominant_idx if num_peaks_accel > 0 else len(mags_smooth) // 2
+        center_idx = dominant_idx if len(a_vert) > 0 else len(mags_smooth) // 2
         
         valid_durations = []
         for s, e in zip(starts, ends):
@@ -225,18 +191,8 @@ def extract_event_shape_features(window_df, bg_df=None):
     peak_to_peak = float(np.max(a_vert) - np.min(a_vert))
 
     # ---------- Domain Frekuensi: FFT High/Low Ratio ----------
-    # Pothole  → energi dominan di frekuensi tinggi (>15 Hz)
-    # SpeedBump → energi dominan di frekuensi rendah (<5 Hz)
+    # Dihapus karena FFT tidak efisien/mudah di Kotlin
     fft_high_low_ratio = 0.0
-    if fs > 0 and len(a_vert) >= 8:
-        try:
-            fft_vals  = np.abs(rfft(a_vert)) ** 2
-            fft_freqs = rfftfreq(len(a_vert), d=1.0 / fs)
-            energy_low  = float(np.sum(fft_vals[fft_freqs < 5.0]))
-            energy_high = float(np.sum(fft_vals[fft_freqs > 15.0]))
-            fft_high_low_ratio = energy_high / (energy_low + 1e-6)
-        except Exception:
-            fft_high_low_ratio = 0.0
 
     # ---------- Zero Crossing Rate (ZCR) ----------
     # Pothole → ZCR tinggi (sinyal kacau/chaotic)
@@ -281,15 +237,8 @@ def extract_event_shape_features(window_df, bg_df=None):
     speed_normalized_p2p = peak_to_peak / (speed_mean + 1.0) # Avoid div by zero
 
     # 2. Power Spectral Density (PSD) di rentang resonansi suspensi (2-10 Hz)
+    # Dihapus karena FFT tidak efisien/mudah di Kotlin
     energy_psd_2_10 = 0.0
-    if fs > 0 and len(a_vert) >= 16:
-        try:
-            fft_vals  = np.abs(rfft(a_vert)) ** 2
-            fft_freqs = rfftfreq(len(a_vert), d=1.0 / fs)
-            # Fokus pada 2-10 Hz di mana suspensi motor biasanya beresonansi
-            energy_psd_2_10 = float(np.sum(fft_vals[(fft_freqs >= 2.0) & (fft_freqs <= 10.0)]))
-        except Exception:
-            pass
 
     # ---------- Fitur Eksklusif Sensor Native (Senior ML Recommendations) ----------
     # 1. Rasio Energi Horizontal terhadap Vertikal

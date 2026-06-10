@@ -48,7 +48,7 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     df_out['timestamp'] = (df_out.index - pd.Timestamp("1970-01-01")) // pd.Timedelta('1ms')
     return df_out
 
-def butter_lowpass_filter(data, cutoff, fs, order=2, offline=False):
+def butter_lowpass_filter(data, cutoff, fs, order=2):
     nyq = 0.5 * fs
     normal_cutoff = cutoff / nyq
     # Handle case where normal_cutoff >= 1.0
@@ -60,25 +60,21 @@ def butter_lowpass_filter(data, cutoff, fs, order=2, offline=False):
     # Safely convert to numpy array to avoid pandas index issues
     data_arr = np.asarray(data)
     
-    if offline:
-        # Use zero-phase filtfilt to eliminate lag entirely for offline analysis
-        return filtfilt(b, a, data_arr)
-    else:
-        # Initialize filter state to avoid start-up transients
-        # Since we can't look into the future (causal), we assume the signal
-        # starts near the first value to minimize the initial step response.
-        zi = lfilter_zi(b, a)
-        zi = zi * data_arr[0]
-        
-        # Use causal lfilter instead of zero-phase filtfilt
-        y, _ = lfilter(b, a, data_arr, zi=zi)
-        return y
+    # Initialize filter state to avoid start-up transients
+    # Since we can't look into the future (causal), we assume the signal
+    # starts near the first value to minimize the initial step response.
+    zi = lfilter_zi(b, a)
+    zi = zi * data_arr[0]
+    
+    # Use causal lfilter exclusively. 
+    # Do NOT use zero-phase filtfilt to ensure training data matches Android real-time phase delay exactly.
+    y, _ = lfilter(b, a, data_arr, zi=zi)
+    return y
 
-def apply_sensor_fusion(df, cutoff_hz=2.0, offline=False):
+def apply_sensor_fusion(df, cutoff_hz=2.0):
     """
     Applies sensor fusion to separate gravity from linear acceleration.
-    For offline training dataset creation, offline=True uses zero-phase filtering (filtfilt)
-    to eliminate LPF delay, matching Android's real-time hardware fusion performance.
+    Uses causal filtering (lfilter) exclusively to match Android's real-time hardware fusion phase delay exactly.
     Supports hybrid execution: if Android native hardware fusion columns are present,
     uses them directly. Otherwise, falls back to Butterworth software filter.
     """
@@ -122,8 +118,8 @@ def apply_sensor_fusion(df, cutoff_hz=2.0, offline=False):
         fs = float(TARGET_HZ)
         cutoff_denoise = 6.0
         
-        df["a_vertical"] = butter_lowpass_filter(a_vert_raw, cutoff=cutoff_denoise, fs=fs, offline=offline)
-        df["a_horizontal"] = butter_lowpass_filter(a_horiz_raw, cutoff=cutoff_denoise, fs=fs, offline=offline)
+        df["a_vertical"] = butter_lowpass_filter(a_vert_raw, cutoff=cutoff_denoise, fs=fs)
+        df["a_horizontal"] = butter_lowpass_filter(a_horiz_raw, cutoff=cutoff_denoise, fs=fs)
         
         if "magnitude" not in df.columns:
             df["magnitude"] = np.sqrt(df["ax"]**2 + df["ay"]**2 + df["az"]**2)
@@ -159,9 +155,9 @@ def apply_sensor_fusion(df, cutoff_hz=2.0, offline=False):
 
     # Low-pass filter to estimate gravity
     try:
-        gx_est = butter_lowpass_filter(df["ax"].values, cutoff_hz, fs, offline=offline)
-        gy_est = butter_lowpass_filter(df["ay"].values, cutoff_hz, fs, offline=offline)
-        gz_est = butter_lowpass_filter(df["az"].values, cutoff_hz, fs, offline=offline)
+        gx_est = butter_lowpass_filter(df["ax"].values, cutoff_hz, fs)
+        gy_est = butter_lowpass_filter(df["ay"].values, cutoff_hz, fs)
+        gz_est = butter_lowpass_filter(df["az"].values, cutoff_hz, fs)
     except Exception as e:
         raise ValueError(f"Sensor fusion filtering failed: {str(e)}")
         

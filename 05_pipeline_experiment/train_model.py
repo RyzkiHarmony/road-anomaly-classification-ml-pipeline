@@ -38,10 +38,7 @@ def main():
     # We also remove features that require Scipy FFT or complex peak finding,
     # to guarantee easy and safe deployment in Android Kotlin.
     banned_cols = [
-        'lat', 'lon', 'suggestion_confidence', 'score',  # Data Leakage
-        'energy_psd_2_10', 'fft_high_low_ratio',         # Requires FFT/Welch
-        'num_peaks_accel', 'num_peaks_gyro',             # Requires Scipy find_peaks
-        'peak_interval_mean', 'peak_interval_std'        # Relies on find_peaks
+        'lat', 'lon', 'suggestion_confidence', 'score'  # Data Leakage
     ]
     metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
     numeric_df = df.drop(columns=[c for c in metadata_cols if c in df.columns]).select_dtypes(include=[np.number])
@@ -64,7 +61,7 @@ def main():
     # ---------- CROSS-VALIDATION (STRATIFIED GROUP K-FOLD) ----------
     from sklearn.model_selection import StratifiedGroupKFold
     from xgboost import XGBClassifier
-    from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve
+    from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve, auc
     from sklearn.preprocessing import LabelEncoder
     from sklearn.utils.class_weight import compute_sample_weight
 
@@ -99,27 +96,11 @@ def main():
     oof_y_proba = []
 
     for fold, (train_idx, test_idx) in enumerate(cv_strategy.split(X, y_enc, groups)):
-        # 1. Train Set: Keep both original and augmented events
+        # 1. Train Set
         X_train, y_train = X[train_idx], y_enc[train_idx]
         
-        # 1.5 UNDERSAMPLE NON-EVENTS IN TRAINING SET ONLY (Avoid Base Rate Fallacy)
-        ne_idx = list(classes).index("Non-Event")
-        is_ne = (y_train == ne_idx)
-        is_anom = ~is_ne
-        
-        n_anomalies_train = np.sum(is_anom)
-        n_ne_train = np.sum(is_ne)
-        max_ne_train = int(n_anomalies_train * 1.5)
-        
-        if n_ne_train > max_ne_train:
-            ne_indices = np.where(is_ne)[0]
-            np.random.seed(42 + fold)
-            sampled_ne_indices = np.random.choice(ne_indices, size=max_ne_train, replace=False)
-            anom_indices = np.where(is_anom)[0]
-            keep_indices = np.concatenate([anom_indices, sampled_ne_indices])
-            np.random.shuffle(keep_indices)
-            X_train = X_train[keep_indices]
-            y_train = y_train[keep_indices]
+        # [CRITICAL FIX] Dihapus undersampling buatan untuk Non-Event agar tidak terjadi Base Rate Fallacy.
+        # Biarkan model belajar dari proporsi data asli.
         
         # 2. Test Set: STRICTLY filter out augmented twins to prevent data leakage validation mirage
         is_original_test = np.array([not str(s).startswith('augmented') for s in source_values[test_idx]])
@@ -174,14 +155,21 @@ def main():
         # Validation Evaluation
         f1_val = f1_score(y_test, y_pred_val, labels=[p_idx], average='macro', zero_division=0)
         
-        fold_metrics.append(f1_val)
+        # Calculate PR-AUC for Pothole
+        y_test_pothole_fold = (y_test == p_idx).astype(int)
+        y_proba_pothole_fold = y_proba[:, p_idx]
+        prec, rec, _ = precision_recall_curve(y_test_pothole_fold, y_proba_pothole_fold)
+        pr_auc_val = auc(rec, prec)
+        
+        fold_metrics.append((f1_val, pr_auc_val))
         oof_y_proba.append(y_proba)
         
-        logger.info(f"Fold {fold+1} | Train Pothole F1: {f1_train:.4f} | Val Pothole F1: {f1_val:.4f} | Gap: {f1_train - f1_val:.4f}")
+        logger.info(f"Fold {fold+1} | Train Pothole F1: {f1_train:.4f} | Val Pothole F1: {f1_val:.4f} | Val PR-AUC: {pr_auc_val:.4f}")
 
-    avg_f1 = np.mean(fold_metrics)
+    avg_f1 = np.mean([m[0] for m in fold_metrics])
+    avg_prauc = np.mean([m[1] for m in fold_metrics])
     print("-" * 60)
-    logger.info(f"Average Pothole F1 across {n_folds} folds: {avg_f1:.4f}")
+    logger.info(f"Average Pothole F1: {avg_f1:.4f} | Average PR-AUC: {avg_prauc:.4f}")
 
     # Combine OOF predictions
     oof_y_true = np.array(oof_y_true)
@@ -228,25 +216,8 @@ def main():
     # ---------- TRAIN FINAL PRODUCTION MODEL ----------
     logger.info("Training final production model on the entire dataset (Original + Augmented)...")
     
-    # UNDERSAMPLE FINAL DATASET BEFORE SMOTE
-    is_ne_final = (y_enc == list(classes).index("Non-Event"))
-    is_anom_final = ~is_ne_final
-    n_ne_final = np.sum(is_ne_final)
-    n_anom_final = np.sum(is_anom_final)
-    max_ne_final = int(n_anom_final * 1.5)
-    
-    if n_ne_final > max_ne_final:
-        ne_indices_final = np.where(is_ne_final)[0]
-        np.random.seed(42)
-        sampled_ne_final = np.random.choice(ne_indices_final, size=max_ne_final, replace=False)
-        anom_indices_final = np.where(is_anom_final)[0]
-        keep_final = np.concatenate([anom_indices_final, sampled_ne_final])
-        X_final_data, y_enc_final_data = X[keep_final], y_enc[keep_final]
-    else:
-        X_final_data, y_enc_final_data = X, y_enc
-
-    # Skip SMOTE for final model to avoid data corruption
-    X_final, y_enc_final = X_final_data, y_enc_final_data
+    # UNDERSAMPLE FINAL DATASET DIHAPUS - Train di distribusi nyata
+    X_final, y_enc_final = X, y_enc
         
     final_model = XGBClassifier(
         n_estimators=40,
