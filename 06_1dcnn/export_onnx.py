@@ -28,13 +28,13 @@ def main():
     classes = np.load(classes_path)
     
     # Initialize model
-    model = Lightweight1DCNN(in_channels=3, num_classes=len(classes),
+    model = Lightweight1DCNN(in_channels=10, num_classes=len(classes),
                              conv1_filters=32, conv2_filters=64, dropout_rate=0.169)
     model.load_state_dict(torch.load(pth_path, map_location='cpu'))
     model.eval()
     
-    # Dummy input (Batch_size=1, Channels=3, Length=200)
-    dummy_input = torch.randn(1, 3, 200, requires_grad=True)
+    # Dummy input (Batch_size=1, Channels=10, Length=200)
+    dummy_input = torch.randn(1, 10, 200, requires_grad=True)
     
     onnx_path = os.path.join(MODEL_DIR, "model_1dcnn.onnx")
     
@@ -51,6 +51,19 @@ def main():
                                 'output' : {0 : 'batch_size'}})
                                 
     logger.info(f"Model berhasil diekspor ke format ONNX di: {onnx_path}")
-
+    
+    # Force inline external data if PyTorch created it
+    import onnx
+    import glob
+    data_files = glob.glob(onnx_path + "*.data")
+    if data_files:
+        logger.info(f"Menggabungkan external data ({data_files[0]}) ke dalam {onnx_path}...")
+        try:
+            onnx_model = onnx.load(onnx_path, load_external_data=True)
+            onnx.save(onnx_model, onnx_path)
+            os.remove(data_files[0])
+            logger.info("External data berhasil digabungkan dan file .data dihapus.")
+        except Exception as e:
+            logger.error(f"Gagal menggabungkan external data: {e}")
 if __name__ == "__main__":
     main()

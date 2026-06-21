@@ -17,9 +17,23 @@ MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 
 SEQ_LEN = int(WINDOW_SIZE_S * TARGET_HZ)  # 200
 STRIDE = 50  # 0.5s stride
-CHANNELS = ["a_vertical", "a_horizontal", "speed"]
+CHANNELS = ["a_vertical", "a_horizontal", "speed", "a_vertical_crest_factor", "a_vertical_jerk"]
 
 CONF_THRESHOLD = 0.50
+
+def compute_engineered_features(df):
+    df = df.sort_values("timestamp").reset_index(drop=True)
+    dt = df["timestamp"].diff().fillna(10.0) / 1000.0
+    dt = np.where(dt <= 0, 0.01, dt)
+    jerk = df["a_vertical"].diff().fillna(0.0) / dt
+    df["a_vertical_jerk"] = jerk
+    
+    window_sz = 10
+    peak = df["a_vertical"].abs().rolling(window=window_sz, min_periods=1, center=True).max()
+    rms = np.sqrt((df["a_vertical"]**2).rolling(window=window_sz, min_periods=1, center=True).mean())
+    crest_factor = peak / (rms + 1e-6)
+    df["a_vertical_crest_factor"] = crest_factor.fillna(1.0)
+    return df
 
 def get_trip_id_from_csv(csv_path):
     # Nama file: RoadDamage_2026-05-26_15-19-36.csv
@@ -48,7 +62,8 @@ def main():
     p_idx = list(classes).index("Pothole")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = Lightweight1DCNN(in_channels=3, num_classes=len(classes)).to(device)
+    model = Lightweight1DCNN(in_channels=10, num_classes=len(classes),
+                             conv1_filters=32, conv2_filters=64).to(device)
     model.load_state_dict(torch.load(pth_path, map_location=device))
     model.eval()
     
@@ -73,6 +88,7 @@ def main():
             raw_df = apply_sensor_fusion(raw_df)
             if "speed" not in raw_df.columns:
                 raw_df["speed"] = 0.0
+            raw_df = compute_engineered_features(raw_df)
                 
             arr = raw_df[CHANNELS].fillna(0.0).values
             times = raw_df["timestamp"].values / 1000.0
@@ -142,20 +158,17 @@ def main():
         
         logger.info(f"Ditemukan {len(hn_X)} Hard Negatives!")
         
-        # Gabungkan ke dataset lama
-        old_X = np.load(os.path.join(DATA_DIR, "X.npy"))
-        old_y = np.load(os.path.join(DATA_DIR, "y.npy"))
-        old_g = np.load(os.path.join(DATA_DIR, "groups.npy"))
+        # Karantina data hard negatives ke file terpisah untuk divalidasi secara manual
+        hn_X_path = os.path.join(DATA_DIR, "X_hard_negatives.npy")
+        hn_y_path = os.path.join(DATA_DIR, "y_hard_negatives.npy")
+        hn_g_path = os.path.join(DATA_DIR, "groups_hard_negatives.npy")
         
-        new_X = np.concatenate([old_X, hn_X], axis=0)
-        new_y = np.concatenate([old_y, hn_y], axis=0)
-        new_g = np.concatenate([old_g, hn_g], axis=0)
+        np.save(hn_X_path, hn_X)
+        np.save(hn_y_path, hn_y)
+        np.save(hn_g_path, hn_g)
         
-        np.save(os.path.join(DATA_DIR, "X.npy"), new_X)
-        np.save(os.path.join(DATA_DIR, "y.npy"), new_y)
-        np.save(os.path.join(DATA_DIR, "groups.npy"), new_g)
-        
-        logger.info(f"Dataset diperbarui! Shape baru X: {new_X.shape}")
+        logger.info(f"Hard negatives berhasil disimpan di karantina: {hn_X_path}")
+        logger.warning("PENTING: Tinjau sampel hard negatives di atas secara manual sebelum digabungkan ke dataset utama untuk mencegah Label Contamination!")
     else:
         logger.info("Tidak ada Hard Negative baru yang ditemukan. Model sudah sempurna atau threshold terlalu tinggi.")
 

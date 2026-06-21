@@ -2,7 +2,7 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_class_weight
@@ -14,12 +14,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '05_pipeline_exper
 from config import get_logger
 
 from model import Lightweight1DCNN
+from train_cnn import DynamicJitterDataset, FocalLoss, apply_smote, SMOTE_RATIO
 
 logger = get_logger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
-EPOCHS = 20
+EPOCHS = 30
 
 def objective(trial):
     # Hyperparameters
@@ -41,26 +42,43 @@ def objective(trial):
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # 3-Fold CV for speed
+    # 3-Fold CV for speed during tuning
     sgkf = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
     
     fold_pr_aucs = []
     
     for fold, (train_idx, val_idx) in enumerate(sgkf.split(X, y, groups)):
-        X_train, y_train = torch.tensor(X[train_idx], dtype=torch.float32), torch.tensor(y[train_idx], dtype=torch.long)
-        X_val, y_val = torch.tensor(X[val_idx], dtype=torch.float32), torch.tensor(y[val_idx], dtype=torch.long)
+        # Apply SMOTE only on training fold
+        X_train_np, y_train_np = X[train_idx], y[train_idx]
+        X_train_smote, y_train_smote = apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO)
         
-        train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(TensorDataset(X_val, y_val), batch_size=batch_size, shuffle=False)
+        X_train = torch.tensor(X_train_smote, dtype=torch.float32)
+        y_train = torch.tensor(y_train_smote, dtype=torch.long)
+        X_val = torch.tensor(X[val_idx], dtype=torch.float32)
+        y_val = torch.tensor(y[val_idx], dtype=torch.long)
         
-        class_weights = compute_class_weight('balanced', classes=np.unique(y_train.numpy()), y=y_train.numpy())
+        # Datasets with training augmentations
+        train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=15, 
+                                              noise_std=0.02, scale_range=(0.85, 1.15), is_train=True)
+        val_dataset = DynamicJitterDataset(X_val, y_val, max_jitter=0,
+                                            noise_std=0, scale_range=None, is_train=False)
+        
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        
+        # Dampened Class Weights (sqrt)
+        class_weights = compute_class_weight('balanced', classes=np.unique(y_train_smote), y=y_train_smote)
+        class_weights = np.sqrt(class_weights)
+        class_weights = class_weights / class_weights.sum() * len(class_weights)
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
-        model = Lightweight1DCNN(in_channels=3, num_classes=len(classes), 
+        # 10 Channels to match the actual dataset features
+        model = Lightweight1DCNN(in_channels=10, num_classes=len(classes), 
                                  conv1_filters=conv1_filters, conv2_filters=conv2_filters, dropout_rate=dropout_rate).to(device)
         
-        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        criterion = FocalLoss(weight=class_weights, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
         best_val_loss = float('inf')
         best_model_state = None
@@ -74,6 +92,8 @@ def objective(trial):
                 loss = criterion(outputs, batch_y)
                 loss.backward()
                 optimizer.step()
+                
+            scheduler.step()
                 
             # Eval
             model.eval()

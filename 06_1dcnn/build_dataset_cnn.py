@@ -21,7 +21,46 @@ EVENTS_PATH  = os.path.join(OUT_FOLDER, "candidates_events.csv")
 
 BACKGROUND_RATIO = 2 
 SEQ_LEN = int(WINDOW_SIZE_S * TARGET_HZ)  # 2.0 * 100 = 200
-CHANNELS = ["a_vertical", "a_horizontal", "speed"]
+CHANNELS = [
+    "a_vertical", "a_horizontal", "speed", 
+    "a_vertical_crest_factor", "a_vertical_jerk",
+    "gx", "gy", "gz", 
+    "g_roll_accel", "g_pitch_accel"
+]
+
+def compute_engineered_features(df):
+    """
+    Menghitung fitur tambahan:
+    1. Crest Factor dari akselerasi vertikal (a_vertical_crest_factor)
+    2. Jerk dari akselerasi vertikal (a_vertical_jerk)
+    3. Turunan gyro: Roll acceleration (da_roll/dt) & Pitch acceleration (da_pitch/dt)
+    """
+    df = df.sort_values("timestamp").reset_index(drop=True)
+    dt = df["timestamp"].diff().fillna(10.0) / 1000.0  # interval default 10ms
+    dt = np.where(dt <= 0, 0.01, dt)
+    
+    # 1. Jerk
+    jerk = df["a_vertical"].diff().fillna(0.0) / dt
+    df["a_vertical_jerk"] = jerk
+    
+    # 2. Crest Factor
+    window_sz = 10
+    peak = df["a_vertical"].abs().rolling(window=window_sz, min_periods=1, center=True).max()
+    rms = np.sqrt((df["a_vertical"]**2).rolling(window=window_sz, min_periods=1, center=True).mean())
+    crest_factor = peak / (rms + 1e-6)
+    df["a_vertical_crest_factor"] = crest_factor.fillna(1.0)
+    
+    # 3. Gyro derivatives (ang. acceleration)
+    # Pastikan kolom gx, gy, gz ada di dataframe
+    for col in ["gx", "gy", "gz"]:
+        if col not in df.columns:
+            df[col] = 0.0
+            
+    df["g_roll_accel"] = df["gx"].diff().fillna(0.0) / dt
+    df["g_pitch_accel"] = df["gy"].diff().fillna(0.0) / dt
+    
+    return df
+
 
 def get_csv_path_for_trip(trip_id):
     import json
@@ -59,7 +98,7 @@ def extract_sequence(raw_df, t_center):
     seq = np.zeros((SEQ_LEN, len(CHANNELS)), dtype=np.float32)
     
     if len(seg) > 0:
-        data_arr = seg[CHANNELS].fillna(0.0).values
+        data_arr = seg[CHANNELS].interpolate(method='linear').ffill().bfill().fillna(0.0).values
         # Jika panjang lebih atau kurang dari SEQ_LEN, lakukan simple truncating / zero padding
         # (Lebih baik: linear interpolation untuk array 1D)
         if len(data_arr) == SEQ_LEN:
@@ -106,16 +145,14 @@ def main():
             try:
                 raw_df = pd.read_csv(csv_path)
                 raw_df = apply_sensor_fusion(raw_df)
-                
-                # Pastikan channel ada, jika speed ga ada, set 0
                 if 'speed' not in raw_df.columns:
                     raw_df['speed'] = 0.0
+                raw_df = compute_engineered_features(raw_df)
                     
                 for _, row in group.iterrows():
                     t_event = row["time_s"]
-                    # Random Jittering
-                    jitter = np.random.uniform(-0.5, 0.5)
-                    t_window_center = t_event + jitter
+                    # Jittering is now done dynamically during training
+                    t_window_center = t_event
                     
                     seq = extract_sequence(raw_df, t_window_center)
                     
@@ -140,6 +177,7 @@ def main():
                 raw_df = apply_sensor_fusion(raw_df)
                 if 'speed' not in raw_df.columns:
                     raw_df['speed'] = 0.0
+                raw_df = compute_engineered_features(raw_df)
                     
                 event_times = df_events[df_events["trip_id"] == trip_id]["time_s"].values
                 duration = (raw_df["timestamp"].iloc[-1] - raw_df["timestamp"].iloc[0]) / 1000.0
