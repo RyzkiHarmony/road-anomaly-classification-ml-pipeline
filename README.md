@@ -23,10 +23,10 @@ Project ini memproses data murni dari **akselerometer**, **giroskop**, dan **GPS
 
 **Tahapan Utama Final:**
 1. **Sensor Fusion (`sensor_fusion.py`)** — Memisahkan gravitasi dari akselerasi linear menggunakan *causal filter* (`scipy.signal.lfilter`) untuk zero-latency di perangkat *mobile*, menghasilkan `a_vertical`, `a_horizontal`, dan `speed`.
-2. **Windowing & Curation (`build_dataset_cnn.py`)** — Mengekstrak jendela waktu 2 detik (200 *timestamps*). Menerapkan **Random Jittering** untuk menghindari *Alignment Bias* (memastikan model mengenali lubang di posisi acak, bukan hanya di tengah *window*).
+2. **Windowing & Curation (`build_dataset_cnn.py`)** — Mengekstrak jendela waktu 2 detik (200 *timestamps*). Menerapkan **Linear Interpolation** (dilanjutkan ffill/bfill) untuk membersihkan data kosong tanpa lonjakan buatan, serta **Random Jittering** dinamis untuk menghindari *Alignment Bias* (memastikan model mengenali lubang di posisi acak, bukan hanya di tengah *window*).
 3. **Hard Negative Mining (`hard_negative_mining.py`)** — Menggali data sensor murni dengan *sliding window* untuk menemukan *False Positive* ekstrem dan memaksanya masuk sebagai kelas `Non-Event` tambahan.
-4. **CNN Training (`train_cnn.py`)** — Melatih arsitektur Lightweight 1D-CNN murni dari data `(3, 200)`. Terbukti mengalahkan fitur manual XGBoost dengan skor F1 `0.54` untuk kelas Pothole (Out-of-Fold).
-5. **Hyperparameter Tuning (`tune_cnn.py`)** — Optimisasi otomatis dengan **Optuna** untuk *Learning Rate*, *Dropout*, dan ukuran *Filter* secara efisien (3-Fold CV).
+4. **CNN Training (`train_cnn.py`)** — Melatih arsitektur Lightweight 1D-CNN murni dari data 10-channel `(10, 200)`. Mengimplementasikan **Focal Loss + Dampened Class Weights** dan mengevaluasi performa riil menggunakan **Optimized Threshold** (bukan sekadar default argmax 0.5) yang meminimalkan *False Negative*.
+5. **Hyperparameter Tuning (`tune_cnn.py`)** — Optimisasi otomatis dengan **Optuna** secara selaras (menggunakan augmentasi dinamis, Focal Loss, dan LR scheduler yang identik dengan pipeline training) untuk meminimalkan *gap* evaluasi.
 6. **ONNX Export (`export_onnx.py`)** — Membekukan model PyTorch ke format universal (`.onnx`) yang super ringan (<15K parameter) untuk *inference real-time* di Kotlin/Android.
 
 ## Struktur Folder Relevan
@@ -43,10 +43,10 @@ ml_pipelines/
 │
 ├── 06_1dcnn/                   ← Lingkungan Utama (Arsitektur Deep Learning)
 │   ├── model.py                ← Definisi arsitektur PyTorch 1D-CNN
-│   ├── build_dataset_cnn.py    ← Pengekstrakan time-series array
+│   ├── build_dataset_cnn.py    ← Pengekstrakan time-series array (Interpolasi Linier)
 │   ├── hard_negative_mining.py ← Skrip pencarian False Positive ekstrem
-│   ├── tune_cnn.py             ← Optimisasi Hyperparameter (Optuna)
-│   ├── train_cnn.py            ← Skrip training (K-Fold Validation) & Thresholding
+│   ├── tune_cnn.py             ← Optimisasi Hyperparameter (Optuna selaras 10-Ch)
+│   ├── train_cnn.py            ← Skrip training (K-Fold Validation) & Thresholding Optimal
 │   ├── export_onnx.py          ← Skrip konversi PyTorch ke ONNX
 │   ├── data/                   ← [GitIgnored] NPY tensors untuk training
 │   └── models/                 ← [GitIgnored] Model tersimpan (.pth & .onnx)
@@ -68,13 +68,13 @@ ml_pipelines/
 ```bash
 python 06_1dcnn/build_dataset_cnn.py
 ```
-*Ini akan menyapu semua label CSV dan menghasilkan file `X.npy`, `y.npy`, `groups.npy` di folder `data/`.*
+*Ini akan menyapu semua label CSV, menginterpolasi data kosong, dan menghasilkan file `X.npy`, `y.npy`, `groups.npy` di folder `data/`.*
 
 ### 2. Jalankan Tuning Optuna (Opsional)
 ```bash
 python 06_1dcnn/tune_cnn.py
 ```
-*Gunakan ini untuk mengeksplorasi kombinasi dropout & filter yang optimal jika ada penambahan ratusan dataset baru.*
+*Mengeksplorasi kombinasi dropout & filter yang optimal dengan simulasi pipeline training yang presisi.*
 
 ### 3. Tambang Data Hard Negative (Opsional/Iteratif)
 ```bash
@@ -86,7 +86,7 @@ python 06_1dcnn/hard_negative_mining.py
 ```bash
 python 06_1dcnn/train_cnn.py
 ```
-*Akan melatih model dengan algoritma Stratified Group K-Fold untuk mencegah Data Leakage antar trip, kemudian mencetak Classification Report mendetail dan mencari Threshold Pothole terbaik.*
+*Melatih model dengan algoritma Stratified Group K-Fold untuk mencegah Data Leakage antar trip, kemudian mencetak Classification Report (Default vs. Optimized Threshold) serta menyimpan visualisasi Confusion Matrix yang telah disesuaikan dengan threshold optimal.*
 
 ### 5. Ekspor ke Android (ONNX)
 ```bash
@@ -98,3 +98,5 @@ python 06_1dcnn/export_onnx.py
 - Model ini tidak di-deploy menggunakan fitur XGBoost karena **Feature Engineering** secara manual terbukti rapuh terhadap **Translation Variance** (posisi lubang yang bergeser dalam detak 2 detik).
 - Walaupun CNN mengungguli XGBoost, model ini menderita **High Bias (Fisika)** karena sensor IMU murni tidak memiliki komponen visual (kamera), menyebabkan batas absolut dalam membedakan benturan suspensi ekstrem (seperti rel kereta api) dengan lubang asli.
 - Proses komputasi pada Edge Device ditekan habis-habisan (O(N) *complexity*) dengan mengandalkan filter konvolusi 1D murni tanpa operasi *sorting* atau statistik rekursif.
+- Preprocessing data menggunakan interpolasi linier untuk menjamin kontinuitas sinyal sensor sebelum dihitung nilai turunannya (jerk & crest factor).
+- Threshold probabilitas kelas dikalibrasi pasca-latih menggunakan kurva Precision-Recall untuk meminimalkan misklasifikasi krusial pada lubang jalan.

@@ -21,19 +21,9 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-# EPOCHS: Batas atas pencarian epoch optimal via K-Fold CV.
-# Model final TIDAK dilatih sebanyak EPOCHS, melainkan menggunakan
-# rata-rata best epoch per fold (lihat variabel `optimal_epochs`).
-# Eksperimen menunjukkan konvergensi di epoch 9-22; ceiling 50 sudah memadai.
 EPOCHS = 30
 BATCH_SIZE = 64
 LR = 0.000828659730834538
-
-# ─── SMOTE Configuration ───
-# SMOTE ratio: target jumlah sampel minority relatif terhadap majority.
-# 0.5 = minority di-oversample hingga 50% dari jumlah majority.
-# Tidak full-balance (1.0) karena over-representation sintetis bisa
-# memperkenalkan artefak dan menurunkan precision.
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
