@@ -6,7 +6,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_class_weight
-from sklearn.metrics import f1_score, precision_recall_curve, auc
+from sklearn.metrics import f1_score, precision_recall_curve, auc, precision_recall_fscore_support
 from imblearn.over_sampling import SMOTE
 
 import sys
@@ -23,7 +23,7 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 
 EPOCHS = 30
 BATCH_SIZE = 64
-LR = 0.000828659730834538
+LR = 0.0001 # 0.000828659730834538 
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
@@ -98,9 +98,12 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        ce_loss = nn.functional.cross_entropy(inputs, targets, weight=self.weight, reduction='none')
+        ce_loss = nn.functional.cross_entropy(inputs, targets, reduction='none')
         pt = torch.exp(-ce_loss)  # p_t = probability of correct class
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+
+        if self.weight is not None:
+            focal_loss = self.weight[targets] * focal_loss
 
         if self.reduction == 'mean':
             return focal_loss.mean()
@@ -157,9 +160,50 @@ def apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO):
     unique_after, counts_after = np.unique(y_resampled, return_counts=True)
     before_str = ", ".join([f"{u}:{c}" for u, c in zip(unique, counts)])
     after_str = ", ".join([f"{u}:{c}" for u, c in zip(unique_after, counts_after)])
-    logger.info(f"SMOTE: {before_str} → {after_str} (total: {len(y_train_np)} → {len(y_resampled)})")
+    logger.info(f"SMOTE: {before_str} -> {after_str} (total: {len(y_train_np)} -> {len(y_resampled)})")
     
     return X_resampled, y_resampled
+
+def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
+    """Greedy Stratified Group Split to balance classes across train/test splits.
+    
+    Ensures that disjoint trip_ids are split into Dev (train_ratio) and Test (1 - train_ratio)
+    such that the proportion of each class in both sets is as close to target as possible.
+    """
+    unique_classes = np.unique(y_raw)
+    class_to_idx = {c: i for i, c in enumerate(unique_classes)}
+    y_idx = np.array([class_to_idx[val] for val in y_raw])
+
+    group_names = np.unique(groups)
+    group_counts = {g: np.array([np.sum(y_idx[groups == g] == i) for i in range(len(unique_classes))]) for g in group_names}
+    total_counts = np.sum(list(group_counts.values()), axis=0)
+
+    train_groups = set()
+    test_groups = set()
+    current_train = np.zeros(len(unique_classes))
+
+    # Sort groups by total minority class count desc
+    minority_indices = [class_to_idx[c] for c in ['Pothole', 'Speed Bump'] if c in class_to_idx]
+    sorted_groups = sorted(group_names, key=lambda g: np.sum(group_counts[g][minority_indices]), reverse=True)
+
+    for g in sorted_groups:
+        counts = group_counts[g]
+        # Minimize MSE of ratios to train_ratio:
+        # If added to train:
+        ratio_if_train = (current_train + counts) / (total_counts + 1e-9)
+        err_train = np.sum((ratio_if_train - train_ratio) ** 2)
+        
+        # If added to test:
+        ratio_if_test = current_train / (total_counts + 1e-9)
+        err_test = np.sum((ratio_if_test - train_ratio) ** 2)
+        
+        if err_train < err_test:
+            train_groups.add(g)
+            current_train += counts
+        else:
+            test_groups.add(g)
+
+    return list(train_groups), list(test_groups)
 
 def main():
     set_seed(42)
@@ -171,12 +215,33 @@ def main():
         logger.error("Data tidak ditemukan. Jalankan build_dataset_cnn.py terlebih dahulu.")
         return
         
-    X = np.load(X_path)
-    y_raw = np.load(y_path)
-    groups = np.load(groups_path)
+    X_all = np.load(X_path)
+    y_raw_all = np.load(y_path)
+    groups_all = np.load(groups_path)
+    
+    # Stratified split 70% Dev Set, 30% Holdout Test Set based on trip_id
+    dev_groups_list, test_groups_list = get_stratified_group_split(groups_all, y_raw_all, train_ratio=0.7)
+    
+    dev_mask = np.isin(groups_all, dev_groups_list)
+    test_mask = np.isin(groups_all, test_groups_list)
+    
+    # Dev data for K-fold CV and training the final model
+    X = X_all[dev_mask]
+    y_raw = y_raw_all[dev_mask]
+    groups = groups_all[dev_mask]
+    
+    # Holdout Test data for final evaluation
+    X_test_np = X_all[test_mask]
+    y_test_raw = y_raw_all[test_mask]
+    groups_test = groups_all[test_mask]
+    
+    logger.info(f"Split Summary (Trip-Based):")
+    logger.info(f"  Dev Set (70%): {len(dev_groups_list)} trips, {len(X)} samples")
+    logger.info(f"  Test Set (30%): {len(test_groups_list)} trips, {len(X_test_np)} samples")
     
     le = LabelEncoder()
     y = le.fit_transform(y_raw)
+    y_test = le.transform(y_test_raw)  # Convert test labels to numeric
     classes = le.classes_
     p_idx = list(classes).index("Pothole")
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1
@@ -184,7 +249,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
     
-    sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    sgkf = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
     
     fold_metrics = []
     
@@ -215,21 +280,21 @@ def main():
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
         
-        # ─── Dampened Class Weights ───
-        # Gunakan sqrt(balanced_weights) untuk mencegah double-compensation
-        # dengan FocalLoss yang sudah me-downweight easy samples via (1-pt)^γ.
+        # Dampened Class Weights (sqrt)
+        # Gunakan sqrt(balanced_weights) pada data hasil SMOTE untuk mencegah double-compensation
         class_weights = compute_class_weight('balanced', classes=np.unique(y_train_smote), y=y_train_smote)
         class_weights = np.sqrt(class_weights)  # Dampening: sqrt
         class_weights = class_weights / class_weights.sum() * len(class_weights)  # Re-normalize
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
-        model = Lightweight1DCNN(in_channels=10, num_classes=len(classes),
+        model = Lightweight1DCNN(in_channels=16, num_classes=len(classes),
                                  conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
         criterion = FocalLoss(weight=class_weights, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
         best_val_loss = float('inf')
+        best_val_prauc = -1.0
         best_model_state = None
         best_epoch_idx = 0
         
@@ -243,6 +308,7 @@ def main():
                 outputs = model(batch_x)
                 loss = criterion(outputs, batch_y)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
                 
                 train_loss += loss.item() * batch_x.size(0)
@@ -273,7 +339,36 @@ def main():
                     
             val_loss /= len(val_loader.dataset)
             
-            if val_loss < best_val_loss:
+            # Hitung PR-AUC untuk kelas minoritas pada data validasi epoch ini (threshold-independent)
+            val_probas_np = np.array(val_probas)
+            val_trues_np = np.array(val_trues)
+            
+            # PR-AUC Pothole
+            y_val_pothole = (val_trues_np == p_idx).astype(int)
+            y_proba_pothole = val_probas_np[:, p_idx]
+            prec_p, rec_p, _ = precision_recall_curve(y_val_pothole, y_proba_pothole)
+            pr_auc_pothole = auc(rec_p, prec_p)
+            
+            # PR-AUC Speed Bump
+            if sb_idx != -1:
+                y_val_sb = (val_trues_np == sb_idx).astype(int)
+                y_proba_sb = val_probas_np[:, sb_idx]
+                prec_sb, rec_sb, _ = precision_recall_curve(y_val_sb, y_proba_sb)
+                pr_auc_sb = auc(rec_sb, prec_sb)
+                val_minority_prauc = (pr_auc_pothole + pr_auc_sb) / 2.0
+            else:
+                val_minority_prauc = pr_auc_pothole
+            
+            # Kriteria penyimpanan: Prioritaskan PR-AUC kelas minoritas tertinggi,
+            # jika sama, gunakan loss terendah sebagai tie-breaker.
+            is_better = False
+            if val_minority_prauc > best_val_prauc:
+                is_better = True
+            elif np.isclose(val_minority_prauc, best_val_prauc) and val_loss < best_val_loss:
+                is_better = True
+                
+            if is_better:
+                best_val_prauc = val_minority_prauc
                 best_val_loss = val_loss
                 best_model_state = model.state_dict()
                 best_epoch_idx = epoch + 1
@@ -464,7 +559,7 @@ def main():
     class_weights_full = class_weights_full / class_weights_full.sum() * len(class_weights_full)
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
-    final_model = Lightweight1DCNN(in_channels=10, num_classes=len(classes),
+    final_model = Lightweight1DCNN(in_channels=16, num_classes=len(classes),
                                    conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
     criterion_full = FocalLoss(weight=class_weights_full, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
@@ -478,6 +573,7 @@ def main():
             outputs = final_model(batch_x)
             loss = criterion_full(outputs, batch_y)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(final_model.parameters(), max_norm=1.0)
             optimizer_full.step()
         scheduler_full.step()
             
@@ -489,5 +585,84 @@ def main():
     
     logger.info("Model final PyTorch disimpan di " + os.path.join(MODEL_DIR, "best_1dcnn.pth"))
     
+    # --- Evaluate Final Model on Holdout Test Set (30%) ---
+    logger.info("Mengevaluasi model final pada Holdout Test Set (30%)...")
+    final_model.eval()
+    
+    X_test_tensor = torch.tensor(X_test_np, dtype=torch.float32)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.long)
+    
+    test_dataset = DynamicJitterDataset(X_test_tensor, y_test_tensor, max_jitter=0,
+                                        noise_std=0, scale_range=None, is_train=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    
+    test_probas = []
+    test_trues = []
+    
+    with torch.no_grad():
+        for batch_x, batch_y in test_loader:
+            batch_x = batch_x.to(device)
+            outputs = final_model(batch_x)
+            probs = torch.softmax(outputs, dim=1)
+            test_probas.extend(probs.cpu().numpy())
+            test_trues.extend(batch_y.numpy())
+            
+    test_probas = np.array(test_probas)
+    test_trues = np.array(test_trues)
+    
+    # Apply optimized thresholds
+    test_preds = np.zeros_like(test_trues)
+    for i in range(len(test_probas)):
+        proba = test_probas[i]
+        p_prob = proba[p_idx]
+        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
+        
+        p_triggered = p_prob >= best_thresh_p
+        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
+        
+        if p_triggered and sb_triggered:
+            if p_prob >= sb_prob:
+                test_preds[i] = p_idx
+            else:
+                test_preds[i] = sb_idx
+        elif p_triggered:
+            test_preds[i] = p_idx
+        elif sb_triggered:
+            test_preds[i] = sb_idx
+        else:
+            test_preds[i] = non_event_idx
+            
+    print("\n" + "=" * 60)
+    print("             HOLDOUT TEST SET EVALUATION             ")
+    print("=" * 60)
+    print(classification_report(test_trues, test_preds, target_names=classes))
+    print("=" * 60 + "\n")
+    
+    # Save test confusion matrix
+    cm_test = confusion_matrix(test_trues, test_preds)
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(cm_test, interpolation='nearest', cmap='Oranges')
+    ax.figure.colorbar(im, ax=ax, shrink=0.8)
+    ax.set(xticks=np.arange(cm_test.shape[1]),
+           yticks=np.arange(cm_test.shape[0]),
+           xticklabels=classes, yticklabels=classes,
+           ylabel='True Label',
+           xlabel='Predicted Label',
+           title='Confusion Matrix (Holdout Test Set)')
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    thresh = cm_test.max() / 2.0
+    for i in range(cm_test.shape[0]):
+        for j in range(cm_test.shape[1]):
+            row_total = cm_test[i].sum()
+            pct = cm_test[i, j] / row_total * 100 if row_total > 0 else 0
+            ax.text(j, i, f"{cm_test[i, j]}\n({pct:.1f}%)",
+                    ha="center", va="center", fontsize=11, fontweight='bold',
+                    color="white" if cm_test[i, j] > thresh else "black")
+    fig.tight_layout()
+    cm_test_path = os.path.join(MODEL_DIR, "confusion_matrix_test.png")
+    fig.savefig(cm_test_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    logger.info(f"Holdout Test confusion matrix disimpan di {cm_test_path}")
+
 if __name__ == "__main__":
     main()

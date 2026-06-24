@@ -25,7 +25,10 @@ CHANNELS = [
     "a_vertical", "a_horizontal", "speed", 
     "a_vertical_crest_factor", "a_vertical_jerk",
     "gx", "gy", "gz", 
-    "g_roll_accel", "g_pitch_accel"
+    "g_roll_accel", "g_pitch_accel",
+    "a_vertical_speed_norm", "jerk_speed_norm",
+    "a_vertical_rms", "a_vertical_zcr",
+    "a_horizontal_rms", "energy_ratio_vh"
 ]
 
 def compute_engineered_features(df):
@@ -58,6 +61,44 @@ def compute_engineered_features(df):
             
     df["g_roll_accel"] = df["gx"].diff().fillna(0.0) / dt
     df["g_pitch_accel"] = df["gy"].diff().fillna(0.0) / dt
+    
+    # 4. Speed-Normalized Acceleration & Jerk
+    # Normalisasi getaran terhadap kecepatan kendaraan untuk menghilangkan
+    # ketergantungan amplitudo pada kecepatan berkendara.
+    # epsilon=0.5 m/s mencegah division by zero saat kendaraan diam/sangat lambat.
+    speed_safe = df["speed"].clip(lower=0).fillna(0.0) + 0.5
+    df["a_vertical_speed_norm"] = df["a_vertical"] / speed_safe
+    df["jerk_speed_norm"] = df["a_vertical_jerk"] / speed_safe
+    
+    # 5. Rolling RMS (Root Mean Square) dari akselerasi vertikal
+    # Mengukur energi getaran rata-rata dalam jendela 200ms (20 sampel @100Hz).
+    # Pothole: lonjakan RMS tajam & singkat. Jalan kasar: RMS menengah kontinu.
+    rms_window = 20
+    df["a_vertical_rms"] = np.sqrt(
+        (df["a_vertical"]**2).rolling(window=rms_window, min_periods=1, center=True).mean()
+    ).fillna(0.0)
+    
+    # 6. Zero Crossing Rate (ZCR) dari akselerasi vertikal
+    # Menghitung fraksi perubahan tanda sinyal dalam jendela 200ms.
+    # Speed Bump: ZCR rendah (osilasi lambat). Jalan berkerikil: ZCR tinggi.
+    zcr_window = 20
+    sign_changes = (np.sign(df["a_vertical"]).diff().abs() > 0).astype(float)
+    df["a_vertical_zcr"] = sign_changes.rolling(
+        window=zcr_window, min_periods=1, center=True
+    ).mean().fillna(0.0)
+    
+    # 7. Rolling RMS dari akselerasi horizontal
+    # Mengukur energi getaran horizontal. Pengereman mendadak memiliki
+    # a_horizontal_rms tinggi tanpa a_vertical_rms tinggi (beda dari Pothole).
+    df["a_horizontal_rms"] = np.sqrt(
+        (df["a_horizontal"]**2).rolling(window=rms_window, min_periods=1, center=True).mean()
+    ).fillna(0.0)
+    
+    # 8. Rasio Energi Vertikal / Horizontal
+    # Speed Bump: rasio tinggi (getaran dominan vertikal).
+    # Pothole: rasio menengah (campuran vertikal + horizontal).
+    # Pengereman: rasio rendah (dominan horizontal).
+    df["energy_ratio_vh"] = df["a_vertical_rms"] / (df["a_horizontal_rms"] + 1e-6)
     
     return df
 

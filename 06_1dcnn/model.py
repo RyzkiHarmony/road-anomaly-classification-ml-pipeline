@@ -14,7 +14,7 @@ class Lightweight1DCNN(nn.Module):
         self.branch1_conv2 = nn.Conv1d(conv1_filters, conv2_filters, kernel_size=3, padding=1)
         self.branch1_bn2 = nn.BatchNorm1d(conv2_filters)
         self.branch1_relu2 = nn.ReLU()
-        self.branch1_pool2 = nn.MaxPool1d(kernel_size=12, stride=12, padding=2) # Output length: 8
+        self.branch1_pool2 = nn.AdaptiveMaxPool1d(10) # Output length: 10
         
         # 2. Branch 2: Medium Features (General - Kernel 7)
         self.branch2_conv1 = nn.Conv1d(in_channels, conv1_filters, kernel_size=7, padding=3)
@@ -25,7 +25,7 @@ class Lightweight1DCNN(nn.Module):
         self.branch2_conv2 = nn.Conv1d(conv1_filters, conv2_filters, kernel_size=5, padding=2)
         self.branch2_bn2 = nn.BatchNorm1d(conv2_filters)
         self.branch2_relu2 = nn.ReLU()
-        self.branch2_pool2 = nn.MaxPool1d(kernel_size=12, stride=12, padding=2) # Output length: 8
+        self.branch2_pool2 = nn.AdaptiveMaxPool1d(10) # Output length: 10
         
         # 3. Branch 3: Global / Long Features (Speed Bump / Slope - Kernel 15)
         self.branch3_conv1 = nn.Conv1d(in_channels, conv1_filters, kernel_size=15, padding=7)
@@ -36,12 +36,12 @@ class Lightweight1DCNN(nn.Module):
         self.branch3_conv2 = nn.Conv1d(conv1_filters, conv2_filters, kernel_size=7, padding=3)
         self.branch3_bn2 = nn.BatchNorm1d(conv2_filters)
         self.branch3_relu2 = nn.ReLU()
-        self.branch3_pool2 = nn.MaxPool1d(kernel_size=12, stride=12, padding=2) # Output length: 8
+        self.branch3_pool2 = nn.AdaptiveMaxPool1d(10) # Output length: 10
         
         self.flatten = nn.Flatten()
         
-        # Gabungan dari 3 cabang paralel: conv2_filters * 8 * 3 cabang
-        self.fc1 = nn.Linear(conv2_filters * 8 * 3, 64)
+        # Gabungan dari 3 cabang paralel: conv2_filters * 10 * 3 cabang
+        self.fc1 = nn.Linear(conv2_filters * 10 * 3, 64)
         self.relu3 = nn.ReLU()
         self.dropout = nn.Dropout(dropout_rate)
         self.fc2 = nn.Linear(64, num_classes)
@@ -75,7 +75,8 @@ if __name__ == "__main__":
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Total Parameters: {total_params}")
     
-    # Test forward pass
-    dummy_input = torch.randn(2, 10, 200)
-    out = model(dummy_input)
-    print(f"Output shape: {out.shape}")
+    # Test forward pass with variable lengths (to verify adaptive pooling)
+    for length in [195, 200, 205]:
+        dummy_input = torch.randn(2, 10, length)
+        out = model(dummy_input)
+        print(f"Input length: {length} -> Output shape: {out.shape}")
