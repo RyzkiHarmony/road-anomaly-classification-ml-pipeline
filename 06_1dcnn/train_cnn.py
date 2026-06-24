@@ -262,13 +262,38 @@ def main():
     for fold, (train_idx, val_idx) in enumerate(sgkf.split(X, y, groups)):
         logger.info(f"=== Fold {fold+1} ===")
         
-        # ─── SMOTE Oversampling (hanya pada training data) ───
+        # ─── SMOTE Oversampling (Disabled for Experiment) ───
         X_train_np, y_train_np = X[train_idx], y[train_idx]
-        X_train_smote, y_train_smote = apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO)
+        X_train_smote, y_train_smote = X_train_np, y_train_np
         
-        X_train = torch.tensor(X_train_smote, dtype=torch.float32)
+        # ─── Channel-wise Standardization ───
+        # Compute mean and std per channel across batch and time dimensions: shape (C, 1)
+        # axis=(0, 2) averages over samples and sequence length
+        channel_means = np.mean(X_train_smote, axis=(0, 2), keepdims=True)
+        channel_stds = np.std(X_train_smote, axis=(0, 2), keepdims=True)
+        # Prevent division by zero
+        channel_stds = np.where(channel_stds < 1e-6, 1.0, channel_stds)
+        
+        # Save scaler params from Fold 1 (or we can save from final model training, but let's log these)
+        if fold == 0:
+            import json
+            scaler_params = {
+                "means": channel_means.squeeze().tolist(),
+                "stds": channel_stds.squeeze().tolist()
+            }
+            scaler_path = os.path.join(MODEL_DIR, "scaler_params.json")
+            with open(scaler_path, "w") as f:
+                json.dump(scaler_params, f, indent=4)
+            logger.info(f"Saved Fold 1 channel scaler parameters to {scaler_path}")
+            
+        X_train_scaled = (X_train_smote - channel_means) / channel_stds
+        # Apply the SAME training means and stds to validation data
+        X_val_np = X[val_idx]
+        X_val_scaled = (X_val_np - channel_means) / channel_stds
+        
+        X_train = torch.tensor(X_train_scaled, dtype=torch.float32)
         y_train = torch.tensor(y_train_smote, dtype=torch.long)
-        X_val = torch.tensor(X[val_idx], dtype=torch.float32)
+        X_val = torch.tensor(X_val_scaled, dtype=torch.float32)
         y_val = torch.tensor(y[val_idx], dtype=torch.long)
         
         # Dataset dengan augmentasi on-the-fly
@@ -287,7 +312,7 @@ def main():
         class_weights = class_weights / class_weights.sum() * len(class_weights)  # Re-normalize
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
-        model = Lightweight1DCNN(in_channels=16, num_classes=len(classes),
+        model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
                                  conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
         criterion = FocalLoss(weight=class_weights, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
@@ -435,26 +460,21 @@ def main():
     ix = np.argmax(fscore)
     best_thresh_p = thresholds[ix] if ix < len(thresholds) else 0.5
     
-    print("\n" + "=" * 60)
-    print("              THRESHOLD OPTIMIZATION              ")
-    print("=" * 60)
-    print(f"Proposed Threshold for Pothole: {best_thresh_p:.4f}")
-    print(f"Expected -> Precision: {prec[ix]:.4f}, Recall: {rec[ix]:.4f}, F1: {fscore[ix]:.4f}")
-    
+    # Threshold Optimization for Speed Bump
     best_thresh_sb = 0.5
     if sb_idx != -1:
         y_true_sb = (oof_y_true == sb_idx).astype(int)
         y_proba_sb = oof_y_proba[:, sb_idx]
         prec_sb, rec_sb, thresholds_sb = precision_recall_curve(y_true_sb, y_proba_sb)
-        
         fscore_sb = (2 * prec_sb * rec_sb) / (prec_sb + rec_sb + 1e-9)
         ix_sb = np.argmax(fscore_sb)
         best_thresh_sb = thresholds_sb[ix_sb] if ix_sb < len(thresholds_sb) else 0.5
         
-        print("\n" + "-" * 60)
-        print(f"Proposed Threshold for Speed Bump: {best_thresh_sb:.4f}")
-        print(f"Expected -> Precision: {prec_sb[ix_sb]:.4f}, Recall: {rec_sb[ix_sb]:.4f}, F1: {fscore_sb[ix_sb]:.4f}")
-
+    print("\n" + "=" * 60)
+    print("              METRICS & THRESHOLD SUMMARY              ")
+    print("=" * 60)
+    print(f"Optimal Thresholds -> Pothole: {best_thresh_p:.4f} | Speed Bump: {best_thresh_sb:.4f}")
+    
     # Terapkan threshold optimasi pada OOF predictions
     oof_y_pred = np.zeros_like(oof_y_true)
     non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
@@ -468,7 +488,6 @@ def main():
         sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
         
         if p_triggered and sb_triggered:
-            # Jika kedua threshold terlewati, pilih kelas dengan probabilitas tertinggi
             if p_prob >= sb_prob:
                 oof_y_pred[i] = p_idx
             else:
@@ -480,12 +499,8 @@ def main():
         else:
             oof_y_pred[i] = non_event_idx
 
-    print("\nFinal Report (Out-of-Fold - Unbiased Default Argmax):")
-    print(classification_report(oof_y_true, oof_y_pred_default, target_names=classes))
-    print("-" * 60)
-    print("\nFinal Report (Out-of-Fold - Unbiased Optimized Threshold):")
+    print("\nOut-of-Fold Classification Report (Optimized Threshold):")
     print(classification_report(oof_y_true, oof_y_pred, target_names=classes))
-    print("=" * 60 + "\n")
     
     # --- Confusion Matrix ---
     from sklearn.metrics import confusion_matrix
@@ -495,10 +510,9 @@ def main():
     
     cm = confusion_matrix(oof_y_true, oof_y_pred)
     
-    print("=" * 60)
-    print("        CONFUSION MATRIX (Out-of-Fold - Optimized Threshold)")
-    print("=" * 60)
-    # Header
+    print("-" * 60)
+    print("        CONFUSION MATRIX (Out-of-Fold - Optimized)")
+    print("-" * 60)
     header = f"{'':>12}" + "".join([f"{cls:>12}" for cls in classes])
     print(header)
     print("-" * len(header))
@@ -544,11 +558,28 @@ def main():
     np.save(os.path.join(MODEL_DIR, "oof_y_proba.npy"), oof_y_proba)
     logger.info("OOF predictions disimpan untuk analisis ulang.")
     
-    # --- Train Final Model (dengan SMOTE pada seluruh dataset) ---
-    X_full_smote, y_full_smote = apply_smote(X, y, ratio=SMOTE_RATIO)
-    logger.info(f"Melatih final model dengan seluruh dataset (SMOTE) sebanyak {optimal_epochs} epoch...")
+    # --- Train Final Model (SMOTE Disabled for Experiment) ---
+    X_full_smote, y_full_smote = X, y
     
-    X_full = torch.tensor(X_full_smote, dtype=torch.float32)
+    # ─── Fit and Save Final Scaler ───
+    final_means = np.mean(X_full_smote, axis=(0, 2), keepdims=True)
+    final_stds = np.std(X_full_smote, axis=(0, 2), keepdims=True)
+    final_stds = np.where(final_stds < 1e-6, 1.0, final_stds)
+    
+    import json
+    final_scaler_params = {
+        "means": final_means.squeeze().tolist(),
+        "stds": final_stds.squeeze().tolist()
+    }
+    scaler_path = os.path.join(MODEL_DIR, "scaler_params.json")
+    with open(scaler_path, "w") as f:
+        json.dump(final_scaler_params, f, indent=4)
+    logger.info(f"Saved final channel scaler parameters to {scaler_path}")
+    
+    X_full_scaled = (X_full_smote - final_means) / final_stds
+    logger.info(f"Melatih final model dengan seluruh dataset (SMOTE & Scaled) sebanyak {optimal_epochs} epoch...")
+    
+    X_full = torch.tensor(X_full_scaled, dtype=torch.float32)
     y_full = torch.tensor(y_full_smote, dtype=torch.long)
     full_dataset = DynamicJitterDataset(X_full, y_full, max_jitter=15,
                                          noise_std=0.02, scale_range=(0.85, 1.15), is_train=True)
@@ -559,7 +590,7 @@ def main():
     class_weights_full = class_weights_full / class_weights_full.sum() * len(class_weights_full)
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
-    final_model = Lightweight1DCNN(in_channels=16, num_classes=len(classes),
+    final_model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
                                    conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
     criterion_full = FocalLoss(weight=class_weights_full, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
@@ -589,7 +620,9 @@ def main():
     logger.info("Mengevaluasi model final pada Holdout Test Set (30%)...")
     final_model.eval()
     
-    X_test_tensor = torch.tensor(X_test_np, dtype=torch.float32)
+    # Standardize Test set using the final training parameters
+    X_test_scaled = (X_test_np - final_means) / final_stds
+    X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
     test_dataset = DynamicJitterDataset(X_test_tensor, y_test_tensor, max_jitter=0,

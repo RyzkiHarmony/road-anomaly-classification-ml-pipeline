@@ -28,7 +28,7 @@ os.makedirs(LABELS_FOLDER, exist_ok=True)
 # Ubah ke logging.DEBUG untuk troubleshooting, atau logging.WARNING untuk quiet mode.
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    format="%(asctime)s - %(message)s",
     datefmt="%H:%M:%S",
 )
 

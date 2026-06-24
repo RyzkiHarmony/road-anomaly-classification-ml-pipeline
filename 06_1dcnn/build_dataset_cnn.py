@@ -26,7 +26,6 @@ CHANNELS = [
     "a_vertical_crest_factor", "a_vertical_jerk",
     "gx", "gy", "gz", 
     "g_roll_accel", "g_pitch_accel",
-    "a_vertical_speed_norm", "jerk_speed_norm",
     "a_vertical_rms", "a_vertical_zcr",
     "a_horizontal_rms", "energy_ratio_vh"
 ]

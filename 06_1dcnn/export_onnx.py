@@ -28,13 +28,13 @@ def main():
     classes = np.load(classes_path)
     
     # Initialize model
-    model = Lightweight1DCNN(in_channels=16, num_classes=len(classes),
+    model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
                              conv1_filters=32, conv2_filters=64, dropout_rate=0.169)
     model.load_state_dict(torch.load(pth_path, map_location='cpu'))
     model.eval()
     
-    # Dummy input (Batch_size=1, Channels=10, Length=200)
-    dummy_input = torch.randn(1, 16, 200, requires_grad=True)
+    # Dummy input (Batch_size=1, Channels=14, Length=200)
+    dummy_input = torch.randn(1, 14, 200, requires_grad=True)
     
     onnx_path = os.path.join(MODEL_DIR, "model_1dcnn.onnx")
     
