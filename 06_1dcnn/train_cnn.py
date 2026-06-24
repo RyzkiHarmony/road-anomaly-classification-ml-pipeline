@@ -21,19 +21,12 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-EPOCHS = 30
-BATCH_SIZE = 64
-LR = 0.0001 # 0.000828659730834538 
+EPOCHS = 20
+BATCH_SIZE = 32
+LR = 0.001
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
-    """Dataset dengan augmentasi on-the-fly untuk time-series sensor.
-    
-    Augmentasi yang diterapkan saat training:
-    1. Temporal Jitter: Geser sinyal ±max_jitter timesteps
-    2. Gaussian Noise: Tambah noise σ=0.02 ke sinyal
-    3. Magnitude Scaling: Skala amplitudo 0.85-1.15x secara random per-channel
-    """
     def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15), is_train=True):
         self.X = X
         self.y = y
@@ -87,13 +80,9 @@ def set_seed(seed=42):
         torch.backends.cudnn.benchmark = False
 
 class FocalLoss(nn.Module):
-    """Focal Loss: FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
-    Reduces loss contribution from easy-to-classify samples (Non-Event)
-    and focuses training on hard-to-classify minority samples (Pothole, Speed Bump).
-    """
     def __init__(self, weight=None, gamma=2.0, reduction='mean'):
         super(FocalLoss, self).__init__()
-        self.weight = weight  # class weights (alpha)
+        self.weight = weight
         self.gamma = gamma
         self.reduction = reduction
 
@@ -112,19 +101,6 @@ class FocalLoss(nn.Module):
         return focal_loss
 
 def apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO):
-    """Terapkan SMOTE pada data training time-series.
-    
-    Proses: flatten (N, C, T) → (N, C*T) → SMOTE → reshape kembali → (N', C, T)
-    
-    Args:
-        X_train_np: Array shape (N, C, T) — N samples, C channels, T timesteps
-        y_train_np: Array shape (N,) — label per sample
-        ratio: Target ratio minority/majority (0.5 = 50% dari majority count)
-    
-    Returns:
-        X_resampled: Array (N', C, T)
-        y_resampled: Array (N',)
-    """
     N, C, T = X_train_np.shape
     X_flat = X_train_np.reshape(N, C * T)
     
@@ -165,11 +141,6 @@ def apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO):
     return X_resampled, y_resampled
 
 def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
-    """Greedy Stratified Group Split to balance classes across train/test splits.
-    
-    Ensures that disjoint trip_ids are split into Dev (train_ratio) and Test (1 - train_ratio)
-    such that the proportion of each class in both sets is as close to target as possible.
-    """
     unique_classes = np.unique(y_raw)
     class_to_idx = {c: i for i, c in enumerate(unique_classes)}
     y_idx = np.array([class_to_idx[val] for val in y_raw])
@@ -266,15 +237,10 @@ def main():
         X_train_np, y_train_np = X[train_idx], y[train_idx]
         X_train_smote, y_train_smote = X_train_np, y_train_np
         
-        # ─── Channel-wise Standardization ───
-        # Compute mean and std per channel across batch and time dimensions: shape (C, 1)
-        # axis=(0, 2) averages over samples and sequence length
         channel_means = np.mean(X_train_smote, axis=(0, 2), keepdims=True)
         channel_stds = np.std(X_train_smote, axis=(0, 2), keepdims=True)
-        # Prevent division by zero
         channel_stds = np.where(channel_stds < 1e-6, 1.0, channel_stds)
         
-        # Save scaler params from Fold 1 (or we can save from final model training, but let's log these)
         if fold == 0:
             import json
             scaler_params = {
