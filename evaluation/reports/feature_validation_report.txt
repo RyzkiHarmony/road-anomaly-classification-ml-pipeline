@@ -1,0 +1,44 @@
+======================================================================
+             DATA QUALITY & NUMERICAL VALIDATION REPORT               
+======================================================================
+Total Sampel: 4988
+Total Fitur:  56
+----------------------------------------------------------------------
+Jumlah Nilai NaN/Null: 0
+Jumlah Nilai Infinite: 0
+
+----------------------------------------------------------------------
+VALIDASI BOUNDS DAN FISIKA FITUR:
+----------------------------------------------------------------------
+  - [WARNING] min_z_to_max_z_ratio di luar batas [-1, 1]: min=-10.0000, max=0.2602
+  - [CRITICAL] vertical_energy memiliki nilai ekstrem: max=10801.8128 (Indikasi ketidakstabilan numerik/pembagian nol)
+  - [CRITICAL] speed_vert_interaction memiliki nilai ekstrem: max=87007.3919 (Indikasi ketidakstabilan numerik/pembagian nol)
+
+----------------------------------------------------------------------
+DESCRIPTIVE STATISTICS SUMMARY (Top 20 Features by variance/magnitude):
+----------------------------------------------------------------------
+                                     mean          std         min           max
+speed_vert_interaction        6511.715856  6920.841177    0.000000  87007.391945
+linear_jerk_3d_max            8518.811993  3684.971470  160.354536  23306.643148
+vertical_energy                865.465395   897.069919    0.119177  10801.812756
+gyro_energy                    181.766646   184.421032    0.028498   2030.264361
+gyro_roll_energy               119.802992   141.355715    0.022043   1465.264613
+max_jerk                       196.833529   122.350785    2.617452   1206.911452
+vert_jrk                       196.940543   122.348675    2.975945   1206.911452
+horizontal_to_vertical_ratio   118.624125    72.018872    2.537545    921.608546
+gyro_yaw_energy                 35.651501    32.116851    0.004604    482.753200
+waveform_complexity             65.970324    30.741348    0.999994    100.000000
+down_up_asymmetry               13.910645    28.318379    0.000000    100.000000
+gyro_pitch_energy               26.312153    25.711663    0.001851    315.977694
+peak_mag                        29.351722    14.368468    3.042109    105.332828
+brake_to_bump_ratio             19.444621    12.098534    0.092137     95.915804
+rise_time_ratio                  4.331466     9.763843    0.000000     50.000000
+peak_to_peak                     8.950909     5.314779    0.102612     46.718029
+accel_to_gyro_ratio              5.472686     5.068183    0.163435    180.876984
+hjorth_activity                  3.441866     4.149926    0.000784     51.223250
+speed_mean                       7.859810     3.708512    0.000000     20.455696
+peak_vertical                   -0.804908     3.203092  -25.327710     19.843666
+
+======================================================================
+KESIMPULAN VALIDASI:
+>>> [STATUS: PERLU TINJAUAN] Ditemukan anomali numerik pada beberapa fitur di atas.

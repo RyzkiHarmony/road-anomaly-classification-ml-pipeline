@@ -1,0 +1,21 @@
+======================================================================
+             ONNX LATENCY & RESOURCE BENCHMARK REPORT                 
+======================================================================
+Device: CPU (Single-Threaded Simulation for Mobile Edge)
+----------------------------------------------------------------------
+Metrik                         | XGBoost ONNX       | 1D-CNN ONNX       
+------------------------------------------------------------------------
+Model Size (KB)                | 237.92             | 649.80            
+Input Shape                    | [None, 56]         | ['batch_size', 14, 200]
+Average Latency (ms)           | 0.0172             | 0.2040            
+Standard Deviation (ms)        | 0.0082             | 0.0925            
+95th Percentile (ms)           | 0.0245             | 0.2782            
+Throughput (preds/sec)         | 58217.38           | 4901.37           
+======================================================================
+
+ANALISIS & REKOMENDASI DEPLOYMENT:
+- **Ukuran Penyimpanan:** Model 1D-CNN (649.8 KB) adalah 2.7x lebih besar dari XGBoost (237.9 KB).
+  Namun, kedua model tergolong sangat kecil (<1 MB) dan sangat aman untuk penyimpanan internal Android.
+- **Kecepatan Inferensi:** Waktu eksekusi rata-rata 1D-CNN (0.20 ms) adalah 11.9x dari XGBoost (0.02 ms).
+  Meskipun 1D-CNN lebih lambat, waktu inferensinya (0.20 ms) berada jauh di bawah ambang batas real-time (10 ms).
+  Model 1D-CNN mampu memproses hingga 100+ prediksi per detik pada core CPU tunggal, menjadikannya sangat layak dideploy.

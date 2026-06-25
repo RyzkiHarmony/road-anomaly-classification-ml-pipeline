@@ -10,6 +10,10 @@ from sklearn.metrics import f1_score, precision_recall_curve, auc, precision_rec
 from imblearn.over_sampling import SMOTE
 
 import sys
+# Fix Windows Emoji crash in PyTorch ONNX exporter
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
+
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(_PROJECT_ROOT, "src", "utils"))
 
@@ -706,6 +710,28 @@ def main():
     fig.savefig(cm_test_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
     logger.info(f"Holdout Test confusion matrix disimpan di {cm_test_path}")
+
+    # ─── ONNX EXPORT ───
+    logger.info("Exporting final PyTorch model to ONNX format...")
+    onnx_path = os.path.join(MODEL_DIR, "cnn_1d_model.onnx")
+    dummy_input = torch.randn(1, 14, 200, requires_grad=True).to(device)
+    model.eval()
+    try:
+        torch.onnx.export(
+            model,
+            dummy_input,
+            onnx_path,
+            export_params=True,
+            opset_version=18,
+            do_constant_folding=True,
+            input_names=['input'],
+            output_names=['output'],
+            dynamo=False,
+            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
+        )
+        logger.info(f"Model successfully exported to ONNX format at {onnx_path}")
+    except Exception as e:
+        logger.error(f"Failed to export model to ONNX: {e}")
 
 if __name__ == "__main__":
     main()

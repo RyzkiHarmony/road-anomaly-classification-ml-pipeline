@@ -1,0 +1,38 @@
+============================================================
+             FEATURE IMPORTANCE REPORT                      
+============================================================
+
+--- TOP 15 XGBOOST FEATURES (BY GAIN) ---
+                         Feature  Importance_Gain
+0                   peak_to_peak         0.094854
+1                       max_jerk         0.058576
+2                       vert_jrk         0.055985
+3                    gyro_energy         0.053601
+4                hjorth_activity         0.048073
+5   horizontal_to_vertical_ratio         0.043771
+6                   shape_factor         0.043580
+7                       kurtosis         0.028753
+8                       skewness         0.026553
+9              gyro_pitch_energy         0.026518
+10          min_z_to_max_z_ratio         0.026005
+11               gyro_yaw_energy         0.024923
+12                impulse_factor         0.023453
+13                    peak_mag_g         0.023399
+14               hjorth_mobility         0.022424
+
+--- 1D-CNN CHANNEL IMPORTANCE (BY PERMUTATION F1 DROP) ---
+                    Channel   F1_Drop    New_F1
+0           energy_ratio_vh  0.097544  0.591837
+1                a_vertical  0.094741  0.594640
+2            a_vertical_rms  0.094363  0.595018
+3              a_horizontal  0.088179  0.601202
+4          a_horizontal_rms  0.058763  0.630617
+5           a_vertical_jerk  0.051290  0.638091
+6                     speed  0.050970  0.638410
+7                        gy  0.047046  0.642334
+8                        gz  0.037177  0.652203
+9              g_roll_accel  0.036101  0.653279
+10                       gx  0.033922  0.655458
+11           a_vertical_zcr  0.028404  0.660977
+12            g_pitch_accel  0.025066  0.664315
+13  a_vertical_crest_factor  0.005882  0.683498

@@ -302,7 +302,7 @@ def extract_event_shape_features(window_df, bg_df=None):
         min_z = float(np.min(a_vert))
         max_z = float(np.max(a_vert))
         if max_z > 0:
-            min_z_to_max_z_ratio = min_z / (max_z + 1e-6)
+            min_z_to_max_z_ratio = np.clip(min_z / (max_z + 1e-6), -10.0, 10.0)
             
         idx_min = np.argmin(a_vert)
         idx_max = np.argmax(a_vert)
@@ -363,7 +363,8 @@ def extract_event_shape_features(window_df, bg_df=None):
         abs_peak_idx = np.argmax(np.abs(a_vert))
         time_to_peak = abs_peak_idx  # samples from start to abs peak
         time_from_peak = len(a_vert) - 1 - abs_peak_idx  # samples from abs peak to end
-        rise_time_ratio = float(time_to_peak) / (float(time_from_peak) + 1e-6)
+        # Clip to prevent extreme outliers when time_from_peak is 0
+        rise_time_ratio = np.clip(float(time_to_peak) / (float(time_from_peak) + 1e-6), 0.0, 50.0)
 
     # 5b. Peak Asymmetry: energy ratio before vs after the absolute peak
     # Speed Bump: energy is roughly equal on both sides (~0.5)
@@ -384,20 +385,20 @@ def extract_event_shape_features(window_df, bg_df=None):
     if len(a_vert) > 2:
         arc_length = float(np.sum(np.abs(np.diff(a_vert))))
         straight_dist = float(np.abs(a_vert[-1] - a_vert[0]))
-        waveform_complexity = arc_length / (straight_dist + 1e-6)
+        waveform_complexity = np.clip(arc_length / (straight_dist + 1e-6), 0.0, 100.0)
 
     # 6. EXCLUSIVE FIXED-MOUNT DIRECTIONAL FEATURES (Hard Negative Killers)
     brake_to_bump_ratio = 0.0
     if has_native_lin and vertical_energy > 0:
         ay_arr = seg["lin_ay"].astype(float).values
         brake_energy = float(np.sum(ay_arr ** 2))
-        brake_to_bump_ratio = brake_energy / (vertical_energy + 1e-6)
+        brake_to_bump_ratio = np.clip(brake_energy / (vertical_energy + 1e-6), 0.0, 100.0)
         
     down_up_asymmetry = 0.0
     if len(a_vert) > 0:
         down_energy = float(np.sum(a_vert[a_vert < 0] ** 2))
         up_energy = float(np.sum(a_vert[a_vert > 0] ** 2))
-        down_up_asymmetry = down_energy / (up_energy + 1e-6)
+        down_up_asymmetry = np.clip(down_energy / (up_energy + 1e-6), 0.0, 100.0)
 
     return {
         "num_peaks_accel": num_peaks_accel,
