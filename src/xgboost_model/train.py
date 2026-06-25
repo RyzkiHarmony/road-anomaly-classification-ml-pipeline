@@ -7,15 +7,18 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 
-from config import OUT_FOLDER, get_logger, BEST_FEATURES
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
+
+from config import XGB_OUT_DIR, get_logger, BEST_FEATURES
 
 logger = get_logger(__name__)
 
 def main():
     # ---------- LOAD DATA ----------
-    data_path = os.path.join(OUT_FOLDER, "manual_labeled_windows.csv")
+    data_path = os.path.join(XGB_OUT_DIR, "xgboost_labeled_windows.csv")
     if not os.path.exists(data_path):
-        logger.error(f"Dataset not found at {data_path}. Please run build_train_set.py first.")
+        logger.error(f"Dataset not found at {data_path}. Please run build_xgboost_data.py first.")
         return
 
     logger.info(f"Loading dataset from {data_path}...")
@@ -129,13 +132,13 @@ def main():
 
         # XGBoost with strong regularization to prevent overfitting on Hard Negatives
         model = XGBClassifier(
-            n_estimators=40,
-            max_depth=2,
-            min_child_weight=10,
-            learning_rate=0.05,
+            n_estimators=100,
+            max_depth=4,
+            min_child_weight=1,
+            learning_rate=0.1,
             subsample=0.7,
             colsample_bytree=0.7,
-            reg_lambda=5.0,
+            reg_lambda=1.0,
             reg_alpha=1.0,
             random_state=42,
             n_jobs=1
@@ -233,8 +236,11 @@ def main():
     
     # Save Out-of-Fold Confusion Matrix
     cm_oof = confusion_matrix(oof_y_true, oof_y_pred_opt)
-    model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+    _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    model_dir = os.path.join(_PROJECT_ROOT, "evaluation", "models", "xgboost")
+    report_dir = os.path.join(_PROJECT_ROOT, "evaluation", "reports", "xgboost")
     os.makedirs(model_dir, exist_ok=True)
+    os.makedirs(report_dir, exist_ok=True)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(cm_oof, interpolation='nearest', cmap='Blues')
@@ -255,7 +261,7 @@ def main():
                     ha="center", va="center", fontsize=11, fontweight='bold',
                     color="white" if cm_oof[i, j] > thresh else "black")
     fig.tight_layout()
-    cm_path = os.path.join(model_dir, "confusion_matrix.png")
+    cm_path = os.path.join(report_dir, "xgboost_confusion_matrix_oof.png")
     fig.savefig(cm_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
     logger.info(f"OOF Confusion matrix disimpan di {cm_path}")
@@ -263,13 +269,13 @@ def main():
     # ---------- TRAIN FINAL MODEL ON DEV SET ----------
     logger.info("Melatih final model pada seluruh Dev Set...")
     final_model = XGBClassifier(
-        n_estimators=40,
-        max_depth=2,
-        min_child_weight=10,
-        learning_rate=0.05,
+        n_estimators=100,
+        max_depth=4,
+        min_child_weight=1,
+        learning_rate=0.1,
         subsample=0.7,
         colsample_bytree=0.7,
-        reg_lambda=5.0,
+        reg_lambda=1.0,
         reg_alpha=1.0,
         random_state=42,
         n_jobs=1
@@ -278,12 +284,12 @@ def main():
     final_model.fit(X_dev, y_dev, sample_weight=weights_final)
 
     # ---------- SAVE ARTIFACTS ----------
-    pkl_path = os.path.join(model_dir, "best_model.pkl")
+    pkl_path = os.path.join(model_dir, "xgboost_model.pkl")
     joblib.dump(final_model, pkl_path)
-    joblib.dump(le, os.path.join(model_dir, "label_encoder.pkl"))
+    joblib.dump(le, os.path.join(model_dir, "xgboost_label_encoder.pkl"))
     
     import json
-    with open(os.path.join(model_dir, "feature_cols.json"), "w") as f:
+    with open(os.path.join(model_dir, "xgboost_features.json"), "w") as f:
         json.dump(feature_cols, f, indent=2)
     logger.info(f"Final model pickle saved at {pkl_path}")
 
@@ -339,7 +345,7 @@ def main():
                     ha="center", va="center", fontsize=11, fontweight='bold',
                     color="white" if cm_test[i, j] > thresh else "black")
     fig.tight_layout()
-    cm_test_path = os.path.join(model_dir, "confusion_matrix_test.png")
+    cm_test_path = os.path.join(report_dir, "xgboost_confusion_matrix_holdout.png")
     fig.savefig(cm_test_path, dpi=150, bbox_inches='tight')
     plt.close(fig)
     logger.info(f"Holdout Test confusion matrix disimpan di {cm_test_path}")
@@ -359,7 +365,7 @@ def main():
             target_opset=15
         )
         
-        onnx_path = os.path.join(model_dir, "best_model.onnx")
+        onnx_path = os.path.join(model_dir, "xgboost_model.onnx")
         with open(onnx_path, "wb") as f:
             f.write(onnx_model.SerializeToString())
         logger.info(f"Model successfully exported to ONNX format at {onnx_path}")
