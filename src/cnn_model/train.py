@@ -26,16 +26,21 @@ os.makedirs(REPORT_DIR, exist_ok=True)
 
 EPOCHS = 20
 BATCH_SIZE = 32
-LR = 0.001
+LR = 0.0005
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
-    def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15), is_train=True):
+    def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15),
+                 time_warp_prob=0.5, time_warp_mag=0.1, channel_drop_prob=0.1,
+                 is_train=True):
         self.X = X
         self.y = y
         self.max_jitter = max_jitter
         self.noise_std = noise_std
         self.scale_range = scale_range
+        self.time_warp_prob = time_warp_prob
+        self.time_warp_mag = time_warp_mag
+        self.channel_drop_prob = channel_drop_prob
         self.is_train = is_train
 
     def __len__(self):
@@ -46,7 +51,7 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
         y = self.y[idx]
         
         if self.is_train:
-            # 1. Temporal Jitter
+            # 1. Temporal Jitter (shift entire signal)
             if self.max_jitter > 0:
                 shift = np.random.randint(-self.max_jitter, self.max_jitter + 1)
                 if shift != 0:
@@ -57,17 +62,53 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
                     else:
                         x[..., shift:] = x[..., shift-1:shift]
             
-            # 2. Gaussian Noise Injection
+            # 2. Time Warping (non-linear temporal deformation)
+            # Simulates variable vehicle speed by warping the time axis
+            # using a smooth random curve (4 control points, cubic interp)
+            if self.time_warp_prob > 0 and np.random.rand() < self.time_warp_prob:
+                T = x.shape[-1]
+                # Generate smooth warping curve with 4 control points
+                n_knots = 4
+                knot_positions = np.linspace(0, T - 1, n_knots + 2)
+                knot_offsets = np.random.uniform(-self.time_warp_mag * T, 
+                                                  self.time_warp_mag * T, 
+                                                  size=n_knots + 2)
+                knot_offsets[0] = 0  # Anchor start
+                knot_offsets[-1] = 0  # Anchor end
+                
+                # Interpolate warping offsets to all timesteps
+                orig_indices = np.arange(T, dtype=np.float32)
+                warped_indices = np.interp(orig_indices, knot_positions, 
+                                           knot_positions + knot_offsets)
+                # Clip to valid range
+                warped_indices = np.clip(warped_indices, 0, T - 1)
+                
+                # Resample using linear interpolation
+                warped_int = warped_indices.astype(np.int64)
+                warped_frac = warped_indices - warped_int
+                warped_int_next = np.minimum(warped_int + 1, T - 1)
+                
+                warped_frac_t = torch.from_numpy(warped_frac).float().unsqueeze(0)
+                x = x[:, warped_int] * (1 - warped_frac_t) + x[:, warped_int_next] * warped_frac_t
+            
+            # 3. Gaussian Noise Injection
             if self.noise_std > 0:
                 noise = torch.randn_like(x) * self.noise_std
                 x = x + noise
             
-            # 3. Magnitude Scaling (per-channel random scale)
+            # 4. Magnitude Scaling (per-channel random scale)
             if self.scale_range is not None:
                 lo, hi = self.scale_range
                 n_channels = x.shape[0]
                 scale = torch.FloatTensor(n_channels, 1).uniform_(lo, hi)
                 x = x * scale
+            
+            # 5. Channel Dropout (zero out a random channel)
+            # Simulates sensor fault or device orientation change
+            if self.channel_drop_prob > 0 and np.random.rand() < self.channel_drop_prob:
+                n_channels = x.shape[0]
+                drop_idx = np.random.randint(0, n_channels)
+                x[drop_idx, :] = 0.0
                 
         return x, y
 
@@ -283,7 +324,7 @@ def main():
         
         model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
                                  conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
-        criterion = FocalLoss(weight=class_weights, gamma=2.0)
+        criterion = FocalLoss(weight=class_weights, gamma=1.5)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
@@ -561,7 +602,7 @@ def main():
     
     final_model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
                                    conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
-    criterion_full = FocalLoss(weight=class_weights_full, gamma=2.0)
+    criterion_full = FocalLoss(weight=class_weights_full, gamma=1.5)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
     scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
     

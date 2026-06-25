@@ -7,6 +7,7 @@ import torch
 import json
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve, auc
+from sklearn.isotonic import IsotonicRegression
 
 # Path Setup
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -84,17 +85,37 @@ def evaluate_xgb():
     y_test = le.transform(y_test_raw)
     classes = le.classes_
     
-    # Optimized Thresholds from XGBoost calibration
-    best_thresh_p = 0.4411
-    best_thresh_sb = 0.4439
+    # Load calibrated thresholds from JSON
+    thresh_path = os.path.join(XGB_MODEL_DIR, "xgboost_thresholds.json")
+    if os.path.exists(thresh_path):
+        with open(thresh_path, "r") as f:
+            thresh_config = json.load(f)
+        best_thresh_p = thresh_config["pothole_threshold"]
+        best_thresh_sb = thresh_config["speed_bump_threshold"]
+        print(f"  Loaded calibrated thresholds: Pothole={best_thresh_p:.4f}, SpeedBump={best_thresh_sb:.4f}")
+    else:
+        best_thresh_p = 0.5
+        best_thresh_sb = 0.5
     
     p_idx = list(classes).index("Pothole")
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1
     non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
     
-    probas = model.predict_proba(X_test)
-    preds = np.zeros_like(y_test)
+    raw_probas = model.predict_proba(X_test)
     
+    # Apply isotonic calibration if calibrators exist
+    cal_path = os.path.join(XGB_MODEL_DIR, "xgboost_calibrators.pkl")
+    if os.path.exists(cal_path):
+        calibrators = joblib.load(cal_path)
+        probas = np.column_stack([
+            calibrators[i].predict(raw_probas[:, i]) for i in range(len(classes))
+        ])
+        probas = probas / probas.sum(axis=1, keepdims=True)
+        print("  Applied isotonic calibration to probabilities.")
+    else:
+        probas = raw_probas
+    
+    preds = np.zeros_like(y_test)
     for i in range(len(probas)):
         proba = probas[i]
         p_prob = proba[p_idx]
@@ -159,9 +180,9 @@ def evaluate_cnn():
         outputs = model(X_test_tensor)
         probas = torch.softmax(outputs, dim=1).numpy()
         
-    # Calibrated thresholds for CNN
-    best_thresh_p = 0.4861
-    best_thresh_sb = 0.5364
+    # Load latest calibrated thresholds for CNN
+    best_thresh_p = 0.5102
+    best_thresh_sb = 0.6382
     
     p_idx = list(classes).index("Pothole")
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1

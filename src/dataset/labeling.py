@@ -1,35 +1,3 @@
-# labeling.py
-# Multisensor road anomaly candidate generation pipeline for motorcycle data.
-#
-# DESIGN NOTES (for skripsi methodology):
-# - Data dikumpulkan dengan smartphone pada sepeda motor.
-# - Motor memiliki engine vibration yang tinggi, terutama saat idle/kecepatan
-#   rendah.  Oleh karena itu, speed TIDAK digunakan sebagai hard filter untuk
-#   membuang raw sample sebelum peak detection.
-# - Speed digunakan sebagai KONTEKS pada tahap event scoring setelah
-#   clustering, sehingga event pada kecepatan rendah mendapat skor lebih
-#   rendah tanpa otomatis dihapus.  Ini menjaga recall tetap tinggi yang
-#   penting pada tahap labeling manual.
-# - Candidate events diprioritaskan berdasarkan composite score agar labeler
-#   bisa mengerjakan event paling meyakinkan terlebih dahulu.
-#
-# Pipeline stages:
-#   1. Peak detection  – adaptive threshold (median + MAD) per sensor
-#   2. Clustering      – temporal + spatial grouping of proximate peaks
-#   3. Event scoring   – composite score using accel, gyro, jerk, speed, duration
-#   4. Export          – stratified labeling files with priority ordering
-#
-# MODUL:
-#   config.py            – semua konstanta & threshold
-#   helpers.py           – utility functions (haversine, load_trip_meta, dll.)
-#   sensor_fusion.py     – pemisahan gravitasi dari akselerasi linear
-#   peak_detection.py    – deteksi puncak anomali pada a_vertical
-#   feature_extraction.py – ekstraksi fitur event & window
-#   clustering.py        – pengelompokan peak → event
-#   scoring.py           – composite scoring & prioritas
-#   export.py            – export file labeling terstratifikasi
-#   label_suggester.py   – ML + rule-based label suggestion
-
 import os
 import glob
 import numpy as np

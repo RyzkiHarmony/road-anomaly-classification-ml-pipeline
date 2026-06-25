@@ -1,0 +1,57 @@
+======================================================================
+  XGBoost Error Audit: TP vs FP Feature Distribution (Pothole)
+======================================================================
+
+Total TP: 131 | Total FP: 139 | Total FN: 75
+OOF Precision: 0.4852
+OOF Recall: 0.6359
+
+----------------------------------------
+FP Distribution per Trip:
+----------------------------------------
+  dfb4f7d0-1b39-4322-9c7f-fb304e5d8530: 65 FPs
+  7fe6874a-33f5-4a42-bc51-972d099b647a: 30 FPs
+  d4df5c85-fa57-4561-9857-ec3b64f8ef1c: 15 FPs
+  be39b43a-973e-43aa-b09c-bf700836bc0b: 9 FPs
+  eca4890f-8ce7-4817-a8f7-a26c3141d9cd: 7 FPs
+  f5d44722-1c89-4654-a61d-938f66c416e4: 5 FPs
+  bf026662-aa33-4c79-b34d-296f7893c390: 3 FPs
+  16b2f79d-1072-47bc-857d-326afb027ea2: 3 FPs
+  3b5e0799-8d49-4156-abbe-c765e952e601: 1 FPs
+  690b686e-8ba1-405d-bd2f-84f6516c0890: 1 FPs
+
+----------------------------------------------------------------------
+Feature                                TP Mean    FP Mean  Ratio FP/TP Signal
+----------------------------------------------------------------------
+peak_mag                               49.6997    47.9538        0.965 
+peak_vertical                          -1.1506    -0.2385        0.207 *** HIGH ***
+peak_mag_g                              5.0680     4.8899        0.965 
+peak_vertical_g                        -0.1173    -0.0243        0.207 *** HIGH ***
+speed_mean                              7.8826     6.9680        0.884 
+vert_jrk                              468.6857   393.5763        0.840 
+asymmetry_score                         0.2315     0.2393        1.034 
+vertical_energy                      2415.4876  2078.5833        0.861 
+max_jerk                              466.0685   400.0323        0.858 
+peak_to_peak                           19.6352    17.1731        0.875 
+kurtosis                                2.4408     1.6536        0.677 ** MED **
+crest_factor                            3.4421     3.2413        0.942 
+hjorth_activity                        11.1617     9.4563        0.847 
+down_up_asymmetry                       2.3672     9.1874        3.881 *** HIGH ***
+brake_to_bump_ratio                    13.2121    15.0114        1.136 
+horizontal_to_vertical_ratio           71.9850    84.8050        1.178 
+linear_jerk_3d_max                  13389.5609 12939.8380        0.966 
+impulse_factor                          4.7553     4.3281        0.910 
+waveform_complexity                  1341.6771  1167.1410        0.870 
+rise_time_ratio                         2.1958 2863311.4323  1303985.957 *** HIGH ***
+first_peak_polarity                    -0.2519    -0.1511        0.600 ** MED **
+snr_vertical                            1.0000     1.0000        1.000 
+
+======================================================================
+  Most Discriminative Features (FP/TP ratio far from 1.0)
+======================================================================
+  rise_time_ratio                     Ratio=1303985.957 (FP >> TP)
+  down_up_asymmetry                   Ratio=3.881 (FP >> TP)
+  peak_vertical                       Ratio=0.207 (FP << TP)
+  peak_vertical_g                     Ratio=0.207 (FP << TP)
+  first_peak_polarity                 Ratio=0.600 (FP << TP)
+  kurtosis                            Ratio=0.677 (FP << TP)

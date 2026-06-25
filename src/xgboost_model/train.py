@@ -2,10 +2,12 @@ import os
 import pandas as pd
 import numpy as np
 import joblib
+import json
 from sklearn.model_selection import GroupShuffleSplit
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.isotonic import IsotonicRegression
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
@@ -242,6 +244,12 @@ def main():
     os.makedirs(model_dir, exist_ok=True)
     os.makedirs(report_dir, exist_ok=True)
 
+    # --- Save OOF predictions for future error audits ---
+    np.save(os.path.join(model_dir, "xgb_oof_y_true.npy"), oof_y_true)
+    np.save(os.path.join(model_dir, "xgb_oof_y_pred.npy"), oof_y_pred_opt)
+    np.save(os.path.join(model_dir, "xgb_oof_y_proba.npy"), oof_y_proba)
+    logger.info("OOF predictions saved for error audit.")
+
     fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(cm_oof, interpolation='nearest', cmap='Blues')
     ax.figure.colorbar(im, ax=ax, shrink=0.8)
@@ -283,19 +291,96 @@ def main():
     weights_final = compute_sample_weight('balanced', y_dev)
     final_model.fit(X_dev, y_dev, sample_weight=weights_final)
 
+    # ---------- PROBABILITY CALIBRATION (Isotonic, Post-Hoc on OOF) ----------
+    # Fit per-class IsotonicRegression on OOF probabilities.
+    # OOF probabilities are cross-validated, so no leakage.
+    # This learns a mapping: raw_proba -> calibrated_proba per class.
+    logger.info("Applying Isotonic Probability Calibration on OOF data...")
+    
+    calibrators = {}
+    for cls_idx in range(len(classes)):
+        y_binary = (oof_y_true == cls_idx).astype(float)
+        raw_proba = oof_y_proba[:, cls_idx]
+        
+        ir = IsotonicRegression(y_min=0, y_max=1, out_of_bounds='clip')
+        ir.fit(raw_proba, y_binary)
+        calibrators[cls_idx] = ir
+        
+        # Log calibration effect
+        cal_proba = ir.predict(raw_proba)
+        logger.info(f"  {classes[cls_idx]}: raw mean={raw_proba.mean():.4f} -> cal mean={cal_proba.mean():.4f}")
+    
+    # Apply calibration to OOF probabilities and verify
+    cal_oof_proba = np.column_stack([
+        calibrators[i].predict(oof_y_proba[:, i]) for i in range(len(classes))
+    ])
+    # Normalize to sum to 1
+    cal_oof_proba = cal_oof_proba / cal_oof_proba.sum(axis=1, keepdims=True)
+    cal_oof_pred = np.argmax(cal_oof_proba, axis=1)
+    logger.info("Calibrated OOF report (sanity check):")
+    logger.info("\n" + classification_report(oof_y_true, cal_oof_pred, target_names=classes, zero_division=0))
+
+    # ---------- RE-OPTIMIZE THRESHOLDS ON CALIBRATED OOF PROBABILITIES ----------
+    cal_y_true_pothole = (oof_y_true == p_idx).astype(int)
+    cal_y_proba_pothole = cal_oof_proba[:, p_idx]
+    prec_cal, rec_cal, thresh_cal = precision_recall_curve(cal_y_true_pothole, cal_y_proba_pothole)
+    fscore_cal = (2 * prec_cal * rec_cal) / (prec_cal + rec_cal + 1e-9)
+    ix_cal = np.argmax(fscore_cal)
+    best_thresh_p_cal = thresh_cal[ix_cal] if ix_cal < len(thresh_cal) else 0.5
+    
+    best_thresh_sb_cal = 0.5
+    if sb_idx != -1:
+        cal_y_true_sb = (oof_y_true == sb_idx).astype(int)
+        cal_y_proba_sb = cal_oof_proba[:, sb_idx]
+        prec_sb_cal, rec_sb_cal, thresh_sb_cal = precision_recall_curve(cal_y_true_sb, cal_y_proba_sb)
+        fscore_sb_cal = (2 * prec_sb_cal * rec_sb_cal) / (prec_sb_cal + rec_sb_cal + 1e-9)
+        ix_sb_cal = np.argmax(fscore_sb_cal)
+        best_thresh_sb_cal = thresh_sb_cal[ix_sb_cal] if ix_sb_cal < len(thresh_sb_cal) else 0.5
+    
+    print(f"\nCalibrated Thresholds -> Pothole: {best_thresh_p_cal:.4f} | Speed Bump: {best_thresh_sb_cal:.4f}")
+    print(f"(Pre-calibration -> Pothole: {best_thresh_p:.4f} | Speed Bump: {best_thresh_sb:.4f})")
+
     # ---------- SAVE ARTIFACTS ----------
+    # Save raw model for ONNX export
     pkl_path = os.path.join(model_dir, "xgboost_model.pkl")
     joblib.dump(final_model, pkl_path)
+    
+    # Save calibrated model for Python evaluation
+    cal_pkl_path = os.path.join(model_dir, "xgboost_calibrators.pkl")
+    joblib.dump(calibrators, cal_pkl_path)
+    
     joblib.dump(le, os.path.join(model_dir, "xgboost_label_encoder.pkl"))
     
-    import json
     with open(os.path.join(model_dir, "xgboost_features.json"), "w") as f:
         json.dump(feature_cols, f, indent=2)
-    logger.info(f"Final model pickle saved at {pkl_path}")
+    
+    # Save threshold JSON for Android inference (uses raw ONNX + thresholds)
+    threshold_config = {
+        "pothole_threshold": float(best_thresh_p_cal),
+        "speed_bump_threshold": float(best_thresh_sb_cal),
+        "pothole_class_index": int(p_idx),
+        "speed_bump_class_index": int(sb_idx),
+        "non_event_class_index": int(non_event_idx),
+        "class_names": list(classes),
+        "calibration_method": "isotonic",
+        "note": "Thresholds optimized on calibrated probabilities. For ONNX raw inference, use these thresholds with raw predict_proba output."
+    }
+    thresh_json_path = os.path.join(model_dir, "xgboost_thresholds.json")
+    with open(thresh_json_path, "w") as f:
+        json.dump(threshold_config, f, indent=2)
+    
+    logger.info(f"Raw model saved at {pkl_path}")
+    logger.info(f"Calibrated model saved at {cal_pkl_path}")
+    logger.info(f"Threshold config saved at {thresh_json_path}")
 
-    # --- Evaluate Final Model on Holdout Test Set (30%) ---
-    logger.info("Mengevaluasi model final pada Holdout Test Set (30%)...")
-    test_probas = final_model.predict_proba(X_test)
+    # --- Evaluate Calibrated Model on Holdout Test Set (30%) ---
+    logger.info("Mengevaluasi CALIBRATED model pada Holdout Test Set (30%)...")
+    raw_test_probas = final_model.predict_proba(X_test)
+    # Apply per-class isotonic calibration
+    test_probas = np.column_stack([
+        calibrators[i].predict(raw_test_probas[:, i]) for i in range(len(classes))
+    ])
+    test_probas = test_probas / test_probas.sum(axis=1, keepdims=True)
     
     test_preds = np.zeros_like(y_test)
     for i in range(len(test_probas)):
@@ -303,8 +388,8 @@ def main():
         p_prob = proba[p_idx]
         sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
         
-        p_triggered = p_prob >= best_thresh_p
-        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
+        p_triggered = p_prob >= best_thresh_p_cal
+        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb_cal
         
         if p_triggered and sb_triggered:
             if p_prob >= sb_prob:

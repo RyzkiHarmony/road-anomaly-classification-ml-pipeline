@@ -23,7 +23,7 @@ __pycache__/
 scratch/
 evaluation/models/
 
-data/
+data/processed
 
 graphify-out/
 .graphifyignore
