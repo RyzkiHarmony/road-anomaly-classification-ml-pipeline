@@ -3,7 +3,7 @@ import glob
 import torch
 import numpy as np
 import pandas as pd
-from model import Lightweight1DCNN
+from model import InceptionTime1D
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '05_pipeline_experiment'))
@@ -12,8 +12,9 @@ from sensor_fusion import apply_sensor_fusion
 
 logger = get_logger(__name__)
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_DIR = os.path.join(_PROJECT_ROOT, "data", "processed", "cnn_1d")
+MODEL_DIR = os.path.join(_PROJECT_ROOT, "evaluation", "models", "cnn_1d")
 
 SEQ_LEN = int(WINDOW_SIZE_S * TARGET_HZ)  # 200
 STRIDE = 50  # 0.5s stride
@@ -103,8 +104,8 @@ def get_trip_id_from_csv(csv_path):
     return None
 
 def main():
-    pth_path = os.path.join(MODEL_DIR, "best_1dcnn.pth")
-    classes_path = os.path.join(MODEL_DIR, "classes.npy")
+    pth_path = os.path.join(MODEL_DIR, "cnn_1d_model.pth")
+    classes_path = os.path.join(MODEL_DIR, "cnn_1d_classes.npy")
     
     if not os.path.exists(pth_path):
         logger.error("Model tidak ditemukan. Harus ditraining dulu.")
@@ -114,8 +115,8 @@ def main():
     p_idx = list(classes).index("Pothole")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
-                             conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
+    model = InceptionTime1D(in_channels=14, num_classes=len(classes),
+                           num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
     model.load_state_dict(torch.load(pth_path, map_location=device))
     model.eval()
     

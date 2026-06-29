@@ -21,9 +21,10 @@ __pycache__/
 06_1dcnn/models/
 
 scratch/
-evaluation/models/
 
-data/processed
+evaluation/models/
+data/processed/
+
 
 graphify-out/
 .graphifyignore

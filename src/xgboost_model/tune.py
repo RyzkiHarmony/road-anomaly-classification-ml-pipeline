@@ -3,6 +3,7 @@
 
 import os
 import sys
+import itertools
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -100,7 +101,6 @@ def main():
     best_score = -1.0
     best_params = None
     
-    import itertools
     keys, values = zip(*param_grid.items())
     experiments = [dict(zip(keys, v)) for v in itertools.product(*values)]
     

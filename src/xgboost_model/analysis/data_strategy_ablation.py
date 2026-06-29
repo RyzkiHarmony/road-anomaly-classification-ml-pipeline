@@ -5,6 +5,8 @@ Uses the SAME CV pipeline as train_model.py for fair comparison.
 """
 import sys
 import os
+import glob
+import json
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedGroupKFold
@@ -29,7 +31,6 @@ RANDOM_SEED = 42
 
 def build_dataset(do_undersample=True, do_augment=False):
     """Rebuild the dataset with specified strategies (mirrors build_train_set.py logic)."""
-    import glob, json
     
     gt_path = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
     events_path = os.path.join(OUT_FOLDER, "candidates_events.csv")

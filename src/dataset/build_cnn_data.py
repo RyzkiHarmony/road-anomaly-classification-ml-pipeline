@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import pandas as pd
 import numpy as np
 import sys
@@ -98,7 +99,6 @@ def compute_engineered_features(df):
 
 
 def get_csv_path_for_trip(trip_id):
-    import json
     meta_dir = os.path.join(os.path.dirname(CSV_FOLDER), "meta")
     meta_files = glob.glob(os.path.join(meta_dir, "*.json"))
     for jf in meta_files:

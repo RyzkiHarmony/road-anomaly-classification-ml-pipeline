@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import butter, lfilter, lfilter_zi, filtfilt
 from config import TARGET_HZ
+from filters import butterworth_bandpass_iir
 
 def resample_100hz(df, target_hz=TARGET_HZ):
     """Resample dataframe to TARGET_HZ (e.g. 100Hz = 10ms intervals) using linear interpolation."""
@@ -121,6 +122,9 @@ def apply_sensor_fusion(df, cutoff_hz=2.0):
         df["a_vertical"] = butter_lowpass_filter(a_vert_raw, cutoff=cutoff_denoise, fs=fs)
         df["a_horizontal"] = butter_lowpass_filter(a_horiz_raw, cutoff=cutoff_denoise, fs=fs)
         
+        df["a_vertical"] = butterworth_bandpass_iir(df["a_vertical"].values)
+        df["a_horizontal"] = butterworth_bandpass_iir(df["a_horizontal"].values)
+        
         if "magnitude" not in df.columns:
             df["magnitude"] = np.sqrt(df["ax"]**2 + df["ay"]**2 + df["az"]**2)
             
@@ -190,6 +194,10 @@ def apply_sensor_fusion(df, cutoff_hz=2.0):
     # magnitude kept purely for downstream compatibility if needed, but not for logic
     if "magnitude" not in df.columns:
         df["magnitude"] = np.sqrt(df["ax"]**2 + df["ay"]**2 + df["az"]**2)
+
+    
+    df["a_vertical"] = butterworth_bandpass_iir(df["a_vertical"].values)
+    df["a_horizontal"] = butterworth_bandpass_iir(df["a_horizontal"].values)
 
     df["a_linear_mag"] = np.sqrt(df["a_vertical"]**2 + df["a_horizontal"]**2)
     return df

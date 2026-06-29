@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import glob
+import json
 
 # Removing tqdm dependency
 def tqdm(iterable, **kwargs):
@@ -30,7 +31,6 @@ import argparse
 
 # --- HELPER: Find CSV for Trip ---
 def get_csv_path_for_trip(trip_id):
-    import json
     meta_dir = os.path.join(os.path.dirname(CSV_FOLDER), "meta")
     meta_files = glob.glob(os.path.join(meta_dir, "*.json"))
     for jf in meta_files:

@@ -3,11 +3,16 @@ import pandas as pd
 import numpy as np
 import joblib
 import json
-from sklearn.model_selection import GroupShuffleSplit
-from sklearn.preprocessing import StandardScaler
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from sklearn.model_selection import GroupShuffleSplit, StratifiedGroupKFold
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve, auc
 from sklearn.isotonic import IsotonicRegression
+from sklearn.utils.class_weight import compute_sample_weight
+from xgboost import XGBClassifier
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
@@ -64,14 +69,6 @@ def main():
         source_values = np.array(['original'] * len(df))
 
     # ---------- SPLIT DEV SET (70%) AND HOLDOUT TEST SET (30%) ----------
-    from sklearn.model_selection import StratifiedGroupKFold
-    from xgboost import XGBClassifier
-    from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve, auc
-    from sklearn.preprocessing import LabelEncoder
-    from sklearn.utils.class_weight import compute_sample_weight
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
 
     # Split Dev/Holdout based on trip_id using the custom function
     dev_groups_list, test_groups_list = get_stratified_group_split(groups, y, train_ratio=0.7)
