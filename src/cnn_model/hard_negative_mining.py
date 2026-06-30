@@ -24,7 +24,8 @@ CHANNELS = [
     "gx", "gy", "gz", 
     "g_roll_accel", "g_pitch_accel",
     "a_vertical_rms", "a_vertical_zcr",
-    "a_horizontal_rms", "energy_ratio_vh"
+    "a_horizontal_rms", "energy_ratio_vh",
+    "lin_ax", "lin_ay", "lin_az"
 ]
 
 CONF_THRESHOLD = 0.50
@@ -115,7 +116,7 @@ def main():
     p_idx = list(classes).index("Pothole")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = InceptionTime1D(in_channels=14, num_classes=len(classes),
+    model = InceptionTime1D(in_channels=18, num_classes=len(classes),
                            num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
     model.load_state_dict(torch.load(pth_path, map_location=device))
     model.eval()

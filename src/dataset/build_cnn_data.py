@@ -29,7 +29,13 @@ CHANNELS = [
     "gx", "gy", "gz", 
     "g_roll_accel", "g_pitch_accel",
     "a_vertical_rms", "a_vertical_zcr",
-    "a_horizontal_rms", "energy_ratio_vh"
+    "a_horizontal_rms", "energy_ratio_vh",
+    # Komponen 3D linear acceleration: memberikan info arah longitudinal vs lateral.
+    "lin_ax", "lin_ay", "lin_az",
+    # Magnitude deviation dari 1G: sqrt(ax²+ay²+az²) - 9.81.
+    # Pothole: brief weightlessness (dip negatif) → spike positif.
+    # Speed Bump: hanya spike positif. Non-Event: near zero.
+    "magnitude_deviation"
 ]
 
 def compute_engineered_features(df):
@@ -94,7 +100,24 @@ def compute_engineered_features(df):
     # Pothole: rasio menengah (campuran vertikal + horizontal).
     # Pengereman: rasio rendah (dominan horizontal).
     df["energy_ratio_vh"] = df["a_vertical_rms"] / (df["a_horizontal_rms"] + 1e-6)
-    
+
+    # 9. Magnitude Deviation dari 1G
+    # Mengukur seberapa jauh total gaya dari gravitasi normal (9.81 m/s²).
+    # Pothole: ban jatuh ke lubang → terjadi setengah-gravitasi sesaat (dip negatif)
+    #         sebelum benturan (spike positif). Pola asimetris dip→spike ini
+    #         tidak dimiliki Speed Bump atau jalan kasar.
+    # Speed Bump: hanya spike positif, tidak ada dip.
+    # Non-Event: mendekati nol secara konsisten.
+    if "magnitude" in df.columns:
+        df["magnitude_deviation"] = df["magnitude"] - 9.81
+    elif "lin_ax" in df.columns and "grav_x" in df.columns:
+        total_ax = df["lin_ax"] + df["grav_x"]
+        total_ay = df["lin_ay"] + df["grav_y"]
+        total_az = df["lin_az"] + df["grav_z"]
+        df["magnitude_deviation"] = np.sqrt(total_ax**2 + total_ay**2 + total_az**2) - 9.81
+    else:
+        df["magnitude_deviation"] = 0.0
+
     return df
 
 

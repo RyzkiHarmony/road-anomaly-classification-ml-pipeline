@@ -333,7 +333,7 @@ def main():
         class_weights = class_weights / class_weights.sum() * len(class_weights)  # Re-normalize
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
-        model = InceptionTime1D(in_channels=14, num_classes=len(classes),
+        model = InceptionTime1D(in_channels=18, num_classes=len(classes),
                                num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
         criterion = FocalLoss(weight=class_weights, gamma=1.5)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
@@ -616,7 +616,7 @@ def main():
     class_weights_full = class_weights_full / class_weights_full.sum() * len(class_weights_full)
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
-    final_model = InceptionTime1D(in_channels=14, num_classes=len(classes),
+    final_model = InceptionTime1D(in_channels=18, num_classes=len(classes),
                                  num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
     criterion_full = FocalLoss(weight=class_weights_full, gamma=1.5)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
@@ -708,8 +708,8 @@ def main():
     print(classification_report(test_trues, test_preds, target_names=classes))
     print("=" * 60 + "\n")
     
-    # Save test confusion matrix
-    cm_test = confusion_matrix(test_trues, test_preds)
+    # Save test confusion matrix (using default argmax)
+    cm_test = confusion_matrix(test_trues, test_preds_default)
     fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(cm_test, interpolation='nearest', cmap='Oranges')
     ax.figure.colorbar(im, ax=ax, shrink=0.8)
@@ -737,7 +737,7 @@ def main():
     # ─── ONNX EXPORT ───
     logger.info("Exporting final PyTorch model to ONNX format...")
     onnx_path = os.path.join(MODEL_DIR, "cnn_1d_model.onnx")
-    dummy_input = torch.randn(1, 14, 200, requires_grad=True).to(device)
+    dummy_input = torch.randn(1, 18, 200, requires_grad=True).to(device)
     model.eval()
     try:
         torch.onnx.export(

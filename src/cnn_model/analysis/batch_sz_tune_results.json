@@ -1,0 +1,22 @@
+[
+    {
+        "batch_size": 16,
+        "val_loss": 0.0842,
+        "val_macro_f1": 0.6264
+    },
+    {
+        "batch_size": 32,
+        "val_loss": 0.0782,
+        "val_macro_f1": 0.6402
+    },
+    {
+        "batch_size": 64,
+        "val_loss": 0.0740,
+        "val_macro_f1": 0.6368
+    },
+    {
+        "batch_size": 128,
+        "val_loss": 0.0683,
+        "val_macro_f1": 0.6058
+    }
+]

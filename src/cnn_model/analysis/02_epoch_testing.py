@@ -12,8 +12,8 @@ from sklearn.utils.class_weight import compute_class_weight
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../..", "05_pipeline_experiment"))
 
-from model import Lightweight1DCNN
-from train_cnn import DynamicJitterDataset, FocalLoss, set_seed, get_stratified_group_split
+from model import InceptionTime1D
+from train import DynamicJitterDataset, FocalLoss, set_seed, get_stratified_group_split, scale_instance_level, apply_smote
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
@@ -61,12 +61,8 @@ def evaluate_dataset(model, loader, device, p_idx, sb_idx, classes,
 def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
                      p_idx, sb_idx, classes, device):
     """Identical to train_cnn.py: CosineAnnealingLR + Max-minority-PR-AUC selection."""
-    ch_means = np.mean(X_tr, axis=(0, 2), keepdims=True)
-    ch_stds  = np.std(X_tr,  axis=(0, 2), keepdims=True)
-    ch_stds  = np.where(ch_stds < 1e-6, 1.0, ch_stds)
-
     def to_ds(X, y, train=False):
-        Xs = (X - ch_means) / ch_stds
+        Xs = scale_instance_level(X)
         return DynamicJitterDataset(
             torch.tensor(Xs, dtype=torch.float32),
             torch.tensor(y,  dtype=torch.long),
@@ -82,8 +78,7 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
     cw   = np.sqrt(cw) / np.sqrt(cw).sum() * len(cw)
     cw_t = torch.tensor(cw, dtype=torch.float32).to(device)
 
-    model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
-                              conv1_filters=32, conv2_filters=64, dropout_rate=0.169).to(device)
+    model = InceptionTime1D(in_channels=18, num_classes=len(classes)).to(device)
     crit = FocalLoss(weight=cw_t, gamma=2.0)
     opt  = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
     sch  = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
@@ -147,20 +142,20 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
         ixsb = np.argmax(fssb)
         t_sb = tsb[ixsb] if ixsb < len(tsb) else 0.5
 
-    return model, ch_means, ch_stds, t_p, t_sb
+    return model, None, None, t_p, t_sb
 
 
 def main():
     set_seed(42)
-    X_all      = np.load(os.path.join(DATA_DIR, "X.npy"))
-    y_raw_all  = np.load(os.path.join(DATA_DIR, "y.npy"))
-    groups_all = np.load(os.path.join(DATA_DIR, "groups.npy"))
+    X_all      = np.load(os.path.join("data", "processed", "cnn_1d", "cnn_1d_X.npy"))
+    y_all      = np.load(os.path.join("data", "processed", "cnn_1d", "cnn_1d_y.npy"))
+    groups_all = np.load(os.path.join("data", "processed", "cnn_1d", "cnn_1d_groups.npy"))
 
-    dev_g, test_g = get_stratified_group_split(groups_all, y_raw_all, train_ratio=0.7)
+    dev_g, test_g = get_stratified_group_split(groups_all, y_all, train_ratio=0.7)
     dev_m, test_m = np.isin(groups_all, dev_g), np.isin(groups_all, test_g)
 
-    X_dev, y_raw_dev, groups_dev = X_all[dev_m], y_raw_all[dev_m], groups_all[dev_m]
-    X_test_raw, y_test_raw       = X_all[test_m], y_raw_all[test_m]
+    X_dev, y_raw_dev, groups_dev = X_all[dev_m], y_all[dev_m], groups_all[dev_m]
+    X_test_raw, y_test_raw       = X_all[test_m], y_all[test_m]
 
     le      = LabelEncoder()
     y_dev   = le.fit_transform(y_raw_dev)
@@ -194,7 +189,7 @@ def main():
                 p_idx=p_idx, sb_idx=sb_idx, classes=classes, device=device)
 
             def make_ld(X_np, y_np, bs=batch_size):
-                Xs  = (X_np - ch_means) / ch_stds
+                Xs = scale_instance_level(X_np)
                 ds  = DynamicJitterDataset(
                     torch.tensor(Xs, dtype=torch.float32),
                     torch.tensor(y_np, dtype=torch.long),
