@@ -30,11 +30,7 @@ CHANNELS = [
     "g_roll_accel", "g_pitch_accel",
     "a_vertical_rms", "a_vertical_zcr",
     "a_horizontal_rms", "energy_ratio_vh",
-    # Komponen 3D linear acceleration: memberikan info arah longitudinal vs lateral.
     "lin_ax", "lin_ay", "lin_az",
-    # Magnitude deviation dari 1G: sqrt(ax²+ay²+az²) - 9.81.
-    # Pothole: brief weightlessness (dip negatif) → spike positif.
-    # Speed Bump: hanya spike positif. Non-Event: near zero.
     "magnitude_deviation"
 ]
 
@@ -49,8 +45,8 @@ def compute_engineered_features(df):
     
     # 2. Crest Factor
     window_sz = 10
-    peak = df["a_vertical"].abs().rolling(window=window_sz, min_periods=1, center=True).max()
-    rms = np.sqrt((df["a_vertical"]**2).rolling(window=window_sz, min_periods=1, center=True).mean())
+    peak = df["a_vertical"].abs().rolling(window=window_sz, min_periods=1).max()
+    rms = np.sqrt((df["a_vertical"]**2).rolling(window=window_sz, min_periods=1).mean())
     crest_factor = peak / (rms + 1e-6)
     df["a_vertical_crest_factor"] = crest_factor.fillna(1.0)
     
@@ -76,7 +72,7 @@ def compute_engineered_features(df):
     # Pothole: lonjakan RMS tajam & singkat. Jalan kasar: RMS menengah kontinu.
     rms_window = 20
     df["a_vertical_rms"] = np.sqrt(
-        (df["a_vertical"]**2).rolling(window=rms_window, min_periods=1, center=True).mean()
+        (df["a_vertical"]**2).rolling(window=rms_window, min_periods=1).mean()
     ).fillna(0.0)
     
     # 6. Zero Crossing Rate (ZCR) dari akselerasi vertikal
@@ -85,14 +81,14 @@ def compute_engineered_features(df):
     zcr_window = 20
     sign_changes = (np.sign(df["a_vertical"]).diff().abs() > 0).astype(float)
     df["a_vertical_zcr"] = sign_changes.rolling(
-        window=zcr_window, min_periods=1, center=True
+        window=zcr_window, min_periods=1
     ).mean().fillna(0.0)
     
     # 7. Rolling RMS dari akselerasi horizontal
     # Mengukur energi getaran horizontal. Pengereman mendadak memiliki
     # a_horizontal_rms tinggi tanpa a_vertical_rms tinggi (beda dari Pothole).
     df["a_horizontal_rms"] = np.sqrt(
-        (df["a_horizontal"]**2).rolling(window=rms_window, min_periods=1, center=True).mean()
+        (df["a_horizontal"]**2).rolling(window=rms_window, min_periods=1).mean()
     ).fillna(0.0)
     
     # 8. Rasio Energi Vertikal / Horizontal

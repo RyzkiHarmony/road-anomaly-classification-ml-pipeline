@@ -117,13 +117,12 @@ def apply_sensor_fusion(df, cutoff_hz=2.0):
         a_horiz_raw = np.sqrt(a_horiz_raw_sq)
         
         fs = float(TARGET_HZ)
-        cutoff_denoise = 6.0
         
-        df["a_vertical"] = butter_lowpass_filter(a_vert_raw, cutoff=cutoff_denoise, fs=fs)
-        df["a_horizontal"] = butter_lowpass_filter(a_horiz_raw, cutoff=cutoff_denoise, fs=fs)
-        
-        df["a_vertical"] = butterworth_bandpass_iir(df["a_vertical"].values)
-        df["a_horizontal"] = butterworth_bandpass_iir(df["a_horizontal"].values)
+        # [CRITICAL FIX]: Do NOT apply 6.0Hz lowpass filter on linear acceleration.
+        # Potholes are high-frequency impulses (10-15Hz). A 6.0Hz lowpass will destroy them.
+        # Only apply the 1-20Hz Bandpass to remove engine noise (>20Hz) and gravity bias (<1Hz).
+        df["a_vertical"] = butterworth_bandpass_iir(a_vert_raw.values)
+        df["a_horizontal"] = butterworth_bandpass_iir(a_horiz_raw.values)
         
         if "magnitude" not in df.columns:
             df["magnitude"] = np.sqrt(df["ax"]**2 + df["ay"]**2 + df["az"]**2)

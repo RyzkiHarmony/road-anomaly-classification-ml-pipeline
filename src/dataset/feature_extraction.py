@@ -218,16 +218,16 @@ def extract_event_shape_features(window_df, bg_df=None):
     gyro_yaw_energy   = 0.0
     gyro_pitch_roll_ratio = 0.0
     if has_gyro:
-        # Asumsi mounting standar motor:
-        #   Y = pitch (depan-belakang miring)
-        #   X = roll  (kiri-kanan oleng)
-        #   Z = yaw   (belok)
+        # Koreksi Orientasi Sumbu (Android Portrait Upright):
+        #   X = pitch (depan-belakang mengangguk/miring)
+        #   Y = yaw   (kiri-kanan belok stir)
+        #   Z = roll  (kiri-kanan oleng/rebah)
         gy_arr = seg["gy"].fillna(0.0).astype(float).values
         gx_arr = seg["gx"].fillna(0.0).astype(float).values
         gz_arr = seg["gz"].fillna(0.0).astype(float).values
-        gyro_pitch_energy = float(np.sum(gy_arr ** 2))
-        gyro_roll_energy  = float(np.sum(gx_arr ** 2))
-        gyro_yaw_energy   = float(np.sum(gz_arr ** 2))
+        gyro_pitch_energy = float(np.sum(gx_arr ** 2)) # Pitch = Rotasi sumbu X
+        gyro_yaw_energy   = float(np.sum(gy_arr ** 2)) # Yaw = Rotasi sumbu Y
+        gyro_roll_energy  = float(np.sum(gz_arr ** 2)) # Roll = Rotasi sumbu Z
         gyro_pitch_roll_ratio = gyro_pitch_energy / (gyro_roll_energy + 1e-6)
 
     # ---------- Fitur Rekomendasi Senior ML: Interaction & PSD ----------
@@ -390,8 +390,9 @@ def extract_event_shape_features(window_df, bg_df=None):
     # 6. EXCLUSIVE FIXED-MOUNT DIRECTIONAL FEATURES (Hard Negative Killers)
     brake_to_bump_ratio = 0.0
     if has_native_lin and vertical_energy > 0:
-        ay_arr = seg["lin_ay"].astype(float).values
-        brake_energy = float(np.sum(ay_arr ** 2))
+        # Pengereman (Deselerasi) terjadi pada sumbu Z (Depan-Belakang) di Android
+        az_arr = seg["lin_az"].astype(float).values
+        brake_energy = float(np.sum(az_arr ** 2))
         brake_to_bump_ratio = np.clip(brake_energy / (vertical_energy + 1e-6), 0.0, 100.0)
         
     down_up_asymmetry = 0.0

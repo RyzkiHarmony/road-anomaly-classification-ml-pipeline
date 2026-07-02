@@ -299,8 +299,8 @@ def main():
         
         if fold == 0:
             scaler_params = {
-                "means": [0.0] * 14,
-                "stds": [1.0] * 14
+                "means": [0.0] * 18,
+                "stds": [1.0] * 18
             }
             scaler_path = os.path.join(MODEL_DIR, "scaler_params.json")
             with open(scaler_path, "w") as f:
@@ -329,7 +329,7 @@ def main():
         # Dampened Class Weights (sqrt)
         # Gunakan sqrt(balanced_weights) pada data hasil SMOTE untuk mencegah double-compensation
         class_weights = compute_class_weight('balanced', classes=np.unique(y_train_smote), y=y_train_smote)
-        class_weights = np.sqrt(class_weights)  # Dampening: sqrt
+        # class_weights = np.sqrt(class_weights)  # Dihapus karena SMOTE tidak digunakan
         class_weights = class_weights / class_weights.sum() * len(class_weights)  # Re-normalize
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         

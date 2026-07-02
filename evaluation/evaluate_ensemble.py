@@ -17,7 +17,7 @@ CNN_DATA_DIR = os.path.join(BASE_DIR, "data", "processed", "cnn_1d")
 XGB_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "xgboost")
 CNN_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "cnn_1d")
 
-from model import Lightweight1DCNN
+from model import InceptionTime1D
 
 def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
     unique_classes = np.unique(y_raw)
@@ -110,15 +110,16 @@ def main():
         xgb_probas = xgb_raw_probas
         
     # CNN Probability Prediction
-    with open(os.path.join(CNN_MODEL_DIR, "cnn_1d_scaler_params.json"), "r") as f:
-        scaler_params = json.load(f)
-    means = np.array(scaler_params["means"]).reshape(1, -1, 1)
-    stds = np.array(scaler_params["stds"]).reshape(1, -1, 1)
+    # Gunakan Instance-level Scaling agar selaras dengan training CNN
+    def scale_instance_level(X, eps=1e-8):
+        mean = np.mean(X, axis=2, keepdims=True)
+        std = np.std(X, axis=2, keepdims=True)
+        return (X - mean) / (std + eps)
     
-    X_cnn_scaled = (X_cnn_test - means) / stds
+    X_cnn_scaled = scale_instance_level(X_cnn_test)
     X_cnn_tensor = torch.tensor(X_cnn_scaled, dtype=torch.float32)
     
-    cnn_model = Lightweight1DCNN(in_channels=14, num_classes=len(classes))
+    cnn_model = InceptionTime1D(in_channels=18, num_classes=len(classes))
     cnn_model.load_state_dict(torch.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_model.pth"), map_location=torch.device('cpu')))
     cnn_model.eval()
     
