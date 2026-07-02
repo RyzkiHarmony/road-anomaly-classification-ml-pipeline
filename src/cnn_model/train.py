@@ -335,7 +335,7 @@ def main():
         
         model = InceptionTime1D(in_channels=18, num_classes=len(classes),
                                num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
-        criterion = FocalLoss(weight=class_weights, gamma=1.5)
+        criterion = FocalLoss(weight=class_weights, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
@@ -618,7 +618,7 @@ def main():
     
     final_model = InceptionTime1D(in_channels=18, num_classes=len(classes),
                                  num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
-    criterion_full = FocalLoss(weight=class_weights_full, gamma=1.5)
+    criterion_full = FocalLoss(weight=class_weights_full, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
     scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
     
