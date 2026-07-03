@@ -27,8 +27,8 @@ IMG_DIR      = os.path.join(os.path.dirname(__file__), "img")
 os.makedirs(IMG_DIR, exist_ok=True)
 
 BATCH_SIZES = [16, 32, 64, 128]
-LR     = 0.001  # Fixed — same as train_cnn.py
-EPOCHS = 20     # Fixed — same as train_cnn.py
+LR     = 0.001  # updated LR from lr_testing.py
+EPOCHS = 20     # updated epochs from epoch_testing.py
 
 def evaluate_dataset(model, loader, device, p_idx, sb_idx, classes,
                      best_thresh_p, best_thresh_sb, criterion):
@@ -82,7 +82,7 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
     vl_ld = DataLoader(to_ds(X_vl, y_vl, False), batch_size=batch_size, shuffle=False)
 
     cw   = compute_class_weight("balanced", classes=np.unique(y_tr), y=y_tr)
-    cw   = np.sqrt(cw) / np.sqrt(cw).sum() * len(cw)
+    cw   = cw / cw.sum() * len(cw)
     cw_t = torch.tensor(cw, dtype=torch.float32).to(device)
 
     model = InceptionTime1D(in_channels=18, num_classes=len(classes)).to(device)
@@ -246,7 +246,7 @@ def main():
                 return DataLoader(ds, batch_size=bs, shuffle=False)
 
             cw_e   = compute_class_weight("balanced", classes=np.unique(y_tr), y=y_tr)
-            cw_e   = np.sqrt(cw_e) / np.sqrt(cw_e).sum() * len(cw_e)
+            cw_e   = cw_e / cw_e.sum() * len(cw_e)
             crit_e = FocalLoss(weight=torch.tensor(cw_e, dtype=torch.float32).to(device), gamma=2.0)
 
             trl, trm, trp = evaluate_dataset(model, make_ld(X_tr, y_tr),        device, p_idx, sb_idx, classes, t_p, t_sb, crit_e)

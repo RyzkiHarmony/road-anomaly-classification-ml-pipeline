@@ -43,13 +43,13 @@ def scale_instance_level(data):
 
 EPOCHS = 20
 BATCH_SIZE = 32
-LR = 0.0005
+LR = 0.001
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
     def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15),
-                 time_warp_prob=0.5, time_warp_mag=0.1, channel_drop_prob=0.1,
-                 is_train=True):
+                 time_warp_prob=0.8, time_warp_mag=0.1, channel_drop_prob=0.1,
+                 is_train=True, non_event_idx=0):
         self.X = X
         self.y = y
         self.max_jitter = max_jitter
@@ -59,17 +59,23 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
         self.time_warp_mag = time_warp_mag
         self.channel_drop_prob = channel_drop_prob
         self.is_train = is_train
+        self.non_event_idx = non_event_idx
 
     def __len__(self):
         return len(self.X)
 
     def __getitem__(self, idx):
         x = self.X[idx].clone() # Clone to avoid in-place modification of dataset array
-        y = self.y[idx]
+        y_val = self.y[idx]
         
         if self.is_train:
+            # Class-Conditioned Probabilities: High for minority, low (but NOT ZERO) for majority
+            # Prevents Artifact Data Leakage where the model learns the "augmentation noise" as a shortcut
+            is_majority = (y_val == self.non_event_idx)
+            aug_multiplier = 0.05 if is_majority else 1.0
+            
             # 1. Temporal Jitter (shift entire signal)
-            if self.max_jitter > 0:
+            if self.max_jitter > 0 and np.random.rand() < aug_multiplier:
                 shift = np.random.randint(-self.max_jitter, self.max_jitter + 1)
                 if shift != 0:
                     x = torch.roll(x, shifts=shift, dims=-1)
@@ -82,7 +88,7 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
             # 2. Time Warping (non-linear temporal deformation)
             # Simulates variable vehicle speed by warping the time axis
             # using a smooth random curve (4 control points, cubic interp)
-            if self.time_warp_prob > 0 and np.random.rand() < self.time_warp_prob:
+            if self.time_warp_prob > 0 and np.random.rand() < (self.time_warp_prob * aug_multiplier):
                 T = x.shape[-1]
                 # Generate smooth warping curve with 4 control points
                 n_knots = 4
@@ -109,12 +115,12 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
                 x = x[:, warped_int] * (1 - warped_frac_t) + x[:, warped_int_next] * warped_frac_t
             
             # 3. Gaussian Noise Injection
-            if self.noise_std > 0:
+            if self.noise_std > 0 and np.random.rand() < aug_multiplier:
                 noise = torch.randn_like(x) * self.noise_std
                 x = x + noise
             
             # 4. Magnitude Scaling (per-channel random scale)
-            if self.scale_range is not None:
+            if self.scale_range is not None and np.random.rand() < aug_multiplier:
                 lo, hi = self.scale_range
                 n_channels = x.shape[0]
                 scale = torch.FloatTensor(n_channels, 1).uniform_(lo, hi)
@@ -122,12 +128,12 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
             
             # 5. Channel Dropout (zero out a random channel)
             # Simulates sensor fault or device orientation change
-            if self.channel_drop_prob > 0 and np.random.rand() < self.channel_drop_prob:
+            if self.channel_drop_prob > 0 and np.random.rand() < (self.channel_drop_prob * aug_multiplier):
                 n_channels = x.shape[0]
                 drop_idx = np.random.randint(0, n_channels)
                 x[drop_idx, :] = 0.0
                 
-        return x, y
+        return x, y_val
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -276,6 +282,7 @@ def main():
     classes = le.classes_
     p_idx = list(classes).index("Pothole")
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1
+    non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
@@ -317,11 +324,11 @@ def main():
         X_val = torch.tensor(X_val_scaled, dtype=torch.float32)
         y_val = torch.tensor(y[val_idx], dtype=torch.long)
         
-        # Dataset dengan augmentasi on-the-fly
-        train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=15, 
-                                              noise_std=0.02, scale_range=(0.85, 1.15), is_train=True)
+        # ─── Stratified Batch Loader ───
+        train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=15,
+                                             noise_std=0.02, scale_range=(0.85, 1.15), is_train=True, non_event_idx=non_event_idx)
         val_dataset = DynamicJitterDataset(X_val, y_val, max_jitter=0,
-                                            noise_std=0, scale_range=None, is_train=False)
+                                           noise_std=0, scale_range=None, is_train=False, non_event_idx=non_event_idx)
         
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -608,11 +615,11 @@ def main():
     X_full = torch.tensor(X_full_scaled, dtype=torch.float32)
     y_full = torch.tensor(y_full_smote, dtype=torch.long)
     full_dataset = DynamicJitterDataset(X_full, y_full, max_jitter=15,
-                                         noise_std=0.02, scale_range=(0.85, 1.15), is_train=True)
+                                         noise_std=0.02, scale_range=(0.85, 1.15), is_train=True, non_event_idx=non_event_idx)
     full_loader = DataLoader(full_dataset, batch_size=BATCH_SIZE, shuffle=True)
     
     class_weights_full = compute_class_weight('balanced', classes=np.unique(y_full_smote), y=y_full_smote)
-    class_weights_full = np.sqrt(class_weights_full)
+    # class_weights_full = np.sqrt(class_weights_full)  # Dihapus agar konsisten dengan cross-validation
     class_weights_full = class_weights_full / class_weights_full.sum() * len(class_weights_full)
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
@@ -652,7 +659,7 @@ def main():
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
     test_dataset = DynamicJitterDataset(X_test_tensor, y_test_tensor, max_jitter=0,
-                                        noise_std=0, scale_range=None, is_train=False)
+                                        noise_std=0, scale_range=None, is_train=False, non_event_idx=non_event_idx)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     
     test_probas = []
