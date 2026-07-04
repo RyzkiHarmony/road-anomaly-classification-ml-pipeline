@@ -7,7 +7,7 @@ import numpy as np
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
-from model import Lightweight1DCNN
+from model import InceptionTime1D
 
 import sys
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,13 +29,13 @@ def main():
     classes = np.load(classes_path)
     
     # Initialize model
-    model = Lightweight1DCNN(in_channels=14, num_classes=len(classes),
-                             conv1_filters=32, conv2_filters=64, dropout_rate=0.169)
+    model = InceptionTime1D(in_channels=18, num_classes=len(classes),
+                            num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2)
     model.load_state_dict(torch.load(pth_path, map_location='cpu'))
     model.eval()
     
-    # Dummy input (Batch_size=1, Channels=14, Length=200)
-    dummy_input = torch.randn(1, 14, 200, requires_grad=True)
+    # Dummy input (Batch_size=1, Channels=18, Length=200)
+    dummy_input = torch.randn(1, 18, 200, requires_grad=True)
     
     onnx_path = os.path.join(MODEL_DIR, "cnn_1d_model.onnx")
     

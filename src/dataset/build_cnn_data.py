@@ -22,7 +22,9 @@ GT_PATH      = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
 EVENTS_PATH  = os.path.join(OUT_FOLDER, "candidates_events.csv")
 
 BACKGROUND_RATIO = 2 
+MAX_JITTER_SAMPLES = 15
 SEQ_LEN = int(WINDOW_SIZE_S * TARGET_HZ)  # 2.0 * 100 = 200
+EXTENDED_SEQ_LEN = SEQ_LEN + 2 * MAX_JITTER_SAMPLES # 230
 CHANNELS = [
     "a_vertical", "a_horizontal", "speed", 
     "a_vertical_crest_factor", "a_vertical_jerk",
@@ -135,36 +137,32 @@ def get_csv_path_for_trip(trip_id):
 
 def extract_sequence(raw_df, t_center):
     """
-    Memotong array (SEQ_LEN, 3) yang berpusat pada t_center.
-    Menggunakan interpolasi nearest jika sample tidak tepat 200.
+    Memotong array (EXTENDED_SEQ_LEN, C) yang berpusat pada t_center.
+    Menggunakan interpolasi nearest jika sample tidak tepat EXTENDED_SEQ_LEN.
     """
     times = raw_df["timestamp"].astype(float).values / 1000.0
     
     # Toleransi untuk mencari nearest indices
-    idx_start = np.searchsorted(times, t_center - (WINDOW_SIZE_S / 2.0))
-    idx_end = np.searchsorted(times, t_center + (WINDOW_SIZE_S / 2.0))
+    window_s = EXTENDED_SEQ_LEN / TARGET_HZ
+    idx_start = np.searchsorted(times, t_center - (window_s / 2.0))
+    idx_end = np.searchsorted(times, t_center + (window_s / 2.0))
     
     seg = raw_df.iloc[idx_start:idx_end]
     
-    # Jika kurang dari 200, pad atau ambil yang terdekat agar pas 200.
-    # Secara praktek, karena sudah di-resample 100Hz, biasanya ukurannya sekitar 200.
-    
-    seq = np.zeros((SEQ_LEN, len(CHANNELS)), dtype=np.float32)
+    seq = np.zeros((EXTENDED_SEQ_LEN, len(CHANNELS)), dtype=np.float32)
     
     if len(seg) > 0:
         data_arr = seg[CHANNELS].interpolate(method='linear').ffill().bfill().fillna(0.0).values
-        # Jika panjang lebih atau kurang dari SEQ_LEN, lakukan simple truncating / zero padding
-        # (Lebih baik: linear interpolation untuk array 1D)
-        if len(data_arr) == SEQ_LEN:
+        if len(data_arr) == EXTENDED_SEQ_LEN:
             seq = data_arr
-        elif len(data_arr) > SEQ_LEN:
+        elif len(data_arr) > EXTENDED_SEQ_LEN:
             # Truncate
-            start_truncate = (len(data_arr) - SEQ_LEN) // 2
-            seq = data_arr[start_truncate:start_truncate + SEQ_LEN]
+            start_truncate = (len(data_arr) - EXTENDED_SEQ_LEN) // 2
+            seq = data_arr[start_truncate:start_truncate + EXTENDED_SEQ_LEN]
         else:
             # Pad dengan copy elemen terakhir/pertama
-            pad_left = (SEQ_LEN - len(data_arr)) // 2
-            pad_right = SEQ_LEN - len(data_arr) - pad_left
+            pad_left = (EXTENDED_SEQ_LEN - len(data_arr)) // 2
+            pad_right = EXTENDED_SEQ_LEN - len(data_arr) - pad_left
             seq[pad_left:pad_left+len(data_arr)] = data_arr
             if pad_left > 0:
                 seq[:pad_left] = data_arr[0]

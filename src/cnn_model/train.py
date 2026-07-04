@@ -74,16 +74,17 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
             is_majority = (y_val == self.non_event_idx)
             aug_multiplier = 0.05 if is_majority else 1.0
             
-            # 1. Temporal Jitter (shift entire signal)
-            if self.max_jitter > 0 and np.random.rand() < aug_multiplier:
-                shift = np.random.randint(-self.max_jitter, self.max_jitter + 1)
-                if shift != 0:
-                    x = torch.roll(x, shifts=shift, dims=-1)
-                    # Avoid wrap-around artifact by filling with boundary values
-                    if shift > 0:
-                        x[..., :shift] = x[..., shift:shift+1]
-                    else:
-                        x[..., shift:] = x[..., shift-1:shift]
+            # 1. Random Crop (Replaces padding-based temporal jitter)
+            # The input sequence is EXTENDED_SEQ_LEN (e.g. 230). We need to crop it down to SEQ_LEN (e.g. 200).
+            seq_len = 200
+            if x.shape[-1] > seq_len:
+                max_start_idx = x.shape[-1] - seq_len
+                start_idx = np.random.randint(0, max_start_idx + 1) if self.max_jitter > 0 and np.random.rand() < aug_multiplier else max_start_idx // 2
+                x = x[..., start_idx:start_idx + seq_len]
+            elif x.shape[-1] == seq_len:
+                pass
+            else:
+                raise ValueError(f"Input sequence length {x.shape[-1]} is shorter than target length {seq_len}")
             
             # 2. Time Warping (non-linear temporal deformation)
             # Simulates variable vehicle speed by warping the time axis
@@ -133,6 +134,13 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
                 drop_idx = np.random.randint(0, n_channels)
                 x[drop_idx, :] = 0.0
                 
+        else:
+            # During evaluation, strictly use center crop
+            seq_len = 200
+            if x.shape[-1] > seq_len:
+                start_idx = (x.shape[-1] - seq_len) // 2
+                x = x[..., start_idx:start_idx + seq_len]
+                
         return x, y_val
 
 def set_seed(seed=42):
@@ -145,20 +153,17 @@ def set_seed(seed=42):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-class FocalLoss(nn.Module):
+class MultiLabelFocalLoss(nn.Module):
     def __init__(self, weight=None, gamma=2.0, reduction='mean'):
-        super(FocalLoss, self).__init__()
+        super(MultiLabelFocalLoss, self).__init__()
         self.weight = weight
         self.gamma = gamma
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        ce_loss = nn.functional.cross_entropy(inputs, targets, reduction='none')
-        pt = torch.exp(-ce_loss)  # p_t = probability of correct class
-        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
-
-        if self.weight is not None:
-            focal_loss = self.weight[targets] * focal_loss
+        bce_loss = nn.functional.binary_cross_entropy_with_logits(inputs, targets, reduction='none', pos_weight=self.weight)
+        pt = torch.exp(-bce_loss)  # probability of correct prediction
+        focal_loss = ((1 - pt) ** self.gamma) * bce_loss
 
         if self.reduction == 'mean':
             return focal_loss.mean()
@@ -302,27 +307,29 @@ def main():
         
         # ─── SMOTE Oversampling (Disabled for Experiment) ───
         X_train_np, y_train_np = X[train_idx], y[train_idx]
-        X_train_smote, y_train_smote = X_train_np, y_train_np
         
         if fold == 0:
             scaler_params = {
-                "means": [0.0] * 18,
-                "stds": [1.0] * 18
+                "means": [0.0] * X_train_np.shape[1],
+                "stds": [1.0] * X_train_np.shape[1]
             }
             scaler_path = os.path.join(MODEL_DIR, "scaler_params.json")
             with open(scaler_path, "w") as f:
                 json.dump(scaler_params, f, indent=4)
             logger.info(f"Saved dummy scaler parameters to {scaler_path}")
             
-        X_train_scaled = scale_instance_level(X_train_smote)
+        X_train_scaled = scale_instance_level(X_train_np)
         # Apply the SAME training means and stds to validation data
         X_val_np = X[val_idx]
         X_val_scaled = scale_instance_level(X_val_np)
         
         X_train = torch.tensor(X_train_scaled, dtype=torch.float32)
-        y_train = torch.tensor(y_train_smote, dtype=torch.long)
+        y_train = torch.tensor(y_train_np, dtype=torch.long)
+        y_train_one_hot = torch.nn.functional.one_hot(y_train, num_classes=len(classes)).float()
+        
         X_val = torch.tensor(X_val_scaled, dtype=torch.float32)
         y_val = torch.tensor(y[val_idx], dtype=torch.long)
+        y_val_one_hot = torch.nn.functional.one_hot(y_val, num_classes=len(classes)).float()
         
         # ─── Stratified Batch Loader ───
         train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=15,
@@ -333,16 +340,14 @@ def main():
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
         
-        # Dampened Class Weights (sqrt)
-        # Gunakan sqrt(balanced_weights) pada data hasil SMOTE untuk mencegah double-compensation
-        class_weights = compute_class_weight('balanced', classes=np.unique(y_train_smote), y=y_train_smote)
-        # class_weights = np.sqrt(class_weights)  # Dihapus karena SMOTE tidak digunakan
-        class_weights = class_weights / class_weights.sum() * len(class_weights)  # Re-normalize
+        # Dampened Class Weights
+        class_weights = compute_class_weight('balanced', classes=np.unique(y_train_np), y=y_train_np)
+        class_weights = class_weights / class_weights.sum() * len(class_weights)
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
-        model = InceptionTime1D(in_channels=18, num_classes=len(classes),
+        model = InceptionTime1D(in_channels=X_train.shape[1], num_classes=len(classes),
                                num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
-        criterion = FocalLoss(weight=class_weights, gamma=2.0)
+        criterion = MultiLabelFocalLoss(weight=class_weights, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
@@ -359,7 +364,11 @@ def main():
                 
                 optimizer.zero_grad()
                 outputs = model(batch_x)
-                loss = criterion(outputs, batch_y)
+                
+                # Gunakan versi one-hot untuk MultiLabelFocalLoss
+                batch_y_one_hot = torch.nn.functional.one_hot(batch_y, num_classes=len(classes)).float()
+                loss = criterion(outputs, batch_y_one_hot)
+                
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
@@ -380,11 +389,15 @@ def main():
                 for batch_x, batch_y in val_loader:
                     batch_x, batch_y = batch_x.to(device), batch_y.to(device)
                     outputs = model(batch_x)
-                    loss = criterion(outputs, batch_y)
+                    
+                    batch_y_one_hot = torch.nn.functional.one_hot(batch_y, num_classes=len(classes)).float()
+                    loss = criterion(outputs, batch_y_one_hot)
+                    
                     val_loss += loss.item() * batch_x.size(0)
                     
-                    probs = torch.softmax(outputs, dim=1)
-                    _, preds = torch.max(probs, 1)
+                    # Gunakan Sigmoid untuk Multi-label
+                    probs = torch.sigmoid(outputs)
+                    _, preds = torch.max(probs, 1) # Default evaluation argmax
                     
                     val_preds.extend(preds.cpu().numpy())
                     val_probas.extend(probs.cpu().numpy())
@@ -439,7 +452,7 @@ def main():
             for batch_x, batch_y in val_loader:
                 batch_x = batch_x.to(device)
                 outputs = model(batch_x)
-                probs = torch.softmax(outputs, dim=1)
+                probs = torch.sigmoid(outputs)
                 _, preds = torch.max(probs, 1)
                 all_probas.extend(probs.cpu().numpy())
                 all_preds.extend(preds.cpu().numpy())
@@ -596,36 +609,37 @@ def main():
     np.save(os.path.join(MODEL_DIR, "cnn_1d_oof_y_proba.npy"), oof_y_proba)
     logger.info("OOF predictions disimpan untuk analisis ulang.")
     
-    # --- Train Final Model (SMOTE Disabled for Experiment) ---
-    X_full_smote, y_full_smote = X, y
+    # --- Train Final Model ---
+    X_full, y_full = X, y
     
-    # ─── Fit and Save Final Scaler (Dummy for Instance Scaling) ───
+    # ─── Fit and Save Final Scaler (Dynamic Length) ───
     final_scaler_params = {
-        "means": [0.0] * 14,
-        "stds": [1.0] * 14
+        "means": [0.0] * X_full.shape[1],
+        "stds": [1.0] * X_full.shape[1]
     }
     scaler_path = os.path.join(MODEL_DIR, "cnn_1d_scaler_params.json")
     with open(scaler_path, "w") as f:
         json.dump(final_scaler_params, f, indent=4)
     logger.info(f"Saved dummy final scaler parameters to {scaler_path}")
     
-    X_full_scaled = scale_instance_level(X_full_smote)
-    logger.info(f"Melatih final model dengan seluruh dataset (SMOTE & Scaled) sebanyak {optimal_epochs} epoch...")
+    X_full_scaled = scale_instance_level(X_full)
+    X_full_tensor = torch.tensor(X_full_scaled, dtype=torch.float32)
+    y_full_tensor = torch.tensor(y_full, dtype=torch.long)
     
-    X_full = torch.tensor(X_full_scaled, dtype=torch.float32)
-    y_full = torch.tensor(y_full_smote, dtype=torch.long)
-    full_dataset = DynamicJitterDataset(X_full, y_full, max_jitter=15,
+    logger.info(f"Melatih final model dengan seluruh dataset sebanyak {optimal_epochs} epoch...")
+    
+    full_dataset = DynamicJitterDataset(X_full_tensor, y_full_tensor, max_jitter=15,
                                          noise_std=0.02, scale_range=(0.85, 1.15), is_train=True, non_event_idx=non_event_idx)
     full_loader = DataLoader(full_dataset, batch_size=BATCH_SIZE, shuffle=True)
     
-    class_weights_full = compute_class_weight('balanced', classes=np.unique(y_full_smote), y=y_full_smote)
+    class_weights_full = compute_class_weight('balanced', classes=np.unique(y_full), y=y_full)
     # class_weights_full = np.sqrt(class_weights_full)  # Dihapus agar konsisten dengan cross-validation
     class_weights_full = class_weights_full / class_weights_full.sum() * len(class_weights_full)
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
-    final_model = InceptionTime1D(in_channels=18, num_classes=len(classes),
+    final_model = InceptionTime1D(in_channels=X_full.shape[1], num_classes=len(classes),
                                  num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
-    criterion_full = FocalLoss(weight=class_weights_full, gamma=2.0)
+    criterion_full = MultiLabelFocalLoss(weight=class_weights_full, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
     scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
     
@@ -635,7 +649,10 @@ def main():
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             optimizer_full.zero_grad()
             outputs = final_model(batch_x)
-            loss = criterion_full(outputs, batch_y)
+            
+            batch_y_one_hot = torch.nn.functional.one_hot(batch_y, num_classes=len(classes)).float()
+            loss = criterion_full(outputs, batch_y_one_hot)
+            
             loss.backward()
             torch.nn.utils.clip_grad_norm_(final_model.parameters(), max_norm=1.0)
             optimizer_full.step()
@@ -669,7 +686,7 @@ def main():
         for batch_x, batch_y in test_loader:
             batch_x = batch_x.to(device)
             outputs = final_model(batch_x)
-            probs = torch.softmax(outputs, dim=1)
+            probs = torch.sigmoid(outputs)
             test_probas.extend(probs.cpu().numpy())
             test_trues.extend(batch_y.numpy())
             
@@ -744,11 +761,11 @@ def main():
     # ─── ONNX EXPORT ───
     logger.info("Exporting final PyTorch model to ONNX format...")
     onnx_path = os.path.join(MODEL_DIR, "cnn_1d_model.onnx")
-    dummy_input = torch.randn(1, 18, 200, requires_grad=True).to(device)
-    model.eval()
+    dummy_input = torch.randn(1, X_full.shape[1], 200, requires_grad=True).to(device)
+    final_model.eval()
     try:
         torch.onnx.export(
-            model,
+            final_model,
             dummy_input,
             onnx_path,
             export_params=True,

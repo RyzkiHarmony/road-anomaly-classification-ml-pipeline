@@ -40,7 +40,7 @@ class InceptionBlock1D(nn.Module):
         return self.relu(out)
 
 class InceptionTime1D(nn.Module):
-    def __init__(self, in_channels=14, num_classes=3, num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2):
+    def __init__(self, in_channels=18, num_classes=3, num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2):
         super(InceptionTime1D, self).__init__()
         
         self.blocks = nn.ModuleList()
@@ -90,6 +90,6 @@ if __name__ == "__main__":
     print(f"Total Parameters: {total_params}")
     
     # Test forward pass
-    dummy_input = torch.randn(2, 14, 200)
+    dummy_input = torch.randn(2, 18, 200)
     out = model(dummy_input)
     print(f"Input shape: {dummy_input.shape} -> Output shape: {out.shape}")
