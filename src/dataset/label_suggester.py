@@ -362,8 +362,11 @@ def apply_label_suggestions(df: pd.DataFrame, gt_path: str = None) -> pd.DataFra
 
     # Default gt path relatif ke script ini
     if gt_path is None:
+        import sys
         _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-        gt_path = os.path.join(_SCRIPT_DIR, "out", "ground_truth_labels.csv")
+        sys.path.append(os.path.join(_SCRIPT_DIR, '..', 'utils'))
+        from config import OUT_FOLDER
+        gt_path = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
 
     out = df.copy()
 

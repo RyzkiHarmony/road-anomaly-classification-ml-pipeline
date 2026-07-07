@@ -11,6 +11,7 @@ from sklearn.metrics import classification_report, confusion_matrix, f1_score
 # Path Setup
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(BASE_DIR, "src", "cnn_model"))
+sys.path.append(os.path.join(BASE_DIR, "src", "utils"))
 
 XGB_DATA_DIR = os.path.join(BASE_DIR, "data", "processed", "xgboost")
 CNN_DATA_DIR = os.path.join(BASE_DIR, "data", "processed", "cnn_1d")
@@ -18,38 +19,7 @@ XGB_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "xgboost")
 CNN_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "cnn_1d")
 
 from model import InceptionTime1D
-
-def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
-    unique_classes = np.unique(y_raw)
-    class_to_idx = {c: i for i, c in enumerate(unique_classes)}
-    y_idx = np.array([class_to_idx[val] for val in y_raw])
-
-    group_names = np.unique(groups)
-    group_counts = {g: np.array([np.sum(y_idx[groups == g] == i) for i in range(len(unique_classes))]) for g in group_names}
-    total_counts = np.sum(list(group_counts.values()), axis=0)
-
-    train_groups = set()
-    test_groups = set()
-    current_train = np.zeros(len(unique_classes))
-
-    minority_indices = [class_to_idx[c] for c in ['Pothole', 'Speed Bump'] if c in class_to_idx]
-    sorted_groups = sorted(group_names, key=lambda g: np.sum(group_counts[g][minority_indices]), reverse=True)
-
-    for g in sorted_groups:
-        counts = group_counts[g]
-        ratio_if_train = (current_train + counts) / (total_counts + 1e-9)
-        err_train = np.sum((ratio_if_train - train_ratio) ** 2)
-        
-        ratio_if_test = current_train / (total_counts + 1e-9)
-        err_test = np.sum((ratio_if_test - train_ratio) ** 2)
-        
-        if err_train < err_test:
-            train_groups.add(g)
-            current_train += counts
-        else:
-            test_groups.add(g)
-
-    return list(train_groups), list(test_groups)
+from data_utils import get_stratified_group_split
 
 def main():
     print("============================================================")
@@ -93,7 +63,7 @@ def main():
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1
     non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
     
-    # ─── 2. INFERENCE ───
+    # ─── 2. INFERENCE ON TEST SET ───
     # XGBoost Probability Prediction
     xgb_model = joblib.load(os.path.join(XGB_MODEL_DIR, "xgboost_model.pkl"))
     xgb_raw_probas = xgb_model.predict_proba(X_xgb_test)
@@ -110,7 +80,6 @@ def main():
         xgb_probas = xgb_raw_probas
         
     # CNN Probability Prediction
-    # Gunakan Instance-level Scaling agar selaras dengan training CNN
     def scale_instance_level(X, eps=1e-8):
         mean = np.mean(X, axis=2, keepdims=True)
         std = np.std(X, axis=2, keepdims=True)
@@ -119,7 +88,7 @@ def main():
     X_cnn_scaled = scale_instance_level(X_cnn_test)
     X_cnn_tensor = torch.tensor(X_cnn_scaled, dtype=torch.float32)
     
-    cnn_model = InceptionTime1D(in_channels=18, num_classes=len(classes))
+    cnn_model = InceptionTime1D(in_channels=X_cnn_tensor.shape[1], num_classes=len(classes))
     cnn_model.load_state_dict(torch.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_model.pth"), map_location=torch.device('cpu')))
     cnn_model.eval()
     
@@ -127,64 +96,102 @@ def main():
         outputs = cnn_model(X_cnn_tensor)
         cnn_probas = torch.softmax(outputs, dim=1).numpy()
         
-    # ─── 3. GRID SEARCH FOR BEST ENSEMBLE WEIGHTS ───
-    best_f1_macro = 0
-    best_weight = 0.5
-    best_p_thresh = 0.5
-    best_sb_thresh = 0.5
-    best_preds = None
-    
-    # Grid search over XGBoost weight and decision thresholds
-    weights_to_try = np.linspace(0.0, 1.0, 11)
-    thresholds_to_try = np.linspace(0.2, 0.8, 13)
-    
-    print("Optimizing ensemble parameters on Holdout Set...")
-    for w in weights_to_try:
-        # Soft voting combination
-        blend_probas = w * xgb_probas + (1 - w) * cnn_probas
+    # ─── 3. GRID SEARCH FOR BEST ENSEMBLE WEIGHTS (ON OOF DATA) ───
+    print("Optimizing ensemble parameters on Out-Of-Fold (OOF) Dev Set...")
+    try:
+        # Load calibrated OOF probas for XGBoost
+        xgb_oof_raw = np.load(os.path.join(XGB_MODEL_DIR, "xgb_oof_y_proba.npy"))
+        if os.path.exists(cal_path):
+            xgb_oof_probas = np.column_stack([
+                calibrators[i].predict(xgb_oof_raw[:, i]) for i in range(len(classes))
+            ])
+            xgb_oof_probas = xgb_oof_probas / xgb_oof_probas.sum(axis=1, keepdims=True)
+        else:
+            xgb_oof_probas = xgb_oof_raw
+            
+        cnn_oof_probas = np.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_oof_y_proba.npy"))
+        oof_y_true = np.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_oof_y_true.npy"))
         
-        for t_p in thresholds_to_try:
-            for t_sb in thresholds_to_try:
-                preds = np.zeros_like(y_test)
-                for i in range(len(blend_probas)):
-                    proba = blend_probas[i]
-                    p_prob = proba[p_idx]
-                    sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
-                    
-                    p_triggered = p_prob >= t_p
-                    sb_triggered = sb_idx != -1 and sb_prob >= t_sb
-                    
-                    if p_triggered and sb_triggered:
-                        if p_prob >= sb_prob:
+        best_f1_macro = 0
+        best_weight = 0.5
+        best_p_thresh = 0.5
+        best_sb_thresh = 0.5
+        
+        weights_to_try = np.linspace(0.0, 1.0, 11)
+        thresholds_to_try = np.linspace(0.2, 0.8, 13)
+        
+        for w in weights_to_try:
+            blend_probas = w * xgb_oof_probas + (1 - w) * cnn_oof_probas
+            
+            for t_p in thresholds_to_try:
+                for t_sb in thresholds_to_try:
+                    preds = np.zeros_like(oof_y_true)
+                    for i in range(len(blend_probas)):
+                        proba = blend_probas[i]
+                        p_prob = proba[p_idx]
+                        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
+                        
+                        p_triggered = p_prob >= t_p
+                        sb_triggered = sb_idx != -1 and sb_prob >= t_sb
+                        
+                        if p_triggered and sb_triggered:
+                            if p_prob >= sb_prob:
+                                preds[i] = p_idx
+                            else:
+                                preds[i] = sb_idx
+                        elif p_triggered:
                             preds[i] = p_idx
-                        else:
+                        elif sb_triggered:
                             preds[i] = sb_idx
-                    elif p_triggered:
-                        preds[i] = p_idx
-                    elif sb_triggered:
-                        preds[i] = sb_idx
-                    else:
-                        preds[i] = non_event_idx
-                
-                # We want to maximize the average macro F1-score of minority classes (Pothole & Speed Bump)
-                f1_p = f1_score(y_test, preds, labels=[p_idx], average='macro', zero_division=0)
-                f1_sb = f1_score(y_test, preds, labels=[sb_idx], average='macro', zero_division=0)
-                score = (f1_p + f1_sb) / 2.0
-                
-                if score > best_f1_macro:
-                    best_f1_macro = score
-                    best_weight = w
-                    best_p_thresh = t_p
-                    best_sb_thresh = t_sb
-                    best_preds = preds
+                        else:
+                            preds[i] = non_event_idx
                     
-    print(f"\nOptimal Parameters found:")
-    print(f"  XGBoost Weight: {best_weight:.2f}")
-    print(f"  1D-CNN Weight: {1.0 - best_weight:.2f}")
-    print(f"  Pothole Threshold: {best_p_thresh:.4f}")
-    print(f"  Speed Bump Threshold: {best_sb_thresh:.4f}")
-    
-    # ─── 4. DISPLAY RESULTS ───
+                    f1_p = f1_score(oof_y_true, preds, labels=[p_idx], average='macro', zero_division=0)
+                    f1_sb = f1_score(oof_y_true, preds, labels=[sb_idx], average='macro', zero_division=0)
+                    score = (f1_p + f1_sb) / 2.0
+                    
+                    if score > best_f1_macro:
+                        best_f1_macro = score
+                        best_weight = w
+                        best_p_thresh = t_p
+                        best_sb_thresh = t_sb
+                        
+        print(f"\nOptimal Parameters found (from OOF):")
+        print(f"  XGBoost Weight: {best_weight:.2f}")
+        print(f"  1D-CNN Weight: {1.0 - best_weight:.2f}")
+        print(f"  Pothole Threshold: {best_p_thresh:.4f}")
+        print(f"  Speed Bump Threshold: {best_sb_thresh:.4f}")
+    except Exception as e:
+        print(f"Error optimizing on OOF (using defaults): {e}")
+        best_weight = 0.5
+        best_p_thresh = 0.5
+        best_sb_thresh = 0.5
+
+    # ─── 4. APPLY ON HOLDOUT TEST SET ───
+    print("\nApplying optimal parameters to Holdout Test Set...")
+    final_test_probas = best_weight * xgb_probas + (1 - best_weight) * cnn_probas
+    best_preds = np.zeros_like(y_test)
+    for i in range(len(final_test_probas)):
+        proba = final_test_probas[i]
+        p_prob = proba[p_idx]
+        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
+        
+        p_triggered = p_prob >= best_p_thresh
+        sb_triggered = sb_idx != -1 and sb_prob >= best_sb_thresh
+        
+        if p_triggered and sb_triggered:
+            if p_prob >= sb_prob:
+                best_preds[i] = p_idx
+            else:
+                best_preds[i] = sb_idx
+        elif p_triggered:
+            best_preds[i] = p_idx
+        elif sb_triggered:
+            best_preds[i] = sb_idx
+        else:
+            best_preds[i] = non_event_idx
+            
+    # ─── 5. DISPLAY RESULTS ───
     print("\n" + "=" * 60)
     print("             ENSEMBLE EVALUATION REPORT             ")
     print("=" * 60)

@@ -47,6 +47,9 @@ def get_csv_path_for_trip(trip_id):
     return None
 
 # Augmentasi linear telah dihapus secara permanen (menghindari bias fisika)
+
+rng = np.random.default_rng(RANDOM_SEED)
+
 def main():
     if not os.path.exists(GT_PATH) or not os.path.exists(EVENTS_PATH):
         logger.error("File ground_truth_labels.csv atau candidates_events.csv tidak ditemukan.")
@@ -57,6 +60,17 @@ def main():
 
     # 1. ATTACH LABELS TO CANDIDATES
     df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
+    
+    shared_bg_path = os.path.join(OUT_FOLDER, "shared_background.csv")
+    if os.path.exists(shared_bg_path):
+        try:
+            df_bg = pd.read_csv(shared_bg_path)
+            if not df_bg.empty:
+                df_labeled = pd.concat([df_labeled, df_bg], ignore_index=True)
+        except pd.errors.EmptyDataError:
+            pass
+        
+    df_labeled = df_labeled.sort_values(["trip_id", "time_s"]).reset_index(drop=True)
     
     if df_labeled.empty:
         logger.warning("Belum ada data yang dilabeli di ground_truth_labels.csv.")
@@ -81,7 +95,7 @@ def main():
                         
                         # [CRITICAL] Random Jittering to prevent Alignment Bias
                         # Geser window secara acak antara -0.5 hingga 0.5 detik dari pusat event
-                        jitter = np.random.uniform(-0.5, 0.5)
+                        jitter = rng.uniform(-0.5, 0.5)
                         t_window_center = t_event + jitter
                         
                         mask = (times_raw >= t_window_center - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_window_center + (WINDOW_SIZE_S / 2.0))
@@ -108,69 +122,7 @@ def main():
     # 2. AUGMENTATION (Dihapus karena naif secara fisika)
     # df_augmented = pd.DataFrame()
 
-    # 3. GENERATE ADDITIONAL BACKGROUND
-    # ... (Logic background tetap sama) ...
-    n_pos = len(df_labeled[df_labeled["label"].isin(["Pothole", "Speed Bump"])])
-    n_neg_manual = len(df_labeled[df_labeled["label"] == "Non-Event"])
-    
-    labeled_trip_ids = df_labeled["trip_id"].unique()
-    additional_bg_records = []
-
-    if n_neg_manual < n_pos * BACKGROUND_RATIO:
-        n_needed = (n_pos * BACKGROUND_RATIO) - n_neg_manual
-        logger.info(f"Mengambil {n_needed} sampel background tambahan...")
-        for trip_id in labeled_trip_ids:
-            csv_candidates = glob.glob(os.path.join(CSV_FOLDER, f"*{trip_id}*.csv"))
-            if not csv_candidates: continue
-            try:
-                raw_df = pd.read_csv(csv_candidates[0])
-                raw_df = apply_sensor_fusion(raw_df)
-                event_times = df_events[df_events["trip_id"] == trip_id]["time_s"].values
-                duration = (raw_df["timestamp"].iloc[-1] - raw_df["timestamp"].iloc[0]) / 1000.0
-                attempts = 0
-                while len(additional_bg_records) < n_needed and attempts < 100:
-                    attempts += 1
-                    t_rand = raw_df["timestamp"].iloc[0]/1000.0 + np.random.uniform(5, duration - 5)
-                    
-                    # 1. Filter out samples too close to real events
-                    if len(event_times) > 0:
-                        dist_to_event = np.min(np.abs(event_times - t_rand))
-                        if dist_to_event < 3.0: continue
-                        
-                    # 2. Cruise Speed Check: Must be driving (> 2.0 m/s) to avoid stationary idle engine vibrations
-                    t_start = t_rand - 1.0
-                    t_end = t_rand + 1.0
-                    mask_speed = (raw_df["timestamp"] / 1000.0 >= t_start) & (raw_df["timestamp"] / 1000.0 <= t_end)
-                    speed_seg = raw_df[mask_speed]["speed"] if "speed" in raw_df.columns else pd.Series()
-                    speed_mean = speed_seg.mean() if len(speed_seg) > 0 else 0.0
-                    
-                    if speed_mean <= 2.0:
-                        continue # Skip because vehicle is idle or slow
-                        
-                    times_raw = raw_df["timestamp"].astype(float).values / 1000.0
-                    mask = (times_raw >= t_rand - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_rand + (WINDOW_SIZE_S / 2.0))
-                    window_df = raw_df[mask]
-                    feats = extract_event_shape_features(window_df)
-                    if feats["vertical_energy"] > 0:
-                        feats.update({
-                            "event_id": -1, "time_s": t_rand, "trip_id": trip_id,
-                            "label": "Non-Event", "source": "auto_background",
-                            "speed_mean": speed_mean
-                        })
-                        additional_bg_records.append(feats)
-                        if len(additional_bg_records) >= n_needed: break
-            except Exception as e:
-                logger.error(f"Gagal proses background untuk {trip_id}: {e}")
-
-    # 4. COMBINE & SAVE
-    df_bg = pd.DataFrame(additional_bg_records)
-    
-    # Gabungkan semua (Asli + Background)
-    dfs_to_concat = [df_labeled]
-    if not df_bg.empty:
-        dfs_to_concat.append(df_bg)
-        
-    df_final = pd.concat(dfs_to_concat, ignore_index=True)
+    df_final = df_labeled
 
     # 3.5 CLEAN LABEL NOISE
     # PERHATIAN: Pembuangan Hard Negatives (Non-Event ekstrem) TELAH DIHENTIKAN.

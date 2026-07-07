@@ -18,7 +18,7 @@ CNN_DATA_DIR = os.path.join(BASE_DIR, "data", "processed", "cnn_1d")
 XGB_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "xgboost")
 CNN_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "cnn_1d")
 
-from model import Lightweight1DCNN
+from model import InceptionTime1D
 
 def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
     unique_classes = np.unique(y_raw)
@@ -161,18 +161,17 @@ def evaluate_cnn():
     le.classes_ = classes
     y_test = le.transform(y_test_raw)
     
-    # Load scaler parameters
-    with open(os.path.join(CNN_MODEL_DIR, "cnn_1d_scaler_params.json"), "r") as f:
-        scaler_params = json.load(f)
-    means = np.array(scaler_params["means"]).reshape(1, -1, 1)
-    stds = np.array(scaler_params["stds"]).reshape(1, -1, 1)
-    
-    # Standardize
-    X_test_scaled = (X_test_np - means) / stds
+    def scale_instance_level(data):
+        means = np.mean(data, axis=2, keepdims=True)
+        stds = np.std(data, axis=2, keepdims=True)
+        stds = np.where(stds < 1e-6, 1.0, stds)
+        return (data - means) / stds
+        
+    X_test_scaled = scale_instance_level(X_test_np)
     X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
     
     # Load Model
-    model = Lightweight1DCNN(in_channels=14, num_classes=len(classes))
+    model = InceptionTime1D(in_channels=7, num_classes=len(classes))
     model.load_state_dict(torch.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_model.pth"), map_location=torch.device('cpu')))
     model.eval()
     
@@ -180,34 +179,7 @@ def evaluate_cnn():
         outputs = model(X_test_tensor)
         probas = torch.softmax(outputs, dim=1).numpy()
         
-    # Load latest calibrated thresholds for CNN
-    best_thresh_p = 0.5102
-    best_thresh_sb = 0.6382
-    
-    p_idx = list(classes).index("Pothole")
-    sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1
-    non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
-    
-    preds = np.zeros_like(y_test)
-    for i in range(len(probas)):
-        proba = probas[i]
-        p_prob = proba[p_idx]
-        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
-        
-        p_triggered = p_prob >= best_thresh_p
-        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
-        
-        if p_triggered and sb_triggered:
-            if p_prob >= sb_prob:
-                preds[i] = p_idx
-            else:
-                preds[i] = sb_idx
-        elif p_triggered:
-            preds[i] = p_idx
-        elif sb_triggered:
-            preds[i] = sb_idx
-        else:
-            preds[i] = non_event_idx
+    preds = np.argmax(probas, axis=1)
             
     print(classification_report(y_test, preds, target_names=classes, zero_division=0))
     return y_test, preds, classes

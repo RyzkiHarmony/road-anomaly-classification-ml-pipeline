@@ -22,7 +22,7 @@ CNN_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "cnn_1d")
 REPORT_DIR = os.path.join(BASE_DIR, "evaluation", "reports")
 os.makedirs(REPORT_DIR, exist_ok=True)
 
-from model import Lightweight1DCNN
+from model import InceptionTime1D
 
 def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
     unique_classes = np.unique(y_raw)
@@ -104,7 +104,7 @@ def run_cnn_importance():
     X_test_scaled = (X_test_np - means) / stds
     
     # Load Model
-    model = Lightweight1DCNN(in_channels=14, num_classes=len(classes))
+    model = InceptionTime1D(in_channels=7, num_classes=len(classes))
     model.load_state_dict(torch.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_model.pth"), map_location=torch.device('cpu')))
     model.eval()
     

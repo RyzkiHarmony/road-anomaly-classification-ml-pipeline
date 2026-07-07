@@ -2,6 +2,9 @@ import os
 import glob
 import numpy as np
 import pandas as pd
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
+sys.path.append(os.path.dirname(__file__))
 
 from config import (
     CSV_FOLDER, OUT_FOLDER,
@@ -37,7 +40,7 @@ def main():
     all_windows    = []
 
     # ---------- PROCESS EACH TRIP ----------
-    for csv_path in glob.glob(os.path.join(CSV_FOLDER, "*.csv")):
+    for csv_path in sorted(glob.glob(os.path.join(CSV_FOLDER, "*.csv"))):
         logger.info("Processing %s", os.path.basename(csv_path))
 
         df = pd.read_csv(csv_path)

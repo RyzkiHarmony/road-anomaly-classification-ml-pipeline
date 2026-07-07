@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.append(os.path.dirname(__file__))
 
 from config import OUT_FOLDER, CSV_FOLDER, CNN_OUT_DIR, WINDOW_SIZE_S, TARGET_HZ, get_logger
-from sensor_fusion import apply_sensor_fusion
+from sensor_fusion import resample_100hz
 
 logger = get_logger(__name__)
 
@@ -26,95 +26,33 @@ MAX_JITTER_SAMPLES = 15
 SEQ_LEN = int(WINDOW_SIZE_S * TARGET_HZ)  # 2.0 * 100 = 200
 EXTENDED_SEQ_LEN = SEQ_LEN + 2 * MAX_JITTER_SAMPLES # 230
 CHANNELS = [
-    "a_vertical", "a_horizontal", "speed", 
-    "a_vertical_crest_factor", "a_vertical_jerk",
-    "gx", "gy", "gz", 
-    "g_roll_accel", "g_pitch_accel",
-    "a_vertical_rms", "a_vertical_zcr",
-    "a_horizontal_rms", "energy_ratio_vh",
-    "lin_ax", "lin_ay", "lin_az",
-    "magnitude_deviation"
+    "speed",
+    "ax", "ay", "az",
+    "gx", "gy", "gz"
 ]
 
 def compute_engineered_features(df):
     df = df.sort_values("timestamp").reset_index(drop=True)
-    dt = df["timestamp"].diff().fillna(10.0) / 1000.0  # interval default 10ms
-    dt = np.where(dt <= 0, 0.01, dt)
     
-    # 1. Jerk
-    jerk = df["a_vertical"].diff().fillna(0.0) / dt
-    df["a_vertical_jerk"] = jerk
-    
-    # 2. Crest Factor
-    window_sz = 10
-    peak = df["a_vertical"].abs().rolling(window=window_sz, min_periods=1).max()
-    rms = np.sqrt((df["a_vertical"]**2).rolling(window=window_sz, min_periods=1).mean())
-    crest_factor = peak / (rms + 1e-6)
-    df["a_vertical_crest_factor"] = crest_factor.fillna(1.0)
-    
-    # 3. Gyro derivatives (ang. acceleration)
-    # Pastikan kolom gx, gy, gz ada di dataframe
+    # 1. Pastikan kolom ax, ay, az tersedia (jika belum, jumlahkan lin dan grav)
+    if "ax" not in df.columns:
+        if "lin_ax" in df.columns and "grav_x" in df.columns:
+            df["ax"] = df["lin_ax"] + df["grav_x"]
+            df["ay"] = df["lin_ay"] + df["grav_y"]
+            df["az"] = df["lin_az"] + df["grav_z"]
+        elif "accel_x" in df.columns:
+            df["ax"] = df["accel_x"]
+            df["ay"] = df["accel_y"]
+            df["az"] = df["accel_z"]
+        else:
+            df["ax"] = 0.0
+            df["ay"] = 0.0
+            df["az"] = 0.0
+            
+    # Pastikan gx, gy, gz ada
     for col in ["gx", "gy", "gz"]:
         if col not in df.columns:
             df[col] = 0.0
-            
-    df["g_roll_accel"] = df["gx"].diff().fillna(0.0) / dt
-    df["g_pitch_accel"] = df["gy"].diff().fillna(0.0) / dt
-    
-    # 4. Speed-Normalized Acceleration & Jerk
-    # Normalisasi getaran terhadap kecepatan kendaraan untuk menghilangkan
-    # ketergantungan amplitudo pada kecepatan berkendara.
-    # epsilon=0.5 m/s mencegah division by zero saat kendaraan diam/sangat lambat.
-    speed_safe = df["speed"].clip(lower=0).fillna(0.0) + 0.5
-    df["a_vertical_speed_norm"] = df["a_vertical"] / speed_safe
-    df["jerk_speed_norm"] = df["a_vertical_jerk"] / speed_safe
-    
-    # 5. Rolling RMS (Root Mean Square) dari akselerasi vertikal
-    # Mengukur energi getaran rata-rata dalam jendela 200ms (20 sampel @100Hz).
-    # Pothole: lonjakan RMS tajam & singkat. Jalan kasar: RMS menengah kontinu.
-    rms_window = 20
-    df["a_vertical_rms"] = np.sqrt(
-        (df["a_vertical"]**2).rolling(window=rms_window, min_periods=1).mean()
-    ).fillna(0.0)
-    
-    # 6. Zero Crossing Rate (ZCR) dari akselerasi vertikal
-    # Menghitung fraksi perubahan tanda sinyal dalam jendela 200ms.
-    # Speed Bump: ZCR rendah (osilasi lambat). Jalan berkerikil: ZCR tinggi.
-    zcr_window = 20
-    sign_changes = (np.sign(df["a_vertical"]).diff().abs() > 0).astype(float)
-    df["a_vertical_zcr"] = sign_changes.rolling(
-        window=zcr_window, min_periods=1
-    ).mean().fillna(0.0)
-    
-    # 7. Rolling RMS dari akselerasi horizontal
-    # Mengukur energi getaran horizontal. Pengereman mendadak memiliki
-    # a_horizontal_rms tinggi tanpa a_vertical_rms tinggi (beda dari Pothole).
-    df["a_horizontal_rms"] = np.sqrt(
-        (df["a_horizontal"]**2).rolling(window=rms_window, min_periods=1).mean()
-    ).fillna(0.0)
-    
-    # 8. Rasio Energi Vertikal / Horizontal
-    # Speed Bump: rasio tinggi (getaran dominan vertikal).
-    # Pothole: rasio menengah (campuran vertikal + horizontal).
-    # Pengereman: rasio rendah (dominan horizontal).
-    df["energy_ratio_vh"] = df["a_vertical_rms"] / (df["a_horizontal_rms"] + 1e-6)
-
-    # 9. Magnitude Deviation dari 1G
-    # Mengukur seberapa jauh total gaya dari gravitasi normal (9.81 m/s²).
-    # Pothole: ban jatuh ke lubang → terjadi setengah-gravitasi sesaat (dip negatif)
-    #         sebelum benturan (spike positif). Pola asimetris dip→spike ini
-    #         tidak dimiliki Speed Bump atau jalan kasar.
-    # Speed Bump: hanya spike positif, tidak ada dip.
-    # Non-Event: mendekati nol secara konsisten.
-    if "magnitude" in df.columns:
-        df["magnitude_deviation"] = df["magnitude"] - 9.81
-    elif "lin_ax" in df.columns and "grav_x" in df.columns:
-        total_ax = df["lin_ax"] + df["grav_x"]
-        total_ay = df["lin_ay"] + df["grav_y"]
-        total_az = df["lin_az"] + df["grav_z"]
-        df["magnitude_deviation"] = np.sqrt(total_ax**2 + total_ay**2 + total_az**2) - 9.81
-    else:
-        df["magnitude_deviation"] = 0.0
 
     return df
 
@@ -152,7 +90,14 @@ def extract_sequence(raw_df, t_center):
     seq = np.zeros((EXTENDED_SEQ_LEN, len(CHANNELS)), dtype=np.float32)
     
     if len(seg) > 0:
-        data_arr = seg[CHANNELS].interpolate(method='linear').ffill().bfill().fillna(0.0).values
+        # [CRITICAL FIX]: limit=5 to avoid hallucinating large gaps
+        data_arr = seg[CHANNELS].interpolate(method='linear', limit=5).ffill(limit=5).bfill(limit=5).values
+        
+        # Check coverage
+        coverage_ratio = len(data_arr) / EXTENDED_SEQ_LEN
+        if coverage_ratio < 0.7 or np.isnan(data_arr).any():
+            return None
+            
         if len(data_arr) == EXTENDED_SEQ_LEN:
             seq = data_arr
         elif len(data_arr) > EXTENDED_SEQ_LEN:
@@ -160,14 +105,12 @@ def extract_sequence(raw_df, t_center):
             start_truncate = (len(data_arr) - EXTENDED_SEQ_LEN) // 2
             seq = data_arr[start_truncate:start_truncate + EXTENDED_SEQ_LEN]
         else:
-            # Pad dengan copy elemen terakhir/pertama
+            # Pad dengan 0.0 (sudah inisialisasi dari np.zeros), BUKAN edge values
             pad_left = (EXTENDED_SEQ_LEN - len(data_arr)) // 2
-            pad_right = EXTENDED_SEQ_LEN - len(data_arr) - pad_left
             seq[pad_left:pad_left+len(data_arr)] = data_arr
-            if pad_left > 0:
-                seq[:pad_left] = data_arr[0]
-            if pad_right > 0:
-                seq[-pad_right:] = data_arr[-1]
+            
+    else:
+        return None
     
     return seq
 
@@ -180,6 +123,17 @@ def main():
     df_events = pd.read_csv(EVENTS_PATH)
 
     df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
+    
+    shared_bg_path = os.path.join(OUT_FOLDER, "shared_background.csv")
+    if os.path.exists(shared_bg_path):
+        try:
+            df_bg = pd.read_csv(shared_bg_path)
+            if not df_bg.empty:
+                df_labeled = pd.concat([df_labeled, df_bg], ignore_index=True)
+        except pd.errors.EmptyDataError:
+            pass
+        
+    df_labeled = df_labeled.sort_values(["trip_id", "time_s"]).reset_index(drop=True)
     
     if df_labeled.empty:
         logger.warning("Belum ada data yang dilabeli.")
@@ -196,10 +150,12 @@ def main():
             logger.info(f"Processing trip {trip_id}...")
             try:
                 raw_df = pd.read_csv(csv_path)
-                raw_df = apply_sensor_fusion(raw_df)
                 if 'speed' not in raw_df.columns:
                     raw_df['speed'] = 0.0
                 raw_df = compute_engineered_features(raw_df)
+                
+                # Resample to 100 Hz to ensure uniform sampling for CNN
+                raw_df = resample_100hz(raw_df)
                     
                 for _, row in group.iterrows():
                     t_event = row["time_s"]
@@ -208,61 +164,14 @@ def main():
                     
                     seq = extract_sequence(raw_df, t_window_center)
                     
-                    X_list.append(seq)
-                    y_list.append(row["label"])
-                    groups_list.append(trip_id)
+                    if seq is not None:
+                        X_list.append(seq)
+                        y_list.append(row["label"])
+                        groups_list.append(trip_id)
             except Exception as e:
                 logger.error(f"Failed to process trip {trip_id}: {e}")
                 
-    # Generate Background (Non-Event)
-    n_pos = len(df_labeled[df_labeled["label"].isin(["Pothole", "Speed Bump"])])
-    n_neg_manual = len(df_labeled[df_labeled["label"] == "Non-Event"])
-    
-    if n_neg_manual < n_pos * BACKGROUND_RATIO:
-        n_needed = (n_pos * BACKGROUND_RATIO) - n_neg_manual
-        logger.info(f"Mengambil {n_needed} sampel background tambahan...")
-        for trip_id in df_labeled["trip_id"].unique():
-            csv_candidates = glob.glob(os.path.join(CSV_FOLDER, f"*{trip_id}*.csv"))
-            if not csv_candidates: continue
-            try:
-                raw_df = pd.read_csv(csv_candidates[0])
-                raw_df = apply_sensor_fusion(raw_df)
-                if 'speed' not in raw_df.columns:
-                    raw_df['speed'] = 0.0
-                raw_df = compute_engineered_features(raw_df)
-                    
-                event_times = df_events[df_events["trip_id"] == trip_id]["time_s"].values
-                duration = (raw_df["timestamp"].iloc[-1] - raw_df["timestamp"].iloc[0]) / 1000.0
-                attempts = 0
-                added = 0
-                while added < n_needed and attempts < 100:
-                    attempts += 1
-                    t_rand = raw_df["timestamp"].iloc[0]/1000.0 + np.random.uniform(5, duration - 5)
-                    
-                    if len(event_times) > 0:
-                        dist_to_event = np.min(np.abs(event_times - t_rand))
-                        if dist_to_event < 3.0: continue
-                        
-                    t_start = t_rand - 1.0
-                    t_end = t_rand + 1.0
-                    mask_speed = (raw_df["timestamp"] / 1000.0 >= t_start) & (raw_df["timestamp"] / 1000.0 <= t_end)
-                    speed_seg = raw_df[mask_speed]["speed"] if "speed" in raw_df.columns else pd.Series()
-                    speed_mean = speed_seg.mean() if len(speed_seg) > 0 else 0.0
-                    
-                    if speed_mean <= 2.0:
-                        continue 
-                        
-                    seq = extract_sequence(raw_df, t_rand)
-                    
-                    X_list.append(seq)
-                    y_list.append("Non-Event")
-                    groups_list.append(trip_id)
-                    added += 1
-                    
-                n_needed -= added
-                if n_needed <= 0: break
-            except Exception as e:
-                pass
+
 
     X = np.stack(X_list)
     y = np.array(y_list)

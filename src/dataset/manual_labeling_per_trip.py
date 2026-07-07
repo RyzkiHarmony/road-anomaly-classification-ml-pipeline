@@ -1,7 +1,6 @@
 # %%
 import pandas as pd
 import numpy as np
-# pyrefly: ignore [missing-import]
 import folium
 import os
 import glob
@@ -13,15 +12,18 @@ import matplotlib
 matplotlib.use("Agg")  # non-interactive backend, aman untuk batch rendering
 import matplotlib.pyplot as plt
 from IPython.display import display
+
+import sys, os
+_DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
+sys.path.append(os.path.join(_DIR, '..', 'utils'))
+
+from config import CSV_FOLDER, META_FOLDER, LABELS_FOLDER, OUT_FOLDER
 from label_suggester import apply_label_suggestions, save_label_suggestions
 from sensor_fusion import apply_sensor_fusion
 from helpers import load_trip_meta
+MAP_FOLDER = os.path.join(OUT_FOLDER, "maps")
 
-_DIR        = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
-OUT_FOLDER  = os.path.join(_DIR, "out")
-MAP_FOLDER  = os.path.join(_DIR, "out", "maps")
-CSV_FOLDER  = os.path.join(_DIR, "new-data", "csv")
-META_FOLDER = os.path.join(_DIR, "new-data", "meta")
+os.makedirs(MAP_FOLDER, exist_ok=True)
 
 CANDIDATE_PATH = os.path.join(OUT_FOLDER, "candidates_events.csv")
 MASTER_GT_PATH = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
@@ -195,7 +197,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 0  # <<< PILIH TRIP / GANTI DATA
+PILIHAN_INDEX_TRIP = 15 #<<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
@@ -485,37 +487,74 @@ else:
 # - `"Speed Bump"` — polisi tidur
 
 # %%
-LABELS_FOLDER = os.path.join(_DIR, "labels")
-os.makedirs(LABELS_FOLDER, exist_ok=True)
-
-
 def _label_file_path(trip_id):
     """Generate path file label JSON berdasarkan trip_id."""
     # Gunakan 8 karakter pertama UUID agar nama file tidak terlalu panjang
     short_id = str(trip_id).split("-")[0] if "-" in str(trip_id) else str(trip_id)
     return os.path.join(LABELS_FOLDER, f"{short_id}_labels.json")
 
-
-def load_labels_from_json(trip_id, trip_index=None):
+def load_labels_from_json(trip_id, df_trip, trip_index=None):
     """
-    Load USER_LABELS dari file JSON.
-    Jika file belum ada, buat template kosong dan kembalikan dict kosong.
+    Load USER_LABELS dari file JSON (yang menggunakan format event_mapping).
     """
     path = _label_file_path(trip_id)
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        # Konversi key string → int
-        labels = {int(k): v for k, v in data.get("labels", {}).items()}
+            
+        import numpy as np
+        labels = {}
+        lost = 0
+        
+        event_mapping = data.get("event_mapping", {})
+        raw_labels = data.get("labels", {})
+        
+        if not event_mapping:
+            # Fallback for old integer keys
+            labels = {int(k): v for k, v in raw_labels.items()}
+            return labels
+            
+        for k_str, label in raw_labels.items():
+            if k_str not in event_mapping:
+                lost += 1
+                continue
+                
+            time_s = float(event_mapping[k_str])
+            time_diffs = np.abs(df_trip["time_s"] - time_s)
+            
+            if len(time_diffs) == 0:
+                continue
+                
+            min_diff = time_diffs.min()
+            
+            if min_diff <= 0.5:
+                best_match_idx = time_diffs.idxmin()
+                nomor = int(df_trip.loc[best_match_idx, "nomor_event"])
+                labels[nomor] = label
+            else:
+                lost += 1
+                
         print(f"[OK] Dimuat {len(labels)} label dari: {os.path.basename(path)}")
+        if lost > 0:
+            print(f"[WARN] {lost} label gagal di-map ke event saat ini (perbedaan waktu > 0.5s).")
+            
+        # Self-healing: overwrite JSON with new mapping if it loaded successfully
+        if len(labels) > 0:
+            save_labels_to_json(trip_id, labels, df_trip, trip_index, "Auto-healed event_mapping")
+            
         return labels
 
     # Buat template kosong
+    event_mapping = {}
+    for idx, row in df_trip.iterrows():
+        event_mapping[str(int(row["nomor_event"]))] = round(float(row["time_s"]), 3)
+        
     template = {
         "trip_index": trip_index if trip_index is not None else "?",
         "trip_id": str(trip_id),
         "labeled_at": "",
         "notes": "Edit labels dict di bawah, lalu jalankan sel berikutnya.",
+        "event_mapping": event_mapping,
         "labels": {}
     }
     with open(path, "w", encoding="utf-8") as f:
@@ -525,14 +564,21 @@ def load_labels_from_json(trip_id, trip_index=None):
     return {}
 
 
-def save_labels_to_json(trip_id, labels, trip_index=None, notes=""):
-    """Simpan USER_LABELS ke file JSON untuk referensi masa depan."""
+def save_labels_to_json(trip_id, labels, df_trip, trip_index=None, notes=""):
+    """Simpan USER_LABELS ke file JSON dengan arsitektur event_mapping."""
     path = _label_file_path(trip_id)
+    
+    # 1. Simpan semua event_mapping untuk trip ini (baik yang dilabeli maupun belum)
+    event_mapping = {}
+    for idx, row in df_trip.iterrows():
+        event_mapping[str(int(row["nomor_event"]))] = round(float(row["time_s"]), 3)
+        
     data = {
         "trip_index": trip_index if trip_index is not None else "?",
         "trip_id": str(trip_id),
         "labeled_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "notes": notes,
+        "event_mapping": event_mapping,
         "labels": {str(k): v for k, v in sorted(labels.items())}
     }
     with open(path, "w", encoding="utf-8") as f:
@@ -541,7 +587,7 @@ def save_labels_to_json(trip_id, labels, trip_index=None, notes=""):
 
 
 # Muat label dari file JSON (atau buat template kosong)
-USER_LABELS = load_labels_from_json(selected_trip, PILIHAN_INDEX_TRIP)
+USER_LABELS = load_labels_from_json(selected_trip, df_trip, PILIHAN_INDEX_TRIP)
 
 print(f"Total label sesi ini: {len(USER_LABELS)}")
 
@@ -588,7 +634,7 @@ if len(USER_LABELS) > 0:
     print(f"\n Tersimpan! Total data ground truth: {len(master_df)}")
 
     # Simpan juga ke file JSON sebagai backup
-    save_labels_to_json(selected_trip, USER_LABELS, PILIHAN_INDEX_TRIP)
+    save_labels_to_json(selected_trip, USER_LABELS, df_trip, PILIHAN_INDEX_TRIP)
 else:
     print("Belum ada label yang diisi di USER_LABELS.")
     print(f"Edit file: {_label_file_path(selected_trip)}")

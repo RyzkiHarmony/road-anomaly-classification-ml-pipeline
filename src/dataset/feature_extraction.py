@@ -13,7 +13,7 @@ import pandas as pd
 from scipy.stats import median_abs_deviation, kurtosis as sp_kurtosis, skew as sp_skew
 from scipy.ndimage import gaussian_filter1d
 
-from config import WINDOW_S, OVERLAP
+from config import WINDOW_S, OVERLAP, TARGET_HZ
 
 
 def extract_event_shape_features(window_df, bg_df=None):
@@ -82,7 +82,7 @@ def extract_event_shape_features(window_df, bg_df=None):
     # ---------- Sampling rate ----------
     dt = np.diff(t)
     dt = dt[dt > 0]
-    fs = 1.0 / np.median(dt) if len(dt) > 0 else 50.0
+    fs = 1.0 / np.median(dt) if len(dt) > 0 else float(TARGET_HZ)
 
     # ---------- Gyroscope ----------
     has_gyro = all(c in seg.columns for c in ("gx", "gy", "gz"))

@@ -1,4 +1,5 @@
 import os
+import argparse
 import random
 import json
 import numpy as np
@@ -24,6 +25,7 @@ sys.path.append(os.path.join(_PROJECT_ROOT, "src", "utils"))
 
 from config import CNN_OUT_DIR, get_logger
 from model import InceptionTime1D
+from data_utils import get_stratified_group_split
 
 logger = get_logger(__name__)
 
@@ -43,7 +45,7 @@ def scale_instance_level(data):
 
 EPOCHS = 20
 BATCH_SIZE = 32
-LR = 0.001
+LR = 0.0005
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
@@ -211,43 +213,15 @@ def apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO):
     
     return X_resampled, y_resampled
 
-def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
-    unique_classes = np.unique(y_raw)
-    class_to_idx = {c: i for i, c in enumerate(unique_classes)}
-    y_idx = np.array([class_to_idx[val] for val in y_raw])
 
-    group_names = np.unique(groups)
-    group_counts = {g: np.array([np.sum(y_idx[groups == g] == i) for i in range(len(unique_classes))]) for g in group_names}
-    total_counts = np.sum(list(group_counts.values()), axis=0)
-
-    train_groups = set()
-    test_groups = set()
-    current_train = np.zeros(len(unique_classes))
-
-    # Sort groups by total minority class count desc
-    minority_indices = [class_to_idx[c] for c in ['Pothole', 'Speed Bump'] if c in class_to_idx]
-    sorted_groups = sorted(group_names, key=lambda g: np.sum(group_counts[g][minority_indices]), reverse=True)
-
-    for g in sorted_groups:
-        counts = group_counts[g]
-        # Minimize MSE of ratios to train_ratio:
-        # If added to train:
-        ratio_if_train = (current_train + counts) / (total_counts + 1e-9)
-        err_train = np.sum((ratio_if_train - train_ratio) ** 2)
-        
-        # If added to test:
-        ratio_if_test = current_train / (total_counts + 1e-9)
-        err_test = np.sum((ratio_if_test - train_ratio) ** 2)
-        
-        if err_train < err_test:
-            train_groups.add(g)
-            current_train += counts
-        else:
-            test_groups.add(g)
-
-    return list(train_groups), list(test_groups)
 
 def main():
+    parser = argparse.ArgumentParser(description="CNN Training")
+    parser.add_argument("--channels", type=int, default=128, help="Number of base channels")
+    parser.add_argument("--dropout", type=float, default=0.5, help="Dropout rate")
+    parser.add_argument("--no-augment", action="store_true", help="Disable data augmentation")
+    args = parser.parse_args()
+
     set_seed(42)
     X_path = os.path.join(DATA_DIR, "cnn_1d_X.npy")
     y_path = os.path.join(DATA_DIR, "cnn_1d_y.npy")
@@ -332,8 +306,23 @@ def main():
         y_val_one_hot = torch.nn.functional.one_hot(y_val, num_classes=len(classes)).float()
         
         # ─── Stratified Batch Loader ───
-        train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=15,
-                                             noise_std=0.02, scale_range=(0.85, 1.15), is_train=True, non_event_idx=non_event_idx)
+        if args.no_augment:
+            max_j = 0
+            n_std = 0
+            s_range = None
+            drop_p = 0
+            warp_p = 0
+        else:
+            max_j = 15
+            n_std = 0.02
+            s_range = (0.85, 1.15)
+            drop_p = 0.1
+            warp_p = 0.8
+            
+        train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=max_j,
+                                             noise_std=n_std, scale_range=s_range,
+                                             time_warp_prob=warp_p, channel_drop_prob=drop_p,
+                                             is_train=True, non_event_idx=non_event_idx)
         val_dataset = DynamicJitterDataset(X_val, y_val, max_jitter=0,
                                            noise_std=0, scale_range=None, is_train=False, non_event_idx=non_event_idx)
         
@@ -346,7 +335,7 @@ def main():
         class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
         
         model = InceptionTime1D(in_channels=X_train.shape[1], num_classes=len(classes),
-                               num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
+                               num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
         criterion = MultiLabelFocalLoss(weight=class_weights, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
@@ -404,6 +393,8 @@ def main():
                     val_trues.extend(batch_y.cpu().numpy())
                     
             val_loss /= len(val_loader.dataset)
+            
+            logger.info(f"  [Epoch {epoch+1:02d}/{EPOCHS}] Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
             
             # Hitung PR-AUC untuk kelas minoritas pada data validasi epoch ini (threshold-independent)
             val_probas_np = np.array(val_probas)
@@ -486,83 +477,21 @@ def main():
     
     # --- Cetak Classification Report ---
     oof_y_true = np.array(oof_y_true)
-    oof_y_pred_default = np.array(oof_y_pred)
+    oof_y_pred = np.array(oof_y_pred)
     oof_y_proba = np.array(oof_y_proba)
     
     from sklearn.metrics import classification_report
     
-    # --- Report 1: Default Argmax (Baseline, Threshold = 0.5 implicitly via argmax) ---
-    # Ini adalah operating point paling balanced. Threshold tidak dimanipulasi.
-    # Gunakan ini sebagai metrik utama di laporan karena F1 lebih tinggi.
     print("\n" + "=" * 60)
-    print("      OOF REPORT — DEFAULT ARGMAX (No Threshold Tuning)      ")
+    print("      OOF REPORT      ")
     print("=" * 60)
-    print(classification_report(oof_y_true, oof_y_pred_default, target_names=classes))
-
-    # --- Threshold Optimization (Recall-Maximization, Safety Domain) ---
-    # PENTING: Threshold ini dipilih untuk memaksimalkan RECALL Pothole,
-    # bukan F1. Konsekuensinya: Precision Pothole turun, F1 Pothole bisa turun.
-    # Pilihan ini justified untuk sistem safety (false negative > false positive).
-    # Threshold diturunkan dari kurva PR-AUC pada data OOF (bukan test set).
-    y_true_pothole = (oof_y_true == p_idx).astype(int)
-    y_proba_pothole = oof_y_proba[:, p_idx]
-    prec, rec, thresholds = precision_recall_curve(y_true_pothole, y_proba_pothole)
-    
-    # Cari threshold di mana F1 tertinggi pada kurva PR (titik operasi referensi),
-    # namun efek nyatanya adalah menurunkan threshold dari 0.5 untuk gain Recall.
-    fscore = (2 * prec * rec) / (prec + rec + 1e-9)
-    ix = np.argmax(fscore)
-    best_thresh_p = thresholds[ix] if ix < len(thresholds) else 0.5
-    
-    # Threshold Optimization for Speed Bump
-    best_thresh_sb = 0.5
-    if sb_idx != -1:
-        y_true_sb = (oof_y_true == sb_idx).astype(int)
-        y_proba_sb = oof_y_proba[:, sb_idx]
-        prec_sb, rec_sb, thresholds_sb = precision_recall_curve(y_true_sb, y_proba_sb)
-        fscore_sb = (2 * prec_sb * rec_sb) / (prec_sb + rec_sb + 1e-9)
-        ix_sb = np.argmax(fscore_sb)
-        best_thresh_sb = thresholds_sb[ix_sb] if ix_sb < len(thresholds_sb) else 0.5
-        
-    print("\n" + "=" * 60)
-    print("              METRICS & THRESHOLD SUMMARY              ")
-    print("=" * 60)
-    print(f"Recall-Maximizing Thresholds -> Pothole: {best_thresh_p:.4f} | Speed Bump: {best_thresh_sb:.4f}")
-    print("[NOTE] Threshold tuned for max Recall (safety), not max F1. Pothole F1 may be lower than argmax.")
-    
-    # Terapkan threshold optimasi pada OOF predictions
-    oof_y_pred = np.zeros_like(oof_y_true)
-    non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
-    
-    for i in range(len(oof_y_proba)):
-        proba = oof_y_proba[i]
-        p_prob = proba[p_idx]
-        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
-        
-        p_triggered = p_prob >= best_thresh_p
-        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
-        
-        if p_triggered and sb_triggered:
-            if p_prob >= sb_prob:
-                oof_y_pred[i] = p_idx
-            else:
-                oof_y_pred[i] = sb_idx
-        elif p_triggered:
-            oof_y_pred[i] = p_idx
-        elif sb_triggered:
-            oof_y_pred[i] = sb_idx
-        else:
-            oof_y_pred[i] = non_event_idx
-
-    print("\nOut-of-Fold Classification Report (Recall-Maximizing Threshold):")
-    print("[NOTE: Threshold dipilih dari OOF. Ini domain-driven tradeoff, bukan peningkatan F1.]")
     print(classification_report(oof_y_true, oof_y_pred, target_names=classes))
     
     # --- Confusion Matrix ---
     cm = confusion_matrix(oof_y_true, oof_y_pred)
     
     print("-" * 60)
-    print("        CONFUSION MATRIX (Out-of-Fold - Optimized)")
+    print("        CONFUSION MATRIX (Out-of-Fold)")
     print("-" * 60)
     header = f"{'':>12}" + "".join([f"{cls:>12}" for cls in classes])
     print(header)
@@ -582,7 +511,7 @@ def main():
            xticklabels=classes, yticklabels=classes,
            ylabel='True Label',
            xlabel='Predicted Label',
-           title='Confusion Matrix (Out-of-Fold - Optimized)')
+           title='Confusion Matrix (Out-of-Fold)')
     
     # Rotate x labels
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
@@ -628,8 +557,10 @@ def main():
     
     logger.info(f"Melatih final model dengan seluruh dataset sebanyak {optimal_epochs} epoch...")
     
-    full_dataset = DynamicJitterDataset(X_full_tensor, y_full_tensor, max_jitter=15,
-                                         noise_std=0.02, scale_range=(0.85, 1.15), is_train=True, non_event_idx=non_event_idx)
+    full_dataset = DynamicJitterDataset(X_full_tensor, y_full_tensor, max_jitter=max_j,
+                                         noise_std=n_std, scale_range=s_range, 
+                                         time_warp_prob=warp_p, channel_drop_prob=drop_p,
+                                         is_train=True, non_event_idx=non_event_idx)
     full_loader = DataLoader(full_dataset, batch_size=BATCH_SIZE, shuffle=True)
     
     class_weights_full = compute_class_weight('balanced', classes=np.unique(y_full), y=y_full)
@@ -638,7 +569,7 @@ def main():
     class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
     
     final_model = InceptionTime1D(in_channels=X_full.shape[1], num_classes=len(classes),
-                                 num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.2).to(device)
+                                 num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
     criterion_full = MultiLabelFocalLoss(weight=class_weights_full, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
     scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
@@ -693,47 +624,16 @@ def main():
     test_probas = np.array(test_probas)
     test_trues = np.array(test_trues)
     
-    # Apply optimized thresholds
-    test_preds = np.zeros_like(test_trues)
-    for i in range(len(test_probas)):
-        proba = test_probas[i]
-        p_prob = proba[p_idx]
-        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
-        
-        p_triggered = p_prob >= best_thresh_p
-        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
-        
-        if p_triggered and sb_triggered:
-            if p_prob >= sb_prob:
-                test_preds[i] = p_idx
-            else:
-                test_preds[i] = sb_idx
-        elif p_triggered:
-            test_preds[i] = p_idx
-        elif sb_triggered:
-            test_preds[i] = sb_idx
-        else:
-            test_preds[i] = non_event_idx
-            
-    # --- Report Default Argmax on Holdout (Primary Metric) ---
-    test_preds_default = np.argmax(test_probas, axis=1)
+    # --- Report Default Argmax on Holdout ---
+    test_preds = np.argmax(test_probas, axis=1)
     print("\n" + "=" * 60)
-    print("     HOLDOUT TEST — DEFAULT ARGMAX (Primary Metric)     ")
-    print("=" * 60)
-    print(classification_report(test_trues, test_preds_default, target_names=classes))
-    print("=" * 60 + "\n")
-
-    # --- Report Recall-Maximizing Threshold on Holdout ---
-    print("=" * 60)
-    print("  HOLDOUT TEST — RECALL-MAX THRESHOLD (Safety Operating Point)  ")
-    print(f"  Thresholds -> Pothole: {best_thresh_p:.4f} | Speed Bump: {best_thresh_sb:.4f}")
-    print("  [NOTE: Threshold dari OOF. Recall Pothole naik, F1 Pothole bisa turun.]")
+    print("     HOLDOUT TEST     ")
     print("=" * 60)
     print(classification_report(test_trues, test_preds, target_names=classes))
     print("=" * 60 + "\n")
     
-    # Save test confusion matrix (using default argmax)
-    cm_test = confusion_matrix(test_trues, test_preds_default)
+    # Save test confusion matrix
+    cm_test = confusion_matrix(test_trues, test_preds)
     fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(cm_test, interpolation='nearest', cmap='Oranges')
     ax.figure.colorbar(im, ax=ax, shrink=0.8)

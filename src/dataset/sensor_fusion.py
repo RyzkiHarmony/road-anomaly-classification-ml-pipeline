@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 from scipy.signal import butter, lfilter, lfilter_zi, filtfilt
-from config import TARGET_HZ
+from config import TARGET_HZ, get_logger
 from filters import butterworth_bandpass_iir
+
+logger = get_logger(__name__)
 
 def resample_100hz(df, target_hz=TARGET_HZ):
     """Resample dataframe to TARGET_HZ (e.g. 100Hz = 10ms intervals) using linear interpolation."""
@@ -18,7 +20,9 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     # Interpolasi buta akan menciptakan ribuan data palsu yang akan merusak filter LPF.
     diffs = np.diff(df_res['timestamp'].values)
     if np.any(diffs > 5000):
-        pass # Kami akan menangani ini dengan membatasi limit interpolasi di bawah.
+        max_gap_ms = int(np.max(diffs))
+        logger.warning(f"Gap >5s detected: max gap = {max_gap_ms}ms. "
+                       f"Interpolation limited to 50ms; remaining NaN rows will be dropped.")
 
     df_res['datetime'] = pd.to_datetime(df_res['timestamp'], unit='ms')
     df_res = df_res.set_index('datetime')
@@ -92,7 +96,7 @@ def apply_sensor_fusion(df, cutoff_hz=2.0):
             if nan_count > len(df) * 0.1:
                 raise ValueError(f"Too many NaNs in native column {col} (>{len(df)*0.1})")
             if nan_count > 0:
-                df[col] = df[col].interpolate(method='linear').bfill().ffill()
+                df[col] = df[col].interpolate(method='linear', limit=5).bfill(limit=5).ffill(limit=5)
                 
         # Resampling trip data to 100Hz
         df = resample_100hz(df)
@@ -143,7 +147,7 @@ def apply_sensor_fusion(df, cutoff_hz=2.0):
         if nan_count > len(df) * 0.1: # If more than 10% NaNs, fail
             raise ValueError(f"Too many NaNs in {col} (>{len(df)*0.1})")
         if nan_count > 0:
-            df[col] = df[col].interpolate(method='linear').bfill().ffill()
+            df[col] = df[col].interpolate(method='linear', limit=5).bfill(limit=5).ffill(limit=5)
 
     # Resampling ke grid waktu seragam
     df = resample_100hz(df)

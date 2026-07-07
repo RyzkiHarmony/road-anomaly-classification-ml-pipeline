@@ -13,9 +13,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../..", "05_pipeline_experiment"))
 
 from model import InceptionTime1D
-from train import DynamicJitterDataset, FocalLoss, set_seed, get_stratified_group_split, scale_instance_level, apply_smote
+from train import DynamicJitterDataset, MultiLabelFocalLoss, set_seed, get_stratified_group_split, scale_instance_level
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+from config import CNN_OUT_DIR
+DATA_DIR = CNN_OUT_DIR
 
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "epoch_tune_results.json")
 
@@ -78,8 +79,8 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
     cw   = cw / cw.sum() * len(cw)
     cw_t = torch.tensor(cw, dtype=torch.float32).to(device)
 
-    model = InceptionTime1D(in_channels=18, num_classes=len(classes)).to(device)
-    crit = FocalLoss(weight=cw_t, gamma=2.0)
+    model = InceptionTime1D(in_channels=6, num_classes=len(classes), num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.5).to(device)
+    crit = MultiLabelFocalLoss(weight=cw_t, gamma=2.0)
     opt  = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
     sch  = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
 
@@ -147,9 +148,9 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
 
 def main():
     set_seed(42)
-    X_all      = np.load(os.path.join("data", "processed", "cnn_1d", "cnn_1d_X.npy"))
-    y_all      = np.load(os.path.join("data", "processed", "cnn_1d", "cnn_1d_y.npy"))
-    groups_all = np.load(os.path.join("data", "processed", "cnn_1d", "cnn_1d_groups.npy"))
+    X_all      = np.load(os.path.join(DATA_DIR, "cnn_1d_X.npy"))
+    y_all      = np.load(os.path.join(DATA_DIR, "cnn_1d_y.npy"))
+    groups_all = np.load(os.path.join(DATA_DIR, "cnn_1d_groups.npy"))
 
     dev_g, test_g = get_stratified_group_split(groups_all, y_all, train_ratio=0.7)
     dev_m, test_m = np.isin(groups_all, dev_g), np.isin(groups_all, test_g)
@@ -198,7 +199,7 @@ def main():
 
             cw_e   = compute_class_weight("balanced", classes=np.unique(y_tr), y=y_tr)
             cw_e   = cw_e / cw_e.sum() * len(cw_e)
-            crit_e = FocalLoss(weight=torch.tensor(cw_e, dtype=torch.float32).to(device), gamma=2.0)
+            crit_e = MultiLabelFocalLoss(weight=torch.tensor(cw_e, dtype=torch.float32).to(device), gamma=2.0)
 
             trl, trm, trp = evaluate_dataset(model, make_ld(X_tr, y_tr),        device, p_idx, sb_idx, classes, t_p, t_sb, crit_e)
             vll, vlm, vlp = evaluate_dataset(model, make_ld(X_vl, y_vl),        device, p_idx, sb_idx, classes, t_p, t_sb, crit_e)
