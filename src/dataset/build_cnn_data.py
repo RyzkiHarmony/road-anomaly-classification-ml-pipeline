@@ -142,6 +142,7 @@ def main():
     X_list = []
     y_list = []
     groups_list = []
+    event_ids_list = []
     
     grouped_by_trip = df_labeled.groupby("trip_id")
     for trip_id, group in grouped_by_trip:
@@ -168,6 +169,7 @@ def main():
                         X_list.append(seq)
                         y_list.append(row["label"])
                         groups_list.append(trip_id)
+                        event_ids_list.append(row["event_id"])
             except Exception as e:
                 logger.error(f"Failed to process trip {trip_id}: {e}")
                 
@@ -176,15 +178,15 @@ def main():
     X = np.stack(X_list)
     y = np.array(y_list)
     groups = np.array(groups_list)
+    event_ids = np.array(event_ids_list)
     
     # Transpose X to (N_samples, Channels, Length) for PyTorch 1D-CNN
-    # Shape saat ini: (N_samples, 200, 3)
-    # PyTorch butuh (N_samples, 3, 200)
     X = np.transpose(X, (0, 2, 1))
     
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_X.npy"), X)
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_y.npy"), y)
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_groups.npy"), groups)
+    np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_event_ids.npy"), event_ids)
     
     logger.info(f"Dataset 1D-CNN disimpan. Shape X: {X.shape}, Shape y: {y.shape}")
     

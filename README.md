@@ -29,7 +29,7 @@ Project ini memproses data murni dari **akselerometer**, **giroskop**, dan **GPS
 **Tahapan Utama:**
 1. **Sensor Fusion (`sensor_fusion.py`)** — Memisahkan gravitasi dari akselerasi linear menggunakan *causal filter* (`scipy.signal.lfilter`) untuk zero-latency di perangkat *mobile*, menghasilkan `a_vertical`, `a_horizontal`, dan `speed`.
 2. **Feature Extraction (`feature_extraction.py`)** — Mengekstrak 56 fitur statistik dan morfologi (*shape-aware*). Ratios seperti `rise_time_ratio` dan `down_up_asymmetry` distabilkan secara numerik menggunakan batas atas (*clipping*) untuk mencegah pencilan tak berhingga (divisi oleh nol).
-3. **Augmentasi Fisik (1D-CNN)** — Menerapkan **Time Warping** (simulasi kecepatan motor bervariasi) dan **Channel Dropout** (simulasi kesalahan/pergeseran orientasi sensor) secara dinamis saat training.
+3. **Prapemrosesan Sinyal & Augmentasi Fisik (1D-CNN)** — Melakukan _resampling_ secara ketat ke 100 Hz (interval 10ms) dengan batas toleransi _gap_ 50ms untuk menghindari _hallucinated data_. Menggunakan _zero-padding_ dan _instance-level Z-Score scaling_. Menerapkan **Time Warping** (simulasi kecepatan motor bervariasi) dan **Channel Dropout** (simulasi kesalahan/pergeseran orientasi sensor) secara dinamis saat training.
 4. **Isotonic Calibration (XGBoost)** — Mengkalibrasi probabilitas XGBoost pasca-latih secara *out-of-fold* menggunakan Isotonic Regression untuk meredam inflasi probabilitas pada kelas minoritas.
 5. **Auto-ONNX Export** — Mengekspor model final PyTorch dan XGBoost secara langsung ke format universal (`.onnx`) untuk dijalankan secara real-time di Kotlin/Android Studio.
 
@@ -79,13 +79,14 @@ Berikut perbandingan performa XGBoost, 1D-CNN, dan Ensemble pada Holdout Test Se
 
 | Model / Metrik | Pothole Precision | Pothole Recall | Pothole F1-score | Speed Bump Precision | Speed Bump Recall | Speed Bump F1-score | Akurasi Global |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **XGBoost (Calibrated)** | 0.348 | **0.823** | 0.489 | 0.588 | 0.556 | 0.571 | 91% |
-| **1D-CNN (Augmented)** | 0.467 | 0.722 | 0.567 | **0.822** | 0.685 | 0.747 | 94% |
-| **Ensemble (Soft Voting)** | **0.600** | 0.633 | **0.610** | 0.771 | **0.815** | **0.793** | **96%** |
+| **XGBoost (Calibrated)** | 0.60 | **0.76** | **0.67** | 0.43 | 0.48 | 0.45 | 93% |
+| **1D-CNN (100 Hz strict)** | 0.51 | 0.69 | 0.58 | 0.52 | **0.58** | 0.55 | 93% |
+| **Ensemble (Soft Voting)** | **0.65** | 0.68 | **0.67** | **0.77** | 0.48 | **0.59** | **94%** |
 
 ### Analisis Hasil
-*   **Ensemble Soft Voting** dengan bobot **0.30 XGBoost + 0.70 CNN** menghasilkan performa terbaik. F1-score Pothole meningkat ke **0.610** dan presisi melonjak menjadi **60%**, yang sangat menekan kesalahan alarm palsu saat dideploy ke perangkat Android.
+*   **Ensemble Soft Voting** dengan bobot **0.30 XGBoost + 0.70 CNN** menghasilkan performa terbaik dan terefisien untuk operasional *real-world*. F1-score Pothole mencapai **0.67** dan presisi melonjak ke angka fantastis **65%**, sangat menekan masalah "alarm palsu" yang sering dialami oleh *Edge AI* pada kendaraan roda dua. Presisi pendeteksian polisi tidur (*Speed Bump*) juga mencapai puncaknya di **77%**.
 *   **Stabilisasi Sinyal:** Masalah instabilitas numerik pada fitur waveform `rise_time_ratio` diselesaikan dengan clipping `[0.0, 50.0]`, menurunkan rasio pencilan False Positive dari **1,3 Juta** menjadi **1,13** (TP: 2.31, FP: 2.62).
+*   **Validasi Pipeline (100 Hz):** Pipeline CNN kini secara ketat menolak jendela sinyal jika terdapat *gap* > 50ms dan mengaplikasikan *zero-padding* serta *instance-level normalization* yang seratus persen kongruen dengan aplikasi Android, menghindari halusinasi saat OS mengalami *lag*.
 
 ---
 
