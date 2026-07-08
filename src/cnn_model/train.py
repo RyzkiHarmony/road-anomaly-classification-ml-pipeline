@@ -43,9 +43,9 @@ def scale_instance_level(data):
     return (data - means) / stds
 
 
-EPOCHS = 20
+EPOCHS = 50
 BATCH_SIZE = 32
-LR = 0.0005
+LR = 0.001
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):

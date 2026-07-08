@@ -21,8 +21,8 @@ DATA_DIR = CNN_OUT_DIR
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "lr_tune_results.json")
 
 LRS        = [0.1, 0.01, 0.001, 0.0001, 0.00001]
-EPOCHS     = 20    # same as train_cnn.py
-BATCH_SIZE = 32    # same as train_cnn.py
+EPOCHS     = 20    # Default
+BATCH_SIZE = 32    # Default
 
 def evaluate_dataset(model, loader, device, p_idx, sb_idx, classes,
                      best_thresh_p, best_thresh_sb, criterion):
@@ -32,7 +32,8 @@ def evaluate_dataset(model, loader, device, p_idx, sb_idx, classes,
         for bx, by in loader:
             bx, by = bx.to(device), by.to(device)
             out = model(bx)
-            total_loss += criterion(out, by).item() * bx.size(0)
+            by_oh = torch.nn.functional.one_hot(by, num_classes=len(classes)).float()
+            total_loss += criterion(out, by_oh).item() * bx.size(0)
             probs = torch.softmax(out, dim=1)
             probas.extend(probs.cpu().numpy())
             trues.extend(by.cpu().numpy())
@@ -91,7 +92,8 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
         for bx, by in tr_ld:
             bx, by = bx.to(device), by.to(device)
             opt.zero_grad()
-            loss = crit(model(bx), by)
+            by_oh = torch.nn.functional.one_hot(by, num_classes=len(classes)).float()
+            loss = crit(model(bx), by_oh)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             opt.step()
@@ -103,7 +105,8 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
             for bx, by in vl_ld:
                 bx, by = bx.to(device), by.to(device)
                 out = model(bx)
-                vl_ep += crit(out, by).item() * bx.size(0)
+                by_oh = torch.nn.functional.one_hot(by, num_classes=len(classes)).float()
+                vl_ep += crit(out, by_oh).item() * bx.size(0)
                 vp.extend(torch.softmax(out, dim=1).cpu().numpy())
                 vt.extend(by.cpu().numpy())
         vl_ep /= len(vl_ld.dataset)

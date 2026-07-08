@@ -110,18 +110,22 @@ def main():
                 cw = compute_class_weight("balanced", classes=np.unique(y_tr), y=y_tr)
                 cw_t = torch.tensor(cw, dtype=torch.float32).to(device)
 
-                model = InceptionTime1D(in_channels=6, num_classes=len(classes), dropout_rate=drop).to(device)
+                model = InceptionTime1D(in_channels=X_tr.shape[1], num_classes=len(classes), dropout_rate=drop).to(device)
                 criterion = nn.CrossEntropyLoss(weight=cw_t)
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
                 for epoch in range(15):
                     model.train()
+                    train_loss = 0.0
                     for bx, by in tr_ld:
                         bx, by = bx.to(device), by.to(device)
                         optimizer.zero_grad()
                         loss = criterion(model(bx), by)
                         loss.backward()
                         optimizer.step()
+                        train_loss += loss.item() * bx.size(0)
+                    train_loss /= len(tr_ld.dataset)
+                    logger.info(f"    Fold {fold+1} Epoch {epoch+1}/15 Train Loss: {train_loss:.4f}")
 
                 p_f1, sb_f1 = evaluate_fold(model, vl_ld, device, p_idx, sb_idx, ne_idx)
                 fold_scores.append((p_f1, sb_f1))
