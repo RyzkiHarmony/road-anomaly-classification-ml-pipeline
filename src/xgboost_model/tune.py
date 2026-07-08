@@ -59,12 +59,28 @@ def main():
     df = pd.read_csv(data_path)
     df = df.dropna(subset=['label'])
     
+    TOP_N_FEATURES = 25
     banned_cols = ['lat', 'lon', 'suggestion_confidence', 'score']
     metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
     numeric_df = df.drop(columns=[c for c in metadata_cols if c in df.columns]).select_dtypes(include=[np.number])
-    feature_cols = numeric_df.columns.tolist()
+    all_feature_cols = numeric_df.columns.tolist()
     
-    df = df.dropna(subset=feature_cols)
+    df = df.dropna(subset=all_feature_cols)
+    X_all = df[all_feature_cols].values
+    y_all = df['label'].values
+    
+    logger.info(f"Feature Selection Pass 1: ranking {len(all_feature_cols)} features by XGBoost gain...")
+    le_fs = LabelEncoder()
+    y_all_enc = le_fs.fit_transform(y_all)
+    selector = XGBClassifier(n_estimators=50, max_depth=4, subsample=0.8,
+                             colsample_bytree=0.8, random_state=42, n_jobs=1)
+    selector.fit(X_all, y_all_enc)
+    importances = selector.feature_importances_
+    top_idx = np.argsort(importances)[::-1][:TOP_N_FEATURES]
+    feature_cols = [all_feature_cols[i] for i in sorted(top_idx)]
+    
+    logger.info(f"Top {TOP_N_FEATURES} features selected for tuning: {feature_cols}")
+    
     X = df[feature_cols].values
     y_raw = df['label'].values
     groups = df['trip_id'].values
@@ -148,24 +164,13 @@ def main():
         oof_y_true = np.array(oof_y_true)
         oof_y_proba = np.array(oof_y_proba)
         
-        # Optimize threshold for Pothole on OOF to find the best possible F1-Score
-        y_true_pothole = (oof_y_true == p_idx).astype(int)
-        y_proba_pothole = oof_y_proba[:, p_idx]
-        prec, rec, thresholds = precision_recall_curve(y_true_pothole, y_proba_pothole)
-        fscore = (2 * prec * rec) / (prec + rec + 1e-9)
-        ix = np.argmax(fscore)
-        best_f1_pothole = fscore[ix]
-        best_thresh = thresholds[ix] if ix < len(thresholds) else 0.5
+        # Evaluate using Default Argmax
+        oof_y_pred = np.argmax(oof_y_proba, axis=1)
+        best_f1_pothole = f1_score(oof_y_true, oof_y_pred, labels=[p_idx], average='macro', zero_division=0)
         
-        # Optimize threshold for Speed Bump
         best_f1_sb = 0.0
         if sb_idx != -1:
-            y_true_sb = (oof_y_true == sb_idx).astype(int)
-            y_proba_sb = oof_y_proba[:, sb_idx]
-            prec_sb, rec_sb, thresholds_sb = precision_recall_curve(y_true_sb, y_proba_sb)
-            fscore_sb = (2 * prec_sb * rec_sb) / (prec_sb + rec_sb + 1e-9)
-            ix_sb = np.argmax(fscore_sb)
-            best_f1_sb = fscore_sb[ix_sb]
+            best_f1_sb = f1_score(oof_y_true, oof_y_pred, labels=[sb_idx], average='macro', zero_division=0)
 
         # Objective function: Prioritize Pothole F1 score while maintaining some Speed Bump F1 score
         composite_score = 0.7 * best_f1_pothole + 0.3 * best_f1_sb
@@ -178,15 +183,14 @@ def main():
             best_f1_p = best_f1_pothole
             best_f1_s = best_f1_sb
             best_params = params
-            best_p_thresh = best_thresh
             
     print("\n" + "=" * 60)
     print("                 BEST XGBOOST HYPERPARAMETERS                ")
     print("=" * 60)
     print(f"Best Params: {best_params}")
     print(f"Best Composite Score: {best_score:.4f}")
-    print(f"Best OOF Pothole F1: {best_f1_p:.4f} (Threshold: {best_p_thresh:.4f})")
-    print(f"Best OOF Speed Bump F1: {best_f1_s:.4f}")
+    print(f"Best OOF Pothole F1 (Default Argmax): {best_f1_p:.4f}")
+    print(f"Best OOF Speed Bump F1 (Default Argmax): {best_f1_s:.4f}")
     print("=" * 60 + "\n")
 
 if __name__ == "__main__":

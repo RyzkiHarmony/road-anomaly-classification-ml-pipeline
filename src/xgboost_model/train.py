@@ -151,7 +151,7 @@ def main():
             learning_rate=0.1,
             subsample=0.7,
             colsample_bytree=0.7,
-            reg_lambda=1.0,
+            reg_lambda=10.0,
             reg_alpha=1.0,
             random_state=42,
             n_jobs=1
@@ -197,54 +197,10 @@ def main():
     oof_y_pred = np.array(oof_y_pred)
     oof_y_proba = np.array(oof_y_proba)
 
-    # ---------- THRESHOLD OPTIMIZATION (Using Clean OOF Data) ----------
-    y_true_pothole = (oof_y_true == p_idx).astype(int)
-    y_proba_pothole = oof_y_proba[:, p_idx]
-    prec, rec, thresholds = precision_recall_curve(y_true_pothole, y_proba_pothole)
-    
-    # Cari threshold yang memaksimalkan F1-Score
-    fscore = (2 * prec * rec) / (prec + rec + 1e-9)
-    ix = np.argmax(fscore)
-    best_thresh_p = thresholds[ix] if ix < len(thresholds) else 0.5
-    
-    # Threshold Optimization for Speed Bump
-    best_thresh_sb = 0.5
-    if sb_idx != -1:
-        y_true_sb = (oof_y_true == sb_idx).astype(int)
-        y_proba_sb = oof_y_proba[:, sb_idx]
-        prec_sb, rec_sb, thresholds_sb = precision_recall_curve(y_true_sb, y_proba_sb)
-        fscore_sb = (2 * prec_sb * rec_sb) / (prec_sb + rec_sb + 1e-9)
-        ix_sb = np.argmax(fscore_sb)
-        best_thresh_sb = thresholds_sb[ix_sb] if ix_sb < len(thresholds_sb) else 0.5
+    # ---------- OOF PREDICTIONS (DEFAULT ARGMAX) ----------
+    oof_y_pred_opt = np.argmax(oof_y_proba, axis=1)
 
-    print("\n" + "=" * 60)
-    print("              METRICS & THRESHOLD SUMMARY              ")
-    print("=" * 60)
-    print(f"Optimal Thresholds -> Pothole: {best_thresh_p:.4f} | Speed Bump: {best_thresh_sb:.4f}")
-
-    # Terapkan threshold optimasi pada OOF predictions
-    oof_y_pred_opt = np.zeros_like(oof_y_true)
-    for i in range(len(oof_y_proba)):
-        proba = oof_y_proba[i]
-        p_prob = proba[p_idx]
-        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
-        
-        p_triggered = p_prob >= best_thresh_p
-        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb
-        
-        if p_triggered and sb_triggered:
-            if p_prob >= sb_prob:
-                oof_y_pred_opt[i] = p_idx
-            else:
-                oof_y_pred_opt[i] = sb_idx
-        elif p_triggered:
-            oof_y_pred_opt[i] = p_idx
-        elif sb_triggered:
-            oof_y_pred_opt[i] = sb_idx
-        else:
-            oof_y_pred_opt[i] = non_event_idx
-
-    print("\nOut-of-Fold Classification Report (Optimized Threshold):")
+    print("\nOut-of-Fold Classification Report (Default Argmax):")
     print(classification_report(oof_y_true, oof_y_pred_opt, target_names=classes, zero_division=0))
     
     # Save Out-of-Fold Confusion Matrix
@@ -294,7 +250,7 @@ def main():
         learning_rate=0.1,
         subsample=0.7,
         colsample_bytree=0.7,
-        reg_lambda=1.0,
+        reg_lambda=10.0,
         reg_alpha=1.0,
         random_state=42,
         n_jobs=1
@@ -331,25 +287,9 @@ def main():
     logger.info("Calibrated OOF report (sanity check):")
     logger.info("\n" + classification_report(oof_y_true, cal_oof_pred, target_names=classes, zero_division=0))
 
-    # ---------- RE-OPTIMIZE THRESHOLDS ON CALIBRATED OOF PROBABILITIES ----------
-    cal_y_true_pothole = (oof_y_true == p_idx).astype(int)
-    cal_y_proba_pothole = cal_oof_proba[:, p_idx]
-    prec_cal, rec_cal, thresh_cal = precision_recall_curve(cal_y_true_pothole, cal_y_proba_pothole)
-    fscore_cal = (2 * prec_cal * rec_cal) / (prec_cal + rec_cal + 1e-9)
-    ix_cal = np.argmax(fscore_cal)
-    best_thresh_p_cal = thresh_cal[ix_cal] if ix_cal < len(thresh_cal) else 0.5
-    
+    # Set default thresholds for Android inference (Fallback if not using argmax)
+    best_thresh_p_cal = 0.5
     best_thresh_sb_cal = 0.5
-    if sb_idx != -1:
-        cal_y_true_sb = (oof_y_true == sb_idx).astype(int)
-        cal_y_proba_sb = cal_oof_proba[:, sb_idx]
-        prec_sb_cal, rec_sb_cal, thresh_sb_cal = precision_recall_curve(cal_y_true_sb, cal_y_proba_sb)
-        fscore_sb_cal = (2 * prec_sb_cal * rec_sb_cal) / (prec_sb_cal + rec_sb_cal + 1e-9)
-        ix_sb_cal = np.argmax(fscore_sb_cal)
-        best_thresh_sb_cal = thresh_sb_cal[ix_sb_cal] if ix_sb_cal < len(thresh_sb_cal) else 0.5
-    
-    print(f"\nCalibrated Thresholds -> Pothole: {best_thresh_p_cal:.4f} | Speed Bump: {best_thresh_sb_cal:.4f}")
-    print(f"(Pre-calibration -> Pothole: {best_thresh_p:.4f} | Speed Bump: {best_thresh_sb:.4f})")
 
     # ---------- SAVE ARTIFACTS ----------
     # Save raw model for ONNX export
@@ -392,27 +332,6 @@ def main():
         calibrators[i].predict(raw_test_probas[:, i]) for i in range(len(classes))
     ])
     test_probas = test_probas / test_probas.sum(axis=1, keepdims=True)
-    
-    test_preds = np.zeros_like(y_test)
-    for i in range(len(test_probas)):
-        proba = test_probas[i]
-        p_prob = proba[p_idx]
-        sb_prob = proba[sb_idx] if sb_idx != -1 else 0.0
-        
-        p_triggered = p_prob >= best_thresh_p_cal
-        sb_triggered = sb_idx != -1 and sb_prob >= best_thresh_sb_cal
-        
-        if p_triggered and sb_triggered:
-            if p_prob >= sb_prob:
-                test_preds[i] = p_idx
-            else:
-                test_preds[i] = sb_idx
-        elif p_triggered:
-            test_preds[i] = p_idx
-        elif sb_triggered:
-            test_preds[i] = sb_idx
-        else:
-            test_preds[i] = non_event_idx
             
     # --- Report Default Argmax on Holdout (Primary Metric) ---
     test_preds_default = np.argmax(test_probas, axis=1)
@@ -420,12 +339,6 @@ def main():
     print("     HOLDOUT TEST — DEFAULT ARGMAX (Primary Metric)     ")
     print("=" * 60)
     print(classification_report(y_test, test_preds_default, target_names=classes, zero_division=0))
-    print("=" * 60 + "\n")
-
-    print("=" * 60)
-    print("             HOLDOUT TEST SET EVALUATION (OPTIMIZED)             ")
-    print("=" * 60)
-    print(classification_report(y_test, test_preds, target_names=classes, zero_division=0))
     print("=" * 60 + "\n")
     
     # Save holdout confusion matrix (using default argmax)

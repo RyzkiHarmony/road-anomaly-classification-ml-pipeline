@@ -113,7 +113,7 @@ def main():
     # 3. OPTIMIZE WEIGHTS
     best_f1_macro = 0
     best_weight = 0.3
-    best_p_thresh = 0.4
+    best_p_thresh = 0.5
     best_sb_thresh = 0.5
     
     # Since OOF alignment is tricky because we dropped elements differently, 

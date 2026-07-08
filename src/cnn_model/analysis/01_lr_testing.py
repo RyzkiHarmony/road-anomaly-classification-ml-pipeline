@@ -79,7 +79,7 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
     cw   = cw / cw.sum() * len(cw)
     cw_t = torch.tensor(cw, dtype=torch.float32).to(device)
 
-    model = InceptionTime1D(in_channels=6, num_classes=len(classes), num_blocks=2, channels=64, bottleneck_channels=16, dropout_rate=0.5).to(device)
+    model = InceptionTime1D(in_channels=X_tr.shape[1], num_classes=len(classes), num_blocks=3, channels=128, bottleneck_channels=32, dropout_rate=0.5).to(device)
     crit = MultiLabelFocalLoss(weight=cw_t, gamma=2.0)
     opt  = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
     sch  = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs, eta_min=1e-6)
@@ -131,17 +131,8 @@ def train_fold_model(X_tr, y_tr, X_vl, y_vl, lr, epochs, batch_size,
             vt.extend(by.numpy())
     vp, vt = np.array(vp), np.array(vt)
 
-    pp, rp, thr = precision_recall_curve((vt == p_idx).astype(int), vp[:, p_idx])
-    fs = (2 * pp * rp) / (pp + rp + 1e-9)
-    ix = np.argmax(fs)
-    t_p = thr[ix] if ix < len(thr) else 0.5
-
+    t_p = 0.5
     t_sb = 0.5
-    if sb_idx != -1:
-        psb, rsb, tsb = precision_recall_curve((vt == sb_idx).astype(int), vp[:, sb_idx])
-        fssb = (2 * psb * rsb) / (psb + rsb + 1e-9)
-        ixsb = np.argmax(fssb)
-        t_sb = tsb[ixsb] if ixsb < len(tsb) else 0.5
 
     return model, None, None, t_p, t_sb
 

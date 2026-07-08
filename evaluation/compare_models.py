@@ -85,17 +85,9 @@ def evaluate_xgb():
     y_test = le.transform(y_test_raw)
     classes = le.classes_
     
-    # Load calibrated thresholds from JSON
-    thresh_path = os.path.join(XGB_MODEL_DIR, "xgboost_thresholds.json")
-    if os.path.exists(thresh_path):
-        with open(thresh_path, "r") as f:
-            thresh_config = json.load(f)
-        best_thresh_p = thresh_config["pothole_threshold"]
-        best_thresh_sb = thresh_config["speed_bump_threshold"]
-        print(f"  Loaded calibrated thresholds: Pothole={best_thresh_p:.4f}, SpeedBump={best_thresh_sb:.4f}")
-    else:
-        best_thresh_p = 0.5
-        best_thresh_sb = 0.5
+    # Force default threshold evaluation (Argmax equivalent)
+    best_thresh_p = 0.5
+    best_thresh_sb = 0.5
     
     p_idx = list(classes).index("Pothole")
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1

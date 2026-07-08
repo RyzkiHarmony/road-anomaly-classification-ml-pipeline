@@ -32,6 +32,7 @@ Project ini memproses data murni dari **akselerometer**, **giroskop**, dan **GPS
 3. **Prapemrosesan Sinyal & Augmentasi Fisik (1D-CNN)** — Melakukan _resampling_ secara ketat ke 100 Hz (interval 10ms) dengan batas toleransi _gap_ 50ms untuk menghindari _hallucinated data_. Menggunakan _zero-padding_ dan _instance-level Z-Score scaling_. Menerapkan **Time Warping** (simulasi kecepatan motor bervariasi) dan **Channel Dropout** (simulasi kesalahan/pergeseran orientasi sensor) secara dinamis saat training.
 4. **Isotonic Calibration (XGBoost)** — Mengkalibrasi probabilitas XGBoost pasca-latih secara *out-of-fold* menggunakan Isotonic Regression untuk meredam inflasi probabilitas pada kelas minoritas.
 5. **Auto-ONNX Export** — Mengekspor model final PyTorch dan XGBoost secara langsung ke format universal (`.onnx`) untuk dijalankan secara real-time di Kotlin/Android Studio.
+6. **Android Kotlin Synchronization** — Aplikasi Android terjamin sinkron 1-to-1 dengan _pipeline_ ini. Termasuk _dropout gap_ 50ms, `eps=1e-6` Z-Score _instance-level normalization_, dan penggunaan _Default Argmax_ (`0.50`) tanpa Threshold modifikasi buatan.
 
 ---
 

@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'utils')))
 
 import pandas as pd
 import numpy as np
@@ -61,12 +61,31 @@ def evaluate_model_cv(model, X, y_enc, groups, source_values, p_idx, cv_strategy
     return avg_f1, oof_y_true, oof_y_pred
 
 def main():
-    data_path = os.path.join(OUT_FOLDER, "manual_labeled_windows.csv")
+    data_path = os.path.join(OUT_FOLDER, "..", "xgboost", "xgboost_labeled_windows.csv")
     if not os.path.exists(data_path): return
     df = pd.read_csv(data_path).dropna(subset=['label'])
     
-    feature_cols = [c for c in df.columns if c in BEST_FEATURES]
-    df = df.dropna(subset=feature_cols)
+    TOP_N_FEATURES = 25
+    banned_cols = ['lat', 'lon', 'suggestion_confidence', 'score']
+    metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
+    numeric_df = df.drop(columns=[c for c in metadata_cols if c in df.columns]).select_dtypes(include=[np.number])
+    all_feature_cols = numeric_df.columns.tolist()
+    
+    df = df.dropna(subset=all_feature_cols)
+    X_all = df[all_feature_cols].values
+    y_all = df['label'].values
+    
+    logger.info(f"Feature Selection Pass 1: ranking {len(all_feature_cols)} features by XGBoost gain...")
+    le_fs = LabelEncoder()
+    y_all_enc = le_fs.fit_transform(y_all)
+    selector = XGBClassifier(n_estimators=50, max_depth=4, subsample=0.8,
+                             colsample_bytree=0.8, random_state=42, n_jobs=1)
+    selector.fit(X_all, y_all_enc)
+    importances = selector.feature_importances_
+    top_idx = np.argsort(importances)[::-1][:TOP_N_FEATURES]
+    feature_cols = [all_feature_cols[i] for i in sorted(top_idx)]
+    
+    logger.info(f"Top {TOP_N_FEATURES} features selected: {feature_cols}")
     
     X = df[feature_cols].values
     y = df['label'].values
@@ -79,7 +98,7 @@ def main():
     classes = le.classes_
     p_idx = list(classes).index("Pothole")
 
-    cv_strategy = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_strategy = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
     
     print("\n" + "="*60)
     print("PHASE 1: BASELINE EVALUATION (Default Parameters)")
@@ -118,7 +137,7 @@ def main():
         custom_cv.append((train_idx, clean_test_idx))
 
     rf_param_dist = {
-        'clf__n_estimators': [100, 200, 300],
+        'clf__n_estimators': [40, 60, 100],
         'clf__max_depth': [5, 10, None],
         'clf__min_samples_leaf': [1, 3, 5],
         'clf__class_weight': ['balanced', 'balanced_subsample']
@@ -131,8 +150,8 @@ def main():
     print(f"Best RF Params: {rf_random.best_params_}")
     
     xgb_param_dist = {
-        'clf__n_estimators': [100, 200, 300],
-        'clf__max_depth': [3, 5, 7],
+        'clf__n_estimators': [40, 60, 100],
+        'clf__max_depth': [2, 3, 4],
         'clf__learning_rate': [0.01, 0.05, 0.1],
         'clf__subsample': [0.8, 1.0],
         'clf__colsample_bytree': [0.8, 1.0]
@@ -174,5 +193,4 @@ def main():
 if __name__ == "__main__":
     import warnings
     warnings.filterwarnings("ignore")
-    main()
     main()
