@@ -1,7 +1,7 @@
 {
     "trip_index": 10,
     "trip_id": "5f55e871-61cf-46f4-85b8-4f2cab7c3d36",
-    "labeled_at": "2026-07-09 19:40:44",
+    "labeled_at": "2026-07-10 00:17:20",
     "notes": "",
     "event_mapping": {
         "1": 1779959494.67,
@@ -337,7 +337,7 @@
         "58": "Non-Event",
         "59": "Non-Event",
         "60": "Pothole",
-        "61": "Pothole",
+        "61": "Non-Event",
         "62": "Non-Event",
         "63": "Pothole",
         "64": "Non-Event",

@@ -1,7 +1,7 @@
 {
     "trip_index": 0,
     "trip_id": "bf026662-aa33-4c79-b34d-296f7893c390",
-    "labeled_at": "2026-07-06 02:50:46",
+    "labeled_at": "2026-07-10 00:18:00",
     "notes": "",
     "event_mapping": {
         "1": 1779783576.68,
@@ -322,10 +322,10 @@
         "118": "Non-Event",
         "119": "Non-Event",
         "120": "Non-Event",
-        "121": "Speed Bump",
+        "121": "Non-Event",
         "122": "Non-Event",
         "123": "Non-Event",
-        "124": "Speed Bump",
+        "124": "Non-Event",
         "125": "Speed Bump",
         "126": "Non-Event",
         "127": "Speed Bump",

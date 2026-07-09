@@ -1,7 +1,7 @@
 {
     "trip_index": 7,
     "trip_id": "ed73870a-3468-4be8-9919-dd504a197a50",
-    "labeled_at": "2026-07-09 20:04:37",
+    "labeled_at": "2026-07-10 00:19:01",
     "notes": "",
     "event_mapping": {
         "1": 1779869070.25,
@@ -840,7 +840,7 @@
         "187": "Non-Event",
         "188": "Non-Event",
         "189": "Non-Event",
-        "190": "Pothole",
+        "190": "Non-Event",
         "191": "Non-Event",
         "192": "Pothole",
         "193": "Non-Event",
@@ -965,7 +965,7 @@
         "312": "Non-Event",
         "313": "Non-Event",
         "314": "Non-Event",
-        "315": "Pothole",
+        "315": "Non-Event",
         "316": "Pothole",
         "317": "Non-Event",
         "318": "Non-Event",

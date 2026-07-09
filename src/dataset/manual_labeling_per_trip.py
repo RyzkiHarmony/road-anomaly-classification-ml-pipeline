@@ -197,7 +197,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 4 #<<< PILIH TRIP / GANTI DATA
+PILIHAN_INDEX_TRIP = 7 #<<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
