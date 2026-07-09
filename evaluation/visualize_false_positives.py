@@ -31,9 +31,6 @@ def main():
     print("Loading data for visualization...")
     xgb_df_path = os.path.join(XGB_DATA_DIR, "xgboost_labeled_windows.csv")
     df = pd.read_csv(xgb_df_path).dropna(subset=['label'])
-    with open(os.path.join(XGB_MODEL_DIR, "xgboost_features.json"), "r") as f:
-        feature_cols = json.load(f)
-    df = df.dropna(subset=feature_cols)
     
     y_raw = df['label'].values
     groups = df['trip_id'].values

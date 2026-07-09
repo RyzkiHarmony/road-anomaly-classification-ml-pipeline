@@ -1,0 +1,29 @@
+------------------------------------------------------------
+
+Out-of-Fold Classification Report (Default Argmax):
+              precision    recall  f1-score   support
+
+   Non-Event       0.97      0.92      0.94      2717
+     Pothole       0.48      0.77      0.59       260
+  Speed Bump       0.54      0.46      0.50       158
+
+    accuracy                           0.88      3135
+   macro avg       0.66      0.72      0.68      3135
+weighted avg       0.90      0.88      0.89      3135
+
+
+============================================================
+     HOLDOUT TEST — DEFAULT ARGMAX (Primary Metric)     
+============================================================
+              precision    recall  f1-score   support
+
+   Non-Event       0.96      0.99      0.97      1219
+     Pothole       0.72      0.49      0.58        86
+  Speed Bump       0.73      0.63      0.68        71
+
+    accuracy                           0.94      1376
+   macro avg       0.80      0.70      0.74      1376
+weighted avg       0.93      0.94      0.93      1376
+
+============================================================
+

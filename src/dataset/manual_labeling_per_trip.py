@@ -197,7 +197,7 @@ for i, t in enumerate(trips):
 # Ubah angka `PILIHAN_INDEX_TRIP` untuk memilih rute.
 
 # %%
-PILIHAN_INDEX_TRIP = 15 #<<< PILIH TRIP / GANTI DATA
+PILIHAN_INDEX_TRIP = 4 #<<< PILIH TRIP / GANTI DATA
 
 selected_trip = trips[PILIHAN_INDEX_TRIP]
 df_trip       = df[df["trip_id"] == selected_trip].copy()
@@ -618,7 +618,7 @@ if len(USER_LABELS) > 0:
                 "annotator":        "manual",
                 "notes":            "",
                 "created_at":       datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "pipeline_version": "05_pipeline_experiment"
+                "pipeline_version": "1DCNN"
             })
 
     new_gt_df = pd.DataFrame(saved_rows)

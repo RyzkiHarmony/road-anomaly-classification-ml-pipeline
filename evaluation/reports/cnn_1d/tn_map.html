@@ -1,0 +1,3901 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_62bc0179259e11a364e76845704e5467 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_62bc0179259e11a364e76845704e5467" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_62bc0179259e11a364e76845704e5467 = L.map(
+                "map_62bc0179259e11a364e76845704e5467",
+                {
+                    center: [-6.861116213000002, 109.483626389],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 15,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_a05dd4cc7db22f2b9391ca924960d584 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_a05dd4cc7db22f2b9391ca924960d584.addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var marker_2ba9b231d7f1ffdf73d5e9d01051e357 = L.marker(
+                [-6.8408206, 109.4520302],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_ec1ab2f92f25bf870214924943111782 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8f50e6a4adfb9b69f3ba93457224106e = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_1dbc1cf92a6cb391f689f88bfd26055f = $(`<div id="html_1dbc1cf92a6cb391f689f88bfd26055f" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 904<br>         <b>Event ID on Trip:</b> 31<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.439<br>         </div>`)[0];
+                popup_8f50e6a4adfb9b69f3ba93457224106e.setContent(html_1dbc1cf92a6cb391f689f88bfd26055f);
+            
+        
+
+        marker_2ba9b231d7f1ffdf73d5e9d01051e357.bindPopup(popup_8f50e6a4adfb9b69f3ba93457224106e)
+        ;
+
+        
+    
+    
+                marker_2ba9b231d7f1ffdf73d5e9d01051e357.setIcon(icon_ec1ab2f92f25bf870214924943111782);
+            
+    
+            var marker_ea6a062afd3771bc1ab658ad907286ae = L.marker(
+                [-6.8970568, 109.4107804],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_a4366a6ac39d3939c0fafbf7a828d472 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_dfa5ca6144b133e0a8b3bdc8795398f0 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_af3043e8684c7506eea631bea8f479d5 = $(`<div id="html_af3043e8684c7506eea631bea8f479d5" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 77<br>         <b>Event ID on Trip:</b> 78<br>         <b>Trip ID:</b> bf026662-aa33-4c79-b34d-296f7893c390<br>         <b>Pothole Prob:</b> 0.438<br>         </div>`)[0];
+                popup_dfa5ca6144b133e0a8b3bdc8795398f0.setContent(html_af3043e8684c7506eea631bea8f479d5);
+            
+        
+
+        marker_ea6a062afd3771bc1ab658ad907286ae.bindPopup(popup_dfa5ca6144b133e0a8b3bdc8795398f0)
+        ;
+
+        
+    
+    
+                marker_ea6a062afd3771bc1ab658ad907286ae.setIcon(icon_a4366a6ac39d3939c0fafbf7a828d472);
+            
+    
+            var marker_63932a3c0e16bc8f55dd150c4c4abae3 = L.marker(
+                [-6.8254124, 109.513857],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_fe300bea33874e7954bb86ff35c22ed3 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_55bfd766b5b313fe6e6ecfb84a6ddda9 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_73c0b3cc6609b952a03bc0298f3d5b2d = $(`<div id="html_73c0b3cc6609b952a03bc0298f3d5b2d" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2186<br>         <b>Event ID on Trip:</b> 208<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.438<br>         </div>`)[0];
+                popup_55bfd766b5b313fe6e6ecfb84a6ddda9.setContent(html_73c0b3cc6609b952a03bc0298f3d5b2d);
+            
+        
+
+        marker_63932a3c0e16bc8f55dd150c4c4abae3.bindPopup(popup_55bfd766b5b313fe6e6ecfb84a6ddda9)
+        ;
+
+        
+    
+    
+                marker_63932a3c0e16bc8f55dd150c4c4abae3.setIcon(icon_fe300bea33874e7954bb86ff35c22ed3);
+            
+    
+            var marker_292a6c814c1cbd73fded9de5d04fc2d6 = L.marker(
+                [-6.836575, 109.451715],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_24c04f5ac3cf61425b332692a5ae569b = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_a56317ac812aaf5d86aa70ef4f52a39a = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_bb65e9e2be69093de887dc9d9c1397b8 = $(`<div id="html_bb65e9e2be69093de887dc9d9c1397b8" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1173<br>         <b>Event ID on Trip:</b> 300<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.438<br>         </div>`)[0];
+                popup_a56317ac812aaf5d86aa70ef4f52a39a.setContent(html_bb65e9e2be69093de887dc9d9c1397b8);
+            
+        
+
+        marker_292a6c814c1cbd73fded9de5d04fc2d6.bindPopup(popup_a56317ac812aaf5d86aa70ef4f52a39a)
+        ;
+
+        
+    
+    
+                marker_292a6c814c1cbd73fded9de5d04fc2d6.setIcon(icon_24c04f5ac3cf61425b332692a5ae569b);
+            
+    
+            var marker_204f51a9ff53fd1bea72e6247b951304 = L.marker(
+                [-6.8385204, 109.4480298],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_e7387894c83f25982b6d356f925b4d1a = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c6c050e1f8b48e9165c6d1466c43555d = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_1116d18748289edfd0b6abf00108f93f = $(`<div id="html_1116d18748289edfd0b6abf00108f93f" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 965<br>         <b>Event ID on Trip:</b> 92<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.437<br>         </div>`)[0];
+                popup_c6c050e1f8b48e9165c6d1466c43555d.setContent(html_1116d18748289edfd0b6abf00108f93f);
+            
+        
+
+        marker_204f51a9ff53fd1bea72e6247b951304.bindPopup(popup_c6c050e1f8b48e9165c6d1466c43555d)
+        ;
+
+        
+    
+    
+                marker_204f51a9ff53fd1bea72e6247b951304.setIcon(icon_e7387894c83f25982b6d356f925b4d1a);
+            
+    
+            var marker_4c90dd4388570bd09f6c9ce5661d5e9a = L.marker(
+                [-6.8181232, 109.514591],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3e14ef60644e1eb9e32a1a7637396f26 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ffbaca7c36fd543708033a418edf4166 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_f27197aafba69be4ae0f4fd42d0f2012 = $(`<div id="html_f27197aafba69be4ae0f4fd42d0f2012" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2125<br>         <b>Event ID on Trip:</b> 147<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.431<br>         </div>`)[0];
+                popup_ffbaca7c36fd543708033a418edf4166.setContent(html_f27197aafba69be4ae0f4fd42d0f2012);
+            
+        
+
+        marker_4c90dd4388570bd09f6c9ce5661d5e9a.bindPopup(popup_ffbaca7c36fd543708033a418edf4166)
+        ;
+
+        
+    
+    
+                marker_4c90dd4388570bd09f6c9ce5661d5e9a.setIcon(icon_3e14ef60644e1eb9e32a1a7637396f26);
+            
+    
+            var marker_3539e069badebfaeb09a9bbe027a5e2c = L.marker(
+                [-6.8329991, 109.510426],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3870cc95838f583ac038d875997ec6e3 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_169401aa622904c9d4db8eed35fbd182 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d39eabdad6d87f41bb1c4745787fb213 = $(`<div id="html_d39eabdad6d87f41bb1c4745787fb213" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1975<br>         <b>Event ID on Trip:</b> 485<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.431<br>         </div>`)[0];
+                popup_169401aa622904c9d4db8eed35fbd182.setContent(html_d39eabdad6d87f41bb1c4745787fb213);
+            
+        
+
+        marker_3539e069badebfaeb09a9bbe027a5e2c.bindPopup(popup_169401aa622904c9d4db8eed35fbd182)
+        ;
+
+        
+    
+    
+                marker_3539e069badebfaeb09a9bbe027a5e2c.setIcon(icon_3870cc95838f583ac038d875997ec6e3);
+            
+    
+            var marker_6b728dd4ab6a9530acdb22f64d4704e4 = L.marker(
+                [-6.8371664, 109.4507335],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_fd6df799ca443d6bfd530de98170aeda = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_e92192a164018b64e9fcbc182ce37c60 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d413042f94e58eb9f6977b4aaf0deeae = $(`<div id="html_d413042f94e58eb9f6977b4aaf0deeae" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1189<br>         <b>Event ID on Trip:</b> 316<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.430<br>         </div>`)[0];
+                popup_e92192a164018b64e9fcbc182ce37c60.setContent(html_d413042f94e58eb9f6977b4aaf0deeae);
+            
+        
+
+        marker_6b728dd4ab6a9530acdb22f64d4704e4.bindPopup(popup_e92192a164018b64e9fcbc182ce37c60)
+        ;
+
+        
+    
+    
+                marker_6b728dd4ab6a9530acdb22f64d4704e4.setIcon(icon_fd6df799ca443d6bfd530de98170aeda);
+            
+    
+            var marker_4c10340b59364fdb0b531ddd5364fb2b = L.marker(
+                [-6.8640067, 109.4531167],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3da30ff81b7319fe4de30e80ed3fbad8 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d5303d8692d5927ce1305c6a29479b10 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_43dcd1351d718a467ed85a74d593346a = $(`<div id="html_43dcd1351d718a467ed85a74d593346a" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1615<br>         <b>Event ID on Trip:</b> 125<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.427<br>         </div>`)[0];
+                popup_d5303d8692d5927ce1305c6a29479b10.setContent(html_43dcd1351d718a467ed85a74d593346a);
+            
+        
+
+        marker_4c10340b59364fdb0b531ddd5364fb2b.bindPopup(popup_d5303d8692d5927ce1305c6a29479b10)
+        ;
+
+        
+    
+    
+                marker_4c10340b59364fdb0b531ddd5364fb2b.setIcon(icon_3da30ff81b7319fe4de30e80ed3fbad8);
+            
+    
+            var marker_a8aa181345520487224032c467fec667 = L.marker(
+                [-6.8226242, 109.5175462],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_33553f327f85779be71666082b68666d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_fa55814b8e02205cffbf490cf90d5542 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_740c68d494003dd6a7bf6fa30455d823 = $(`<div id="html_740c68d494003dd6a7bf6fa30455d823" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2072<br>         <b>Event ID on Trip:</b> 94<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.418<br>         </div>`)[0];
+                popup_fa55814b8e02205cffbf490cf90d5542.setContent(html_740c68d494003dd6a7bf6fa30455d823);
+            
+        
+
+        marker_a8aa181345520487224032c467fec667.bindPopup(popup_fa55814b8e02205cffbf490cf90d5542)
+        ;
+
+        
+    
+    
+                marker_a8aa181345520487224032c467fec667.setIcon(icon_33553f327f85779be71666082b68666d);
+            
+    
+            var marker_84d88194b6b5451314424dcb356c1c01 = L.marker(
+                [-6.8312337, 109.5104916],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_97c14552cd7b55e500b77939d374f2f7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_29e56f2ad82150e9e297661ab80eaf0f = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_9452de4bcd41bcc34c28eb5e03ee0f79 = $(`<div id="html_9452de4bcd41bcc34c28eb5e03ee0f79" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1992<br>         <b>Event ID on Trip:</b> 14<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.417<br>         </div>`)[0];
+                popup_29e56f2ad82150e9e297661ab80eaf0f.setContent(html_9452de4bcd41bcc34c28eb5e03ee0f79);
+            
+        
+
+        marker_84d88194b6b5451314424dcb356c1c01.bindPopup(popup_29e56f2ad82150e9e297661ab80eaf0f)
+        ;
+
+        
+    
+    
+                marker_84d88194b6b5451314424dcb356c1c01.setIcon(icon_97c14552cd7b55e500b77939d374f2f7);
+            
+    
+            var marker_be568c22111f72ff691f664c69ef61c3 = L.marker(
+                [-6.827007, 109.512862],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_cb9a0ab3140779a45ecaf77a2ac73562 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d7d3cb09688f9bf335ae5deed6414734 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_888120ad76d65a9b56aa3b6b0cb8605a = $(`<div id="html_888120ad76d65a9b56aa3b6b0cb8605a" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2194<br>         <b>Event ID on Trip:</b> 216<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.414<br>         </div>`)[0];
+                popup_d7d3cb09688f9bf335ae5deed6414734.setContent(html_888120ad76d65a9b56aa3b6b0cb8605a);
+            
+        
+
+        marker_be568c22111f72ff691f664c69ef61c3.bindPopup(popup_d7d3cb09688f9bf335ae5deed6414734)
+        ;
+
+        
+    
+    
+                marker_be568c22111f72ff691f664c69ef61c3.setIcon(icon_cb9a0ab3140779a45ecaf77a2ac73562);
+            
+    
+            var marker_66851dab765d9d53bd9683bea83ddf2f = L.marker(
+                [-6.8424548, 109.450719],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_df3456f951c23142cb265ef039386d4d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d096c407775c5100d8a663bfd2bf8ec3 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d70292f74c5ea077b09a0cb55662f5ee = $(`<div id="html_d70292f74c5ea077b09a0cb55662f5ee" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1219<br>         <b>Event ID on Trip:</b> 346<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.414<br>         </div>`)[0];
+                popup_d096c407775c5100d8a663bfd2bf8ec3.setContent(html_d70292f74c5ea077b09a0cb55662f5ee);
+            
+        
+
+        marker_66851dab765d9d53bd9683bea83ddf2f.bindPopup(popup_d096c407775c5100d8a663bfd2bf8ec3)
+        ;
+
+        
+    
+    
+                marker_66851dab765d9d53bd9683bea83ddf2f.setIcon(icon_df3456f951c23142cb265ef039386d4d);
+            
+    
+            var marker_28e200491cc61d786996ba2ef93fcc22 = L.marker(
+                [-6.8326364, 109.4598821],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_266f68b7e74b51bff8503b6ba24b1bf6 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_cc716761c1ea9c28b5c358554cfe1e8c = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_615f41d87a74fb1e1d8a456000869dfa = $(`<div id="html_615f41d87a74fb1e1d8a456000869dfa" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1097<br>         <b>Event ID on Trip:</b> 224<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.414<br>         </div>`)[0];
+                popup_cc716761c1ea9c28b5c358554cfe1e8c.setContent(html_615f41d87a74fb1e1d8a456000869dfa);
+            
+        
+
+        marker_28e200491cc61d786996ba2ef93fcc22.bindPopup(popup_cc716761c1ea9c28b5c358554cfe1e8c)
+        ;
+
+        
+    
+    
+                marker_28e200491cc61d786996ba2ef93fcc22.setIcon(icon_266f68b7e74b51bff8503b6ba24b1bf6);
+            
+    
+            var marker_4c4684b8848c50fa5a3c8ab4fc386431 = L.marker(
+                [-6.9812083, 110.4082885],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_d0abddbf7df9c894ea9b9c4d1bc1a2d0 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_9e95313d3adb70fe58677726aa16130e = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_e09e973241490569076e972a30de9b56 = $(`<div id="html_e09e973241490569076e972a30de9b56" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 4408<br>         <b>Event ID on Trip:</b> 107<br>         <b>Trip ID:</b> 3b5e0799-8d49-4156-abbe-c765e952e601<br>         <b>Pothole Prob:</b> 0.413<br>         </div>`)[0];
+                popup_9e95313d3adb70fe58677726aa16130e.setContent(html_e09e973241490569076e972a30de9b56);
+            
+        
+
+        marker_4c4684b8848c50fa5a3c8ab4fc386431.bindPopup(popup_9e95313d3adb70fe58677726aa16130e)
+        ;
+
+        
+    
+    
+                marker_4c4684b8848c50fa5a3c8ab4fc386431.setIcon(icon_d0abddbf7df9c894ea9b9c4d1bc1a2d0);
+            
+    
+            var marker_ab0eeefecb828ffea4dfd148620ca105 = L.marker(
+                [-6.8380845, 109.4487947],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_96ce5bca0e3845afef99c694f4c3bbd7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f2a9b2d375e86a479b2f56d4aa2e77b8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a353c5fb2068f529d4195d5b5a74f084 = $(`<div id="html_a353c5fb2068f529d4195d5b5a74f084" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 976<br>         <b>Event ID on Trip:</b> 103<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.413<br>         </div>`)[0];
+                popup_f2a9b2d375e86a479b2f56d4aa2e77b8.setContent(html_a353c5fb2068f529d4195d5b5a74f084);
+            
+        
+
+        marker_ab0eeefecb828ffea4dfd148620ca105.bindPopup(popup_f2a9b2d375e86a479b2f56d4aa2e77b8)
+        ;
+
+        
+    
+    
+                marker_ab0eeefecb828ffea4dfd148620ca105.setIcon(icon_96ce5bca0e3845afef99c694f4c3bbd7);
+            
+    
+            var marker_8a8b40ae70dd6ca9726bccdff19a49a9 = L.marker(
+                [-6.8375345, 109.4498886],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_2814e2145085b44a8e3b57a72987064b = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8b4e0b610065323e3cdf7baec2e48af3 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_f1b494d587c176af52298af681afebed = $(`<div id="html_f1b494d587c176af52298af681afebed" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 934<br>         <b>Event ID on Trip:</b> 61<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.409<br>         </div>`)[0];
+                popup_8b4e0b610065323e3cdf7baec2e48af3.setContent(html_f1b494d587c176af52298af681afebed);
+            
+        
+
+        marker_8a8b40ae70dd6ca9726bccdff19a49a9.bindPopup(popup_8b4e0b610065323e3cdf7baec2e48af3)
+        ;
+
+        
+    
+    
+                marker_8a8b40ae70dd6ca9726bccdff19a49a9.setIcon(icon_2814e2145085b44a8e3b57a72987064b);
+            
+    
+            var marker_a2131151d71a9b50c9ee24136cd55b5f = L.marker(
+                [-6.8385204, 109.4480298],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_741da4e19ddebdc78f315f70e7875ca8 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_be6a6892a4754af1ff3da7fa0ab7d54e = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_5144fdf3c4ba1eb5328128eb9ca0ee74 = $(`<div id="html_5144fdf3c4ba1eb5328128eb9ca0ee74" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 964<br>         <b>Event ID on Trip:</b> 91<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.409<br>         </div>`)[0];
+                popup_be6a6892a4754af1ff3da7fa0ab7d54e.setContent(html_5144fdf3c4ba1eb5328128eb9ca0ee74);
+            
+        
+
+        marker_a2131151d71a9b50c9ee24136cd55b5f.bindPopup(popup_be6a6892a4754af1ff3da7fa0ab7d54e)
+        ;
+
+        
+    
+    
+                marker_a2131151d71a9b50c9ee24136cd55b5f.setIcon(icon_741da4e19ddebdc78f315f70e7875ca8);
+            
+    
+            var marker_21d9a0bac9cabb8a504b8869cda577f9 = L.marker(
+                [-6.8380845, 109.4487947],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_820d04ef5d1e11818d9b38eff7f3d784 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ae80b8047470f696271bd1089fee981a = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_40f2732496c6648ee206dfbd2d23946b = $(`<div id="html_40f2732496c6648ee206dfbd2d23946b" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 974<br>         <b>Event ID on Trip:</b> 101<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.405<br>         </div>`)[0];
+                popup_ae80b8047470f696271bd1089fee981a.setContent(html_40f2732496c6648ee206dfbd2d23946b);
+            
+        
+
+        marker_21d9a0bac9cabb8a504b8869cda577f9.bindPopup(popup_ae80b8047470f696271bd1089fee981a)
+        ;
+
+        
+    
+    
+                marker_21d9a0bac9cabb8a504b8869cda577f9.setIcon(icon_820d04ef5d1e11818d9b38eff7f3d784);
+            
+    
+            var marker_95f70012b5de796db3c36bb270001577 = L.marker(
+                [-6.8720563, 109.4418279],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_c47fcade01e7a9d69b1e6126a7ea3028 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_0372c6462521539cfe55831f8cbf93be = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_8e8caf539164e9d860f28113f413e0a0 = $(`<div id="html_8e8caf539164e9d860f28113f413e0a0" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 728<br>         <b>Event ID on Trip:</b> 209<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.403<br>         </div>`)[0];
+                popup_0372c6462521539cfe55831f8cbf93be.setContent(html_8e8caf539164e9d860f28113f413e0a0);
+            
+        
+
+        marker_95f70012b5de796db3c36bb270001577.bindPopup(popup_0372c6462521539cfe55831f8cbf93be)
+        ;
+
+        
+    
+    
+                marker_95f70012b5de796db3c36bb270001577.setIcon(icon_c47fcade01e7a9d69b1e6126a7ea3028);
+            
+    
+            var marker_82b8c4df63c81a4c1f2e014e97f8fb82 = L.marker(
+                [-6.8953429, 109.4102695],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_9d3ae00adf5e6237dd3fb14286b8648e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b4cb4c604a15c9f031daf77316a9f0c6 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ca767d69c204950057a77cc708938f28 = $(`<div id="html_ca767d69c204950057a77cc708938f28" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 155<br>         <b>Event ID on Trip:</b> 156<br>         <b>Trip ID:</b> bf026662-aa33-4c79-b34d-296f7893c390<br>         <b>Pothole Prob:</b> 0.402<br>         </div>`)[0];
+                popup_b4cb4c604a15c9f031daf77316a9f0c6.setContent(html_ca767d69c204950057a77cc708938f28);
+            
+        
+
+        marker_82b8c4df63c81a4c1f2e014e97f8fb82.bindPopup(popup_b4cb4c604a15c9f031daf77316a9f0c6)
+        ;
+
+        
+    
+    
+                marker_82b8c4df63c81a4c1f2e014e97f8fb82.setIcon(icon_9d3ae00adf5e6237dd3fb14286b8648e);
+            
+    
+            var marker_be092571b03601f89531d44388db0cd7 = L.marker(
+                [-6.8327783, 109.4595],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_a10406faca3c7d8f30bba09091bce0a7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "orange",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_45695e2e8686507e557b5b3f991bb583 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_71fd1d01810d9b6526fd9b198cabb98e = $(`<div id="html_71fd1d01810d9b6526fd9b198cabb98e" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1045<br>         <b>Event ID on Trip:</b> 172<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.401<br>         </div>`)[0];
+                popup_45695e2e8686507e557b5b3f991bb583.setContent(html_71fd1d01810d9b6526fd9b198cabb98e);
+            
+        
+
+        marker_be092571b03601f89531d44388db0cd7.bindPopup(popup_45695e2e8686507e557b5b3f991bb583)
+        ;
+
+        
+    
+    
+                marker_be092571b03601f89531d44388db0cd7.setIcon(icon_a10406faca3c7d8f30bba09091bce0a7);
+            
+    
+            var marker_10c6d8a549bce3f4cc82d9c5d2d763bf = L.marker(
+                [-6.8324683, 109.45666],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_38f5742e776f81686f6737de260f96c1 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_10d1405dc3b1902956025cfc452e9174 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a4421b2a1c694e1b33b66ada0551c26e = $(`<div id="html_a4421b2a1c694e1b33b66ada0551c26e" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1130<br>         <b>Event ID on Trip:</b> 257<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.399<br>         </div>`)[0];
+                popup_10d1405dc3b1902956025cfc452e9174.setContent(html_a4421b2a1c694e1b33b66ada0551c26e);
+            
+        
+
+        marker_10c6d8a549bce3f4cc82d9c5d2d763bf.bindPopup(popup_10d1405dc3b1902956025cfc452e9174)
+        ;
+
+        
+    
+    
+                marker_10c6d8a549bce3f4cc82d9c5d2d763bf.setIcon(icon_38f5742e776f81686f6737de260f96c1);
+            
+    
+            var marker_bc88633905c4eff30225ebce52e20a84 = L.marker(
+                [-6.8728975, 109.4451305],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_300b445a99fe17166cea45f8758ad026 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_cda2d47fac66d513eebc291d72407f46 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_c63c70e2374100ee7a9131608b2cdb2e = $(`<div id="html_c63c70e2374100ee7a9131608b2cdb2e" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 744<br>         <b>Event ID on Trip:</b> 225<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.398<br>         </div>`)[0];
+                popup_cda2d47fac66d513eebc291d72407f46.setContent(html_c63c70e2374100ee7a9131608b2cdb2e);
+            
+        
+
+        marker_bc88633905c4eff30225ebce52e20a84.bindPopup(popup_cda2d47fac66d513eebc291d72407f46)
+        ;
+
+        
+    
+    
+                marker_bc88633905c4eff30225ebce52e20a84.setIcon(icon_300b445a99fe17166cea45f8758ad026);
+            
+    
+            var marker_0b49bd07f4889b8a7234dd53933bc820 = L.marker(
+                [-6.8758095, 109.4379332],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_98a40c0bcbff9a7f82ea65a0cfa27aee = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d680f1e1ae4a4a4c0e54077a702c0e75 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_58ff23163645f76f76e7587ea497faca = $(`<div id="html_58ff23163645f76f76e7587ea497faca" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 601<br>         <b>Event ID on Trip:</b> 82<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.396<br>         </div>`)[0];
+                popup_d680f1e1ae4a4a4c0e54077a702c0e75.setContent(html_58ff23163645f76f76e7587ea497faca);
+            
+        
+
+        marker_0b49bd07f4889b8a7234dd53933bc820.bindPopup(popup_d680f1e1ae4a4a4c0e54077a702c0e75)
+        ;
+
+        
+    
+    
+                marker_0b49bd07f4889b8a7234dd53933bc820.setIcon(icon_98a40c0bcbff9a7f82ea65a0cfa27aee);
+            
+    
+            var marker_17d83f184627b76800effa5be890e5fa = L.marker(
+                [-6.8353893, 109.5068997],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_ef3d636e74ad3c3b583afb2fd8a475e9 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c9777d36bcc61303f97c575be947ecc2 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_957299c1e8447a5aaa335d42d0f00e27 = $(`<div id="html_957299c1e8447a5aaa335d42d0f00e27" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1932<br>         <b>Event ID on Trip:</b> 442<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.394<br>         </div>`)[0];
+                popup_c9777d36bcc61303f97c575be947ecc2.setContent(html_957299c1e8447a5aaa335d42d0f00e27);
+            
+        
+
+        marker_17d83f184627b76800effa5be890e5fa.bindPopup(popup_c9777d36bcc61303f97c575be947ecc2)
+        ;
+
+        
+    
+    
+                marker_17d83f184627b76800effa5be890e5fa.setIcon(icon_ef3d636e74ad3c3b583afb2fd8a475e9);
+            
+    
+            var marker_9cb6026fb5f00f3ffad6bbb00bb06a89 = L.marker(
+                [-6.8349607, 109.499822],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_958cf3475a92f74eb36d981a2705c90d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_99f8be034d6565797a378a02a7bbb3a6 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_32342eef9cf02486fdf56b280c1f88bc = $(`<div id="html_32342eef9cf02486fdf56b280c1f88bc" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2291<br>         <b>Event ID on Trip:</b> 313<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.393<br>         </div>`)[0];
+                popup_99f8be034d6565797a378a02a7bbb3a6.setContent(html_32342eef9cf02486fdf56b280c1f88bc);
+            
+        
+
+        marker_9cb6026fb5f00f3ffad6bbb00bb06a89.bindPopup(popup_99f8be034d6565797a378a02a7bbb3a6)
+        ;
+
+        
+    
+    
+                marker_9cb6026fb5f00f3ffad6bbb00bb06a89.setIcon(icon_958cf3475a92f74eb36d981a2705c90d);
+            
+    
+            var marker_0c026da1c887270db40562f2e381fda1 = L.marker(
+                [-6.8380845, 109.4487947],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_00d50e1d549c61bfe80de8a4d58dce52 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_46e7d0a9256f2306757f3f13c9116e70 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_72e0d256146acc1a6f0914d481f73d48 = $(`<div id="html_72e0d256146acc1a6f0914d481f73d48" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 975<br>         <b>Event ID on Trip:</b> 102<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.392<br>         </div>`)[0];
+                popup_46e7d0a9256f2306757f3f13c9116e70.setContent(html_72e0d256146acc1a6f0914d481f73d48);
+            
+        
+
+        marker_0c026da1c887270db40562f2e381fda1.bindPopup(popup_46e7d0a9256f2306757f3f13c9116e70)
+        ;
+
+        
+    
+    
+                marker_0c026da1c887270db40562f2e381fda1.setIcon(icon_00d50e1d549c61bfe80de8a4d58dce52);
+            
+    
+            var marker_bdfe27c31077e9db761dec5867301dca = L.marker(
+                [-6.8368633, 109.45113],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_0497a33ca8ebbf117b680bb61fe7a195 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_df4157019a5f401bf32962ddb5f35355 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_54ecd9f9b69745758166d6d3679cb69e = $(`<div id="html_54ecd9f9b69745758166d6d3679cb69e" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1180<br>         <b>Event ID on Trip:</b> 307<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.392<br>         </div>`)[0];
+                popup_df4157019a5f401bf32962ddb5f35355.setContent(html_54ecd9f9b69745758166d6d3679cb69e);
+            
+        
+
+        marker_bdfe27c31077e9db761dec5867301dca.bindPopup(popup_df4157019a5f401bf32962ddb5f35355)
+        ;
+
+        
+    
+    
+                marker_bdfe27c31077e9db761dec5867301dca.setIcon(icon_0497a33ca8ebbf117b680bb61fe7a195);
+            
+    
+            var marker_335f3093cda770859fbe87214dc52e0f = L.marker(
+                [-6.8372853, 109.450287],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_4eea93cbe5159fa98a17c6f4e3209f69 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_3368a8a83241b64169c07dc1c16b7db4 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_2c410adee5a214428328f73b730bf50b = $(`<div id="html_2c410adee5a214428328f73b730bf50b" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 987<br>         <b>Event ID on Trip:</b> 114<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.392<br>         </div>`)[0];
+                popup_3368a8a83241b64169c07dc1c16b7db4.setContent(html_2c410adee5a214428328f73b730bf50b);
+            
+        
+
+        marker_335f3093cda770859fbe87214dc52e0f.bindPopup(popup_3368a8a83241b64169c07dc1c16b7db4)
+        ;
+
+        
+    
+    
+                marker_335f3093cda770859fbe87214dc52e0f.setIcon(icon_4eea93cbe5159fa98a17c6f4e3209f69);
+            
+    
+            var marker_aec1e338f926c11cda927a764954a130 = L.marker(
+                [-6.8786546, 109.5070924],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_9197e3d51d2440b298dcdd08271fb3b3 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_dca6fdf9c88599cc1dcd8ff35f5328e0 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ceea59f6fcc03339fabda651fe354a7b = $(`<div id="html_ceea59f6fcc03339fabda651fe354a7b" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2696<br>         <b>Event ID on Trip:</b> 73<br>         <b>Trip ID:</b> eca4890f-8ce7-4817-a8f7-a26c3141d9cd<br>         <b>Pothole Prob:</b> 0.391<br>         </div>`)[0];
+                popup_dca6fdf9c88599cc1dcd8ff35f5328e0.setContent(html_ceea59f6fcc03339fabda651fe354a7b);
+            
+        
+
+        marker_aec1e338f926c11cda927a764954a130.bindPopup(popup_dca6fdf9c88599cc1dcd8ff35f5328e0)
+        ;
+
+        
+    
+    
+                marker_aec1e338f926c11cda927a764954a130.setIcon(icon_9197e3d51d2440b298dcdd08271fb3b3);
+            
+    
+            var marker_02aa83e96fb2ac42c4b01022680b8fed = L.marker(
+                [-6.834375, 109.5009133],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3abd16be96ced824bcc83f359072f0b2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_9904277dd0ef1a326a9acebce04ad1d2 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_7b09d1838fb06e7517322dcd59e8c7d3 = $(`<div id="html_7b09d1838fb06e7517322dcd59e8c7d3" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2284<br>         <b>Event ID on Trip:</b> 306<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.390<br>         </div>`)[0];
+                popup_9904277dd0ef1a326a9acebce04ad1d2.setContent(html_7b09d1838fb06e7517322dcd59e8c7d3);
+            
+        
+
+        marker_02aa83e96fb2ac42c4b01022680b8fed.bindPopup(popup_9904277dd0ef1a326a9acebce04ad1d2)
+        ;
+
+        
+    
+    
+                marker_02aa83e96fb2ac42c4b01022680b8fed.setIcon(icon_3abd16be96ced824bcc83f359072f0b2);
+            
+    
+            var marker_f3692c3ce897ca30fc19d3a54fe1a19c = L.marker(
+                [-6.8738425, 109.5074383],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_da7036ccf84d24d8d3896b6bdb55432c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c6b708a54b76988c18ce7d872441b823 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_2dbb896a29b446a6e32d5d60f59959d1 = $(`<div id="html_2dbb896a29b446a6e32d5d60f59959d1" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2719<br>         <b>Event ID on Trip:</b> 96<br>         <b>Trip ID:</b> eca4890f-8ce7-4817-a8f7-a26c3141d9cd<br>         <b>Pothole Prob:</b> 0.388<br>         </div>`)[0];
+                popup_c6b708a54b76988c18ce7d872441b823.setContent(html_2dbb896a29b446a6e32d5d60f59959d1);
+            
+        
+
+        marker_f3692c3ce897ca30fc19d3a54fe1a19c.bindPopup(popup_c6b708a54b76988c18ce7d872441b823)
+        ;
+
+        
+    
+    
+                marker_f3692c3ce897ca30fc19d3a54fe1a19c.setIcon(icon_da7036ccf84d24d8d3896b6bdb55432c);
+            
+    
+            var marker_8040f78d817505cebaf33f28bf385374 = L.marker(
+                [-6.8254124, 109.513857],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_109b5eaec56b6db0f86f7ee68a8ec2d7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_6150172dd8075cfb232ed7689d446cfd = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d2b4d265041697aa18771e39f6ca50cd = $(`<div id="html_d2b4d265041697aa18771e39f6ca50cd" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2187<br>         <b>Event ID on Trip:</b> 209<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.388<br>         </div>`)[0];
+                popup_6150172dd8075cfb232ed7689d446cfd.setContent(html_d2b4d265041697aa18771e39f6ca50cd);
+            
+        
+
+        marker_8040f78d817505cebaf33f28bf385374.bindPopup(popup_6150172dd8075cfb232ed7689d446cfd)
+        ;
+
+        
+    
+    
+                marker_8040f78d817505cebaf33f28bf385374.setIcon(icon_109b5eaec56b6db0f86f7ee68a8ec2d7);
+            
+    
+            var marker_fd15f1d83359607aae7b4d726cbd0d10 = L.marker(
+                [-6.8356333, 109.49895],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_dbbb968fa945773455ce5291210f6281 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f3e12c8f69d118f491b7e4a131fb8030 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d7b472c68902a5e7ba1eb45f74fb154d = $(`<div id="html_d7b472c68902a5e7ba1eb45f74fb154d" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1882<br>         <b>Event ID on Trip:</b> 392<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.387<br>         </div>`)[0];
+                popup_f3e12c8f69d118f491b7e4a131fb8030.setContent(html_d7b472c68902a5e7ba1eb45f74fb154d);
+            
+        
+
+        marker_fd15f1d83359607aae7b4d726cbd0d10.bindPopup(popup_f3e12c8f69d118f491b7e4a131fb8030)
+        ;
+
+        
+    
+    
+                marker_fd15f1d83359607aae7b4d726cbd0d10.setIcon(icon_dbbb968fa945773455ce5291210f6281);
+            
+    
+            var marker_4e445424f96f7567a92570654fa4a56f = L.marker(
+                [-6.8181232, 109.514591],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_a7b86f7043103ff7c77ec21c51b3e77d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_49e3bc8fe75587ba7ca7fd6d5acf5643 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_415108b66adb57ddb53114ee66ffb7e9 = $(`<div id="html_415108b66adb57ddb53114ee66ffb7e9" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2122<br>         <b>Event ID on Trip:</b> 144<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.385<br>         </div>`)[0];
+                popup_49e3bc8fe75587ba7ca7fd6d5acf5643.setContent(html_415108b66adb57ddb53114ee66ffb7e9);
+            
+        
+
+        marker_4e445424f96f7567a92570654fa4a56f.bindPopup(popup_49e3bc8fe75587ba7ca7fd6d5acf5643)
+        ;
+
+        
+    
+    
+                marker_4e445424f96f7567a92570654fa4a56f.setIcon(icon_a7b86f7043103ff7c77ec21c51b3e77d);
+            
+    
+            var marker_dc4f778ccf665b4f15869bac63c21176 = L.marker(
+                [-6.8773733, 109.4363367],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_c7071ea5efb59625b15c72addeee6c21 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d675a3956c92e13d70aaef0a18b9371f = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_f2e85c4b18589edd1c2bd90e47bdeddf = $(`<div id="html_f2e85c4b18589edd1c2bd90e47bdeddf" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 678<br>         <b>Event ID on Trip:</b> 159<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.384<br>         </div>`)[0];
+                popup_d675a3956c92e13d70aaef0a18b9371f.setContent(html_f2e85c4b18589edd1c2bd90e47bdeddf);
+            
+        
+
+        marker_dc4f778ccf665b4f15869bac63c21176.bindPopup(popup_d675a3956c92e13d70aaef0a18b9371f)
+        ;
+
+        
+    
+    
+                marker_dc4f778ccf665b4f15869bac63c21176.setIcon(icon_c7071ea5efb59625b15c72addeee6c21);
+            
+    
+            var marker_989ff56b78657dd49290757f12c3628f = L.marker(
+                [-6.8428834, 109.4936946],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_c7e7b7a79e45fd67ced582cf4624074f = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_674ddeda80e57354affe2019a9e1230d = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_c3ef4cf730cc9d763bdd31c04590f64c = $(`<div id="html_c3ef4cf730cc9d763bdd31c04590f64c" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1841<br>         <b>Event ID on Trip:</b> 351<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.384<br>         </div>`)[0];
+                popup_674ddeda80e57354affe2019a9e1230d.setContent(html_c3ef4cf730cc9d763bdd31c04590f64c);
+            
+        
+
+        marker_989ff56b78657dd49290757f12c3628f.bindPopup(popup_674ddeda80e57354affe2019a9e1230d)
+        ;
+
+        
+    
+    
+                marker_989ff56b78657dd49290757f12c3628f.setIcon(icon_c7e7b7a79e45fd67ced582cf4624074f);
+            
+    
+            var marker_dfa0cf4f5edd9c6e9a32ea9ccaa7c42d = L.marker(
+                [-6.83758, 109.4509563],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_a1fd40255f80ad9283303b2f9a214c92 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_74d3f847167703b6d9ea2d0c298f5037 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_27df4a8081a4764032552b636ff5a61d = $(`<div id="html_27df4a8081a4764032552b636ff5a61d" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 921<br>         <b>Event ID on Trip:</b> 48<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.382<br>         </div>`)[0];
+                popup_74d3f847167703b6d9ea2d0c298f5037.setContent(html_27df4a8081a4764032552b636ff5a61d);
+            
+        
+
+        marker_dfa0cf4f5edd9c6e9a32ea9ccaa7c42d.bindPopup(popup_74d3f847167703b6d9ea2d0c298f5037)
+        ;
+
+        
+    
+    
+                marker_dfa0cf4f5edd9c6e9a32ea9ccaa7c42d.setIcon(icon_a1fd40255f80ad9283303b2f9a214c92);
+            
+    
+            var marker_b7869f4336eb0bdde47f17ab85c30327 = L.marker(
+                [-6.890222, 109.3758218],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_bab4a6dec8addfe5aace45b5184de501 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c45f0a3833bd430ccd7c02fd8f7a3364 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d3edbc8730b1f3c84eee8845c82dbade = $(`<div id="html_d3edbc8730b1f3c84eee8845c82dbade" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 4229<br>         <b>Event ID on Trip:</b> 118<br>         <b>Trip ID:</b> b2b0d8ca-c7d3-46d5-ab8e-85502ef48faa<br>         <b>Pothole Prob:</b> 0.381<br>         </div>`)[0];
+                popup_c45f0a3833bd430ccd7c02fd8f7a3364.setContent(html_d3edbc8730b1f3c84eee8845c82dbade);
+            
+        
+
+        marker_b7869f4336eb0bdde47f17ab85c30327.bindPopup(popup_c45f0a3833bd430ccd7c02fd8f7a3364)
+        ;
+
+        
+    
+    
+                marker_b7869f4336eb0bdde47f17ab85c30327.setIcon(icon_bab4a6dec8addfe5aace45b5184de501);
+            
+    
+            var marker_ee0705a35c2e2d36e17a3f779b613a5b = L.marker(
+                [-6.9460015, 109.513073],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_17c71f7b1ca4149aee92cbf36d263fd2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ec6cb832773f130998453503a1846ec6 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_b26e010cdbe4bc5d1048864f0b928634 = $(`<div id="html_b26e010cdbe4bc5d1048864f0b928634" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 3471<br>         <b>Event ID on Trip:</b> 69<br>         <b>Trip ID:</b> 5f55e871-61cf-46f4-85b8-4f2cab7c3d36<br>         <b>Pothole Prob:</b> 0.380<br>         </div>`)[0];
+                popup_ec6cb832773f130998453503a1846ec6.setContent(html_b26e010cdbe4bc5d1048864f0b928634);
+            
+        
+
+        marker_ee0705a35c2e2d36e17a3f779b613a5b.bindPopup(popup_ec6cb832773f130998453503a1846ec6)
+        ;
+
+        
+    
+    
+                marker_ee0705a35c2e2d36e17a3f779b613a5b.setIcon(icon_17c71f7b1ca4149aee92cbf36d263fd2);
+            
+    
+            var marker_9fd47cd27d0429d50a8e56643a44c99c = L.marker(
+                [-6.8735452, 109.4513389],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_50243babff1a2c3d87540aab585dbb8c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4bb3b10f238948da4a4c563645b61e11 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_754e824626d3250d2dd75fe58556da9b = $(`<div id="html_754e824626d3250d2dd75fe58556da9b" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 777<br>         <b>Event ID on Trip:</b> 258<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.377<br>         </div>`)[0];
+                popup_4bb3b10f238948da4a4c563645b61e11.setContent(html_754e824626d3250d2dd75fe58556da9b);
+            
+        
+
+        marker_9fd47cd27d0429d50a8e56643a44c99c.bindPopup(popup_4bb3b10f238948da4a4c563645b61e11)
+        ;
+
+        
+    
+    
+                marker_9fd47cd27d0429d50a8e56643a44c99c.setIcon(icon_50243babff1a2c3d87540aab585dbb8c);
+            
+    
+            var marker_fb96d9ea8d17cfbdffb6d2208a1de134 = L.marker(
+                [-6.9635153, 109.4990974],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_42d975a4beec5614a695b07c600d7b2c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_fd38223be19fd80985f992dd51bd0bdc = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_b00035eb3e3920dc3051310b8b3bbfe6 = $(`<div id="html_b00035eb3e3920dc3051310b8b3bbfe6" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 3155<br>         <b>Event ID on Trip:</b> 196<br>         <b>Trip ID:</b> be39b43a-973e-43aa-b09c-bf700836bc0b<br>         <b>Pothole Prob:</b> 0.377<br>         </div>`)[0];
+                popup_fd38223be19fd80985f992dd51bd0bdc.setContent(html_b00035eb3e3920dc3051310b8b3bbfe6);
+            
+        
+
+        marker_fb96d9ea8d17cfbdffb6d2208a1de134.bindPopup(popup_fd38223be19fd80985f992dd51bd0bdc)
+        ;
+
+        
+    
+    
+                marker_fb96d9ea8d17cfbdffb6d2208a1de134.setIcon(icon_42d975a4beec5614a695b07c600d7b2c);
+            
+    
+            var marker_45b1d48a53e08baaa0dfa00b14d4e995 = L.marker(
+                [-6.981005, 110.4028283],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3b748499111d0b5da4c55b92d6f9624c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_0270c71836029b16e55e3e1860ff1356 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_b4d82d6248b0454adffc9fe9d3201060 = $(`<div id="html_b4d82d6248b0454adffc9fe9d3201060" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 4653<br>         <b>Event ID on Trip:</b> 59<br>         <b>Trip ID:</b> f9990ae9-48ad-476b-98a3-629620bf76ae<br>         <b>Pothole Prob:</b> 0.374<br>         </div>`)[0];
+                popup_0270c71836029b16e55e3e1860ff1356.setContent(html_b4d82d6248b0454adffc9fe9d3201060);
+            
+        
+
+        marker_45b1d48a53e08baaa0dfa00b14d4e995.bindPopup(popup_0270c71836029b16e55e3e1860ff1356)
+        ;
+
+        
+    
+    
+                marker_45b1d48a53e08baaa0dfa00b14d4e995.setIcon(icon_3b748499111d0b5da4c55b92d6f9624c);
+            
+    
+            var marker_755fcccbff18c5ed26b7558b4748ee43 = L.marker(
+                [-6.8321787, 109.4608497],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_0fb07cc7989b12ad8d331efdb0cb6155 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4ab71034dbbc0966a77b3f56b885aa8e = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_8744dbfc4534bed5d6db4f78223d1257 = $(`<div id="html_8744dbfc4534bed5d6db4f78223d1257" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1060<br>         <b>Event ID on Trip:</b> 187<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.371<br>         </div>`)[0];
+                popup_4ab71034dbbc0966a77b3f56b885aa8e.setContent(html_8744dbfc4534bed5d6db4f78223d1257);
+            
+        
+
+        marker_755fcccbff18c5ed26b7558b4748ee43.bindPopup(popup_4ab71034dbbc0966a77b3f56b885aa8e)
+        ;
+
+        
+    
+    
+                marker_755fcccbff18c5ed26b7558b4748ee43.setIcon(icon_0fb07cc7989b12ad8d331efdb0cb6155);
+            
+    
+            var marker_7f4cca95d8b8db2a205d5a47a4aa3157 = L.marker(
+                [-6.8360767, 109.4528041],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_f3f4441dc9456ec97264ab38e6cf3a82 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d08825e2e94f568a6a2af52d0f2f36d9 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_7032125e318a277581ca3439b6902107 = $(`<div id="html_7032125e318a277581ca3439b6902107" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1169<br>         <b>Event ID on Trip:</b> 296<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.369<br>         </div>`)[0];
+                popup_d08825e2e94f568a6a2af52d0f2f36d9.setContent(html_7032125e318a277581ca3439b6902107);
+            
+        
+
+        marker_7f4cca95d8b8db2a205d5a47a4aa3157.bindPopup(popup_d08825e2e94f568a6a2af52d0f2f36d9)
+        ;
+
+        
+    
+    
+                marker_7f4cca95d8b8db2a205d5a47a4aa3157.setIcon(icon_f3f4441dc9456ec97264ab38e6cf3a82);
+            
+    
+            var marker_e2e1699b60bb0010448f4836be7e1f77 = L.marker(
+                [-6.8763245, 109.4372679],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_dd1219d44899b1afc89b6e091dfa8ea7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_573a8098ff30b283aeb49a694f448b58 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_dc090e47567d3775e9ae72501772f3ce = $(`<div id="html_dc090e47567d3775e9ae72501772f3ce" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 611<br>         <b>Event ID on Trip:</b> 92<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.367<br>         </div>`)[0];
+                popup_573a8098ff30b283aeb49a694f448b58.setContent(html_dc090e47567d3775e9ae72501772f3ce);
+            
+        
+
+        marker_e2e1699b60bb0010448f4836be7e1f77.bindPopup(popup_573a8098ff30b283aeb49a694f448b58)
+        ;
+
+        
+    
+    
+                marker_e2e1699b60bb0010448f4836be7e1f77.setIcon(icon_dd1219d44899b1afc89b6e091dfa8ea7);
+            
+    
+            var marker_863c106a36b3f9f5f03233b8486a4a3a = L.marker(
+                [-6.8978943, 109.4113893],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_375ced71c75ef539e093eb7303174cc9 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c5a5dbb45e29eac6dccfdd0760d5535b = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_39eb236ff3011e9b892cf05786d38fa6 = $(`<div id="html_39eb236ff3011e9b892cf05786d38fa6" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 4059<br>         <b>Event ID on Trip:</b> 264<br>         <b>Trip ID:</b> f5d44722-1c89-4654-a61d-938f66c416e4<br>         <b>Pothole Prob:</b> 0.367<br>         </div>`)[0];
+                popup_c5a5dbb45e29eac6dccfdd0760d5535b.setContent(html_39eb236ff3011e9b892cf05786d38fa6);
+            
+        
+
+        marker_863c106a36b3f9f5f03233b8486a4a3a.bindPopup(popup_c5a5dbb45e29eac6dccfdd0760d5535b)
+        ;
+
+        
+    
+    
+                marker_863c106a36b3f9f5f03233b8486a4a3a.setIcon(icon_375ced71c75ef539e093eb7303174cc9);
+            
+    
+            var marker_6e8b952b3349d5e6836da66f4636d6d4 = L.marker(
+                [-6.8640067, 109.4531167],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_f7137544b55e7f1e0a4099a443dc5650 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_1238dbc527cc1953b1427aa46067dbc1 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_49ae7b471578bed002eaab5a0bbcc71c = $(`<div id="html_49ae7b471578bed002eaab5a0bbcc71c" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1618<br>         <b>Event ID on Trip:</b> 128<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.367<br>         </div>`)[0];
+                popup_1238dbc527cc1953b1427aa46067dbc1.setContent(html_49ae7b471578bed002eaab5a0bbcc71c);
+            
+        
+
+        marker_6e8b952b3349d5e6836da66f4636d6d4.bindPopup(popup_1238dbc527cc1953b1427aa46067dbc1)
+        ;
+
+        
+    
+    
+                marker_6e8b952b3349d5e6836da66f4636d6d4.setIcon(icon_f7137544b55e7f1e0a4099a443dc5650);
+            
+    
+            var marker_7229932817ba0e1b0a80e22142b7bb27 = L.marker(
+                [-6.8370041, 109.4508191],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_d885f6eb3c9dff75afa42e5a5387a5a8 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d9082f17cbe9385d80fdd90bbf2539d8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_03fe27799406667c086724753ff089e8 = $(`<div id="html_03fe27799406667c086724753ff089e8" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 995<br>         <b>Event ID on Trip:</b> 122<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.367<br>         </div>`)[0];
+                popup_d9082f17cbe9385d80fdd90bbf2539d8.setContent(html_03fe27799406667c086724753ff089e8);
+            
+        
+
+        marker_7229932817ba0e1b0a80e22142b7bb27.bindPopup(popup_d9082f17cbe9385d80fdd90bbf2539d8)
+        ;
+
+        
+    
+    
+                marker_7229932817ba0e1b0a80e22142b7bb27.setIcon(icon_d885f6eb3c9dff75afa42e5a5387a5a8);
+            
+    
+            var marker_aa8194c54512a502772a1319979925bd = L.marker(
+                [-6.9095217, 109.4079733],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_42eea0113af95db05166e6594116fe93 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_392d21eae7cafa6d4dbed2598a54a046 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ab1605814628a210f60875067d8ff501 = $(`<div id="html_ab1605814628a210f60875067d8ff501" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 3990<br>         <b>Event ID on Trip:</b> 195<br>         <b>Trip ID:</b> f5d44722-1c89-4654-a61d-938f66c416e4<br>         <b>Pothole Prob:</b> 0.365<br>         </div>`)[0];
+                popup_392d21eae7cafa6d4dbed2598a54a046.setContent(html_ab1605814628a210f60875067d8ff501);
+            
+        
+
+        marker_aa8194c54512a502772a1319979925bd.bindPopup(popup_392d21eae7cafa6d4dbed2598a54a046)
+        ;
+
+        
+    
+    
+                marker_aa8194c54512a502772a1319979925bd.setIcon(icon_42eea0113af95db05166e6594116fe93);
+            
+    
+            var marker_5f9dce1c65cc5d9674cc35c6e28bb6cb = L.marker(
+                [-6.8529091, 109.4531985],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_eb0590f63e933d244285bb464218c50c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4af664c665f8f497d191a4a62904754c = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_99c2f048b2fb44de97086c3f73a88011 = $(`<div id="html_99c2f048b2fb44de97086c3f73a88011" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 864<br>         <b>Event ID on Trip:</b> 345<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.364<br>         </div>`)[0];
+                popup_4af664c665f8f497d191a4a62904754c.setContent(html_99c2f048b2fb44de97086c3f73a88011);
+            
+        
+
+        marker_5f9dce1c65cc5d9674cc35c6e28bb6cb.bindPopup(popup_4af664c665f8f497d191a4a62904754c)
+        ;
+
+        
+    
+    
+                marker_5f9dce1c65cc5d9674cc35c6e28bb6cb.setIcon(icon_eb0590f63e933d244285bb464218c50c);
+            
+    
+            var marker_6d67a6e33d0aa0b0e0007d835427d6e5 = L.marker(
+                [-6.8615739, 109.4532762],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_4637e821807bea432571fa68bd81f210 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_a0f66c0bf5d6e00b8bbc17fa376cfd87 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_730889f0079c03c821d43bf3f59d32ac = $(`<div id="html_730889f0079c03c821d43bf3f59d32ac" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 819<br>         <b>Event ID on Trip:</b> 300<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.361<br>         </div>`)[0];
+                popup_a0f66c0bf5d6e00b8bbc17fa376cfd87.setContent(html_730889f0079c03c821d43bf3f59d32ac);
+            
+        
+
+        marker_6d67a6e33d0aa0b0e0007d835427d6e5.bindPopup(popup_a0f66c0bf5d6e00b8bbc17fa376cfd87)
+        ;
+
+        
+    
+    
+                marker_6d67a6e33d0aa0b0e0007d835427d6e5.setIcon(icon_4637e821807bea432571fa68bd81f210);
+            
+    
+            var marker_68978f63bc248844996f821e6a4b8f04 = L.marker(
+                [-6.8958516, 109.4099911],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_55775520525149964ae85525e301da10 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_02da116d2cc0c60f1e8382a9c00d615d = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_6ce13987cae0b8b96331f500ce4712e1 = $(`<div id="html_6ce13987cae0b8b96331f500ce4712e1" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 137<br>         <b>Event ID on Trip:</b> 138<br>         <b>Trip ID:</b> bf026662-aa33-4c79-b34d-296f7893c390<br>         <b>Pothole Prob:</b> 0.360<br>         </div>`)[0];
+                popup_02da116d2cc0c60f1e8382a9c00d615d.setContent(html_6ce13987cae0b8b96331f500ce4712e1);
+            
+        
+
+        marker_68978f63bc248844996f821e6a4b8f04.bindPopup(popup_02da116d2cc0c60f1e8382a9c00d615d)
+        ;
+
+        
+    
+    
+                marker_68978f63bc248844996f821e6a4b8f04.setIcon(icon_55775520525149964ae85525e301da10);
+            
+    
+            var marker_718daf4401f65a5f458870c11285123d = L.marker(
+                [-6.9479181, 109.5124354],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_fafeb7a81edc361d20842560566211ac = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f90e06a5eb2fc40a631939a15179cf35 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_84907168b0ed75ae656c7ed3c42c3a34 = $(`<div id="html_84907168b0ed75ae656c7ed3c42c3a34" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 3046<br>         <b>Event ID on Trip:</b> 87<br>         <b>Trip ID:</b> be39b43a-973e-43aa-b09c-bf700836bc0b<br>         <b>Pothole Prob:</b> 0.359<br>         </div>`)[0];
+                popup_f90e06a5eb2fc40a631939a15179cf35.setContent(html_84907168b0ed75ae656c7ed3c42c3a34);
+            
+        
+
+        marker_718daf4401f65a5f458870c11285123d.bindPopup(popup_f90e06a5eb2fc40a631939a15179cf35)
+        ;
+
+        
+    
+    
+                marker_718daf4401f65a5f458870c11285123d.setIcon(icon_fafeb7a81edc361d20842560566211ac);
+            
+    
+            var marker_00395e66c3ea09c85003e40361d0ec15 = L.marker(
+                [-6.8769733, 109.4368617],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_de230486caeff65e3429c6d5d32146c4 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4f31e406938054357fb50bd1ff42bc14 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_80d753321491e8096b8c307e6814dd37 = $(`<div id="html_80d753321491e8096b8c307e6814dd37" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 684<br>         <b>Event ID on Trip:</b> 165<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.357<br>         </div>`)[0];
+                popup_4f31e406938054357fb50bd1ff42bc14.setContent(html_80d753321491e8096b8c307e6814dd37);
+            
+        
+
+        marker_00395e66c3ea09c85003e40361d0ec15.bindPopup(popup_4f31e406938054357fb50bd1ff42bc14)
+        ;
+
+        
+    
+    
+                marker_00395e66c3ea09c85003e40361d0ec15.setIcon(icon_de230486caeff65e3429c6d5d32146c4);
+            
+    
+            var marker_e105e984e0f23fa503f69e8ddcc76b61 = L.marker(
+                [-6.84638, 109.4531317],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_130fcfa056091f6297b057d592b11367 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_efd744ec49da6ff24baa23aef4ae7719 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_4312069a19a220febf9a0bd71e66aeb2 = $(`<div id="html_4312069a19a220febf9a0bd71e66aeb2" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 881<br>         <b>Event ID on Trip:</b> 8<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.356<br>         </div>`)[0];
+                popup_efd744ec49da6ff24baa23aef4ae7719.setContent(html_4312069a19a220febf9a0bd71e66aeb2);
+            
+        
+
+        marker_e105e984e0f23fa503f69e8ddcc76b61.bindPopup(popup_efd744ec49da6ff24baa23aef4ae7719)
+        ;
+
+        
+    
+    
+                marker_e105e984e0f23fa503f69e8ddcc76b61.setIcon(icon_130fcfa056091f6297b057d592b11367);
+            
+    
+            var marker_f742604f6d1b87abf972e574125c20e7 = L.marker(
+                [-6.8755696, 109.4488843],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_bc1373386649a91db82d72881df1b699 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_5f5e960ba7e904a0d04c1f40f841ff88 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ca6756561b0ee2c878ad379d9c3c74e0 = $(`<div id="html_ca6756561b0ee2c878ad379d9c3c74e0" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1554<br>         <b>Event ID on Trip:</b> 64<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.356<br>         </div>`)[0];
+                popup_5f5e960ba7e904a0d04c1f40f841ff88.setContent(html_ca6756561b0ee2c878ad379d9c3c74e0);
+            
+        
+
+        marker_f742604f6d1b87abf972e574125c20e7.bindPopup(popup_5f5e960ba7e904a0d04c1f40f841ff88)
+        ;
+
+        
+    
+    
+                marker_f742604f6d1b87abf972e574125c20e7.setIcon(icon_bc1373386649a91db82d72881df1b699);
+            
+    
+            var marker_f17204af37ac07002dde7634b01b81d5 = L.marker(
+                [-6.8370041, 109.4508191],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_5e6e466fb985ee63a9e481d042cdfbf6 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_640a98cc34361dda205b17930196d9b1 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_be96ec90bfa911c5c6ceb8c9171b4f35 = $(`<div id="html_be96ec90bfa911c5c6ceb8c9171b4f35" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 988<br>         <b>Event ID on Trip:</b> 115<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.355<br>         </div>`)[0];
+                popup_640a98cc34361dda205b17930196d9b1.setContent(html_be96ec90bfa911c5c6ceb8c9171b4f35);
+            
+        
+
+        marker_f17204af37ac07002dde7634b01b81d5.bindPopup(popup_640a98cc34361dda205b17930196d9b1)
+        ;
+
+        
+    
+    
+                marker_f17204af37ac07002dde7634b01b81d5.setIcon(icon_5e6e466fb985ee63a9e481d042cdfbf6);
+            
+    
+            var marker_754b1b7fa0ab49a73140ff0296852fea = L.marker(
+                [-6.8735118, 109.450446],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_b3e57fb40902787853f64344fecd467d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_05617c84df64837d2aac276303503850 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_55dcb2e3bd40752e4f0cfecb956c288d = $(`<div id="html_55dcb2e3bd40752e4f0cfecb956c288d" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 773<br>         <b>Event ID on Trip:</b> 254<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.354<br>         </div>`)[0];
+                popup_05617c84df64837d2aac276303503850.setContent(html_55dcb2e3bd40752e4f0cfecb956c288d);
+            
+        
+
+        marker_754b1b7fa0ab49a73140ff0296852fea.bindPopup(popup_05617c84df64837d2aac276303503850)
+        ;
+
+        
+    
+    
+                marker_754b1b7fa0ab49a73140ff0296852fea.setIcon(icon_b3e57fb40902787853f64344fecd467d);
+            
+    
+            var marker_745f6eb7f2faf830d2efdbb283be4457 = L.marker(
+                [-6.8347733, 109.50812],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_c4eaf82a3c671e74cb122790770538f5 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f392456a4801f9767ee953a3aa88c3af = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_0f9024dbb2dc42c4a65f79a9c11fb471 = $(`<div id="html_0f9024dbb2dc42c4a65f79a9c11fb471" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1951<br>         <b>Event ID on Trip:</b> 461<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.353<br>         </div>`)[0];
+                popup_f392456a4801f9767ee953a3aa88c3af.setContent(html_0f9024dbb2dc42c4a65f79a9c11fb471);
+            
+        
+
+        marker_745f6eb7f2faf830d2efdbb283be4457.bindPopup(popup_f392456a4801f9767ee953a3aa88c3af)
+        ;
+
+        
+    
+    
+                marker_745f6eb7f2faf830d2efdbb283be4457.setIcon(icon_c4eaf82a3c671e74cb122790770538f5);
+            
+    
+            var marker_50186cf938ba590c7e7b45bbb17c711f = L.marker(
+                [-6.8347733, 109.50812],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_8f8b51bf6eb6d44496cde5ae54e48b4e = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_c4536ed01d948b266d17fe908d15bba8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_5e6cf4ef7ac98ca104ef92f52283a6d2 = $(`<div id="html_5e6cf4ef7ac98ca104ef92f52283a6d2" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1953<br>         <b>Event ID on Trip:</b> 463<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.353<br>         </div>`)[0];
+                popup_c4536ed01d948b266d17fe908d15bba8.setContent(html_5e6cf4ef7ac98ca104ef92f52283a6d2);
+            
+        
+
+        marker_50186cf938ba590c7e7b45bbb17c711f.bindPopup(popup_c4536ed01d948b266d17fe908d15bba8)
+        ;
+
+        
+    
+    
+                marker_50186cf938ba590c7e7b45bbb17c711f.setIcon(icon_8f8b51bf6eb6d44496cde5ae54e48b4e);
+            
+    
+            var marker_23a7bcf1fcb573ce6be3f65fb11c8758 = L.marker(
+                [-6.8718059, 109.4409313],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3dcac3257b70fbde7f61f13e769ed1c7 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_52c854ce6104e02853b325462ebb5271 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_33a53e1b70ea7bf0830dcfdbb8f43253 = $(`<div id="html_33a53e1b70ea7bf0830dcfdbb8f43253" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 725<br>         <b>Event ID on Trip:</b> 206<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.352<br>         </div>`)[0];
+                popup_52c854ce6104e02853b325462ebb5271.setContent(html_33a53e1b70ea7bf0830dcfdbb8f43253);
+            
+        
+
+        marker_23a7bcf1fcb573ce6be3f65fb11c8758.bindPopup(popup_52c854ce6104e02853b325462ebb5271)
+        ;
+
+        
+    
+    
+                marker_23a7bcf1fcb573ce6be3f65fb11c8758.setIcon(icon_3dcac3257b70fbde7f61f13e769ed1c7);
+            
+    
+            var marker_df2f30f3f142bc997a90cbc2d08c2996 = L.marker(
+                [-6.8345131, 109.4560945],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_84753474e533d0587f08e0d2fa294d1f = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_200b397bff93fab5ae18795f4d30bf65 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_d8cd49cbd6e18a0b76b73c6982c093ea = $(`<div id="html_d8cd49cbd6e18a0b76b73c6982c093ea" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1026<br>         <b>Event ID on Trip:</b> 153<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.352<br>         </div>`)[0];
+                popup_200b397bff93fab5ae18795f4d30bf65.setContent(html_d8cd49cbd6e18a0b76b73c6982c093ea);
+            
+        
+
+        marker_df2f30f3f142bc997a90cbc2d08c2996.bindPopup(popup_200b397bff93fab5ae18795f4d30bf65)
+        ;
+
+        
+    
+    
+                marker_df2f30f3f142bc997a90cbc2d08c2996.setIcon(icon_84753474e533d0587f08e0d2fa294d1f);
+            
+    
+            var marker_edd60877253adfe0ea6a7016760d445e = L.marker(
+                [-6.8375777, 109.4497579],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_8960ed5a0e34c8288bbd044243d2d1dc = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_abaed18c39c96b5e0a2b58d0f6cc1314 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_c16c939ec8c094c3b4675208056b3b1b = $(`<div id="html_c16c939ec8c094c3b4675208056b3b1b" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 984<br>         <b>Event ID on Trip:</b> 111<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.350<br>         </div>`)[0];
+                popup_abaed18c39c96b5e0a2b58d0f6cc1314.setContent(html_c16c939ec8c094c3b4675208056b3b1b);
+            
+        
+
+        marker_edd60877253adfe0ea6a7016760d445e.bindPopup(popup_abaed18c39c96b5e0a2b58d0f6cc1314)
+        ;
+
+        
+    
+    
+                marker_edd60877253adfe0ea6a7016760d445e.setIcon(icon_8960ed5a0e34c8288bbd044243d2d1dc);
+            
+    
+            var marker_dc845ef3dd6ac801260919b9f71db789 = L.marker(
+                [-6.8547555, 109.4207122],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_68aad2dd68ae54ecdce7507a22a476bf = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_59ce2d6cb68c459200a69199d71a6898 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_9ae60ae21f7fe7124a6249cde2f7797a = $(`<div id="html_9ae60ae21f7fe7124a6249cde2f7797a" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1383<br>         <b>Event ID on Trip:</b> 117<br>         <b>Trip ID:</b> be5b69cb-890c-4018-87e3-886e6d92e8cc<br>         <b>Pothole Prob:</b> 0.348<br>         </div>`)[0];
+                popup_59ce2d6cb68c459200a69199d71a6898.setContent(html_9ae60ae21f7fe7124a6249cde2f7797a);
+            
+        
+
+        marker_dc845ef3dd6ac801260919b9f71db789.bindPopup(popup_59ce2d6cb68c459200a69199d71a6898)
+        ;
+
+        
+    
+    
+                marker_dc845ef3dd6ac801260919b9f71db789.setIcon(icon_68aad2dd68ae54ecdce7507a22a476bf);
+            
+    
+            var marker_905bb8f4edd91a5eef7cd24e184d0643 = L.marker(
+                [-6.8544995, 109.4960945],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_fb565ec570ab33b930f7980ab2976dca = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_2231d824f5eb528291a08a5e64037e40 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a5768ded3c1df79d2ffb29dd943d2988 = $(`<div id="html_a5768ded3c1df79d2ffb29dd943d2988" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2851<br>         <b>Event ID on Trip:</b> 228<br>         <b>Trip ID:</b> eca4890f-8ce7-4817-a8f7-a26c3141d9cd<br>         <b>Pothole Prob:</b> 0.347<br>         </div>`)[0];
+                popup_2231d824f5eb528291a08a5e64037e40.setContent(html_a5768ded3c1df79d2ffb29dd943d2988);
+            
+        
+
+        marker_905bb8f4edd91a5eef7cd24e184d0643.bindPopup(popup_2231d824f5eb528291a08a5e64037e40)
+        ;
+
+        
+    
+    
+                marker_905bb8f4edd91a5eef7cd24e184d0643.setIcon(icon_fb565ec570ab33b930f7980ab2976dca);
+            
+    
+            var marker_e7c57ddae58c1c9f17adb7a62fa84530 = L.marker(
+                [-6.8758095, 109.4379332],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_32765c82c58752fec71d4168a6472be2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_29fd629103c5e2674d4de858736c19ca = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_937e9ec20eff5808b04f0ecf301608d1 = $(`<div id="html_937e9ec20eff5808b04f0ecf301608d1" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 604<br>         <b>Event ID on Trip:</b> 85<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.347<br>         </div>`)[0];
+                popup_29fd629103c5e2674d4de858736c19ca.setContent(html_937e9ec20eff5808b04f0ecf301608d1);
+            
+        
+
+        marker_e7c57ddae58c1c9f17adb7a62fa84530.bindPopup(popup_29fd629103c5e2674d4de858736c19ca)
+        ;
+
+        
+    
+    
+                marker_e7c57ddae58c1c9f17adb7a62fa84530.setIcon(icon_32765c82c58752fec71d4168a6472be2);
+            
+    
+            var marker_fa32434521db3aa7594ede7768c0b39a = L.marker(
+                [-6.8730164, 109.4458802],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_4a3e3b6013c67503edefaabcff249cce = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_3df95acf92c591dea28afd6a90e750c8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_5a4aeae10efa9821ade5ef53b94c9600 = $(`<div id="html_5a4aeae10efa9821ade5ef53b94c9600" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 749<br>         <b>Event ID on Trip:</b> 230<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.346<br>         </div>`)[0];
+                popup_3df95acf92c591dea28afd6a90e750c8.setContent(html_5a4aeae10efa9821ade5ef53b94c9600);
+            
+        
+
+        marker_fa32434521db3aa7594ede7768c0b39a.bindPopup(popup_3df95acf92c591dea28afd6a90e750c8)
+        ;
+
+        
+    
+    
+                marker_fa32434521db3aa7594ede7768c0b39a.setIcon(icon_4a3e3b6013c67503edefaabcff249cce);
+            
+    
+            var marker_4987bb8f01c197900fc022b3fb6dd16a = L.marker(
+                [-6.8375345, 109.4498886],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_7395f1b8d8e8d556c66c80e502b3c0ca = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4b4520baf4a3bf10477c11c43be000ae = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_c2debdec39e522faffbda33b5b6652c9 = $(`<div id="html_c2debdec39e522faffbda33b5b6652c9" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 935<br>         <b>Event ID on Trip:</b> 62<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.346<br>         </div>`)[0];
+                popup_4b4520baf4a3bf10477c11c43be000ae.setContent(html_c2debdec39e522faffbda33b5b6652c9);
+            
+        
+
+        marker_4987bb8f01c197900fc022b3fb6dd16a.bindPopup(popup_4b4520baf4a3bf10477c11c43be000ae)
+        ;
+
+        
+    
+    
+                marker_4987bb8f01c197900fc022b3fb6dd16a.setIcon(icon_7395f1b8d8e8d556c66c80e502b3c0ca);
+            
+    
+            var marker_552e645220d36091a775c9cc78d0475a = L.marker(
+                [-6.8953607, 109.4107299],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3badbc11e05abf51413c89fdfad72a17 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_f3efec49d98d68abaa4c25059d7cbcec = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_870b6a85682cd369b4719373afe4be50 = $(`<div id="html_870b6a85682cd369b4719373afe4be50" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 213<br>         <b>Event ID on Trip:</b> 18<br>         <b>Trip ID:</b> 16b2f79d-1072-47bc-857d-326afb027ea2<br>         <b>Pothole Prob:</b> 0.346<br>         </div>`)[0];
+                popup_f3efec49d98d68abaa4c25059d7cbcec.setContent(html_870b6a85682cd369b4719373afe4be50);
+            
+        
+
+        marker_552e645220d36091a775c9cc78d0475a.bindPopup(popup_f3efec49d98d68abaa4c25059d7cbcec)
+        ;
+
+        
+    
+    
+                marker_552e645220d36091a775c9cc78d0475a.setIcon(icon_3badbc11e05abf51413c89fdfad72a17);
+            
+    
+            var marker_eab946a2acef3b0b39564da28f29059d = L.marker(
+                [-6.8385204, 109.4480298],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_9626fdea0475d8ac3af037259319cf40 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_7a0a3fc2fdc94a4ec1492c1b061625b7 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_08d7e75137e8dc9d834b4a5d12bfd115 = $(`<div id="html_08d7e75137e8dc9d834b4a5d12bfd115" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 966<br>         <b>Event ID on Trip:</b> 93<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.345<br>         </div>`)[0];
+                popup_7a0a3fc2fdc94a4ec1492c1b061625b7.setContent(html_08d7e75137e8dc9d834b4a5d12bfd115);
+            
+        
+
+        marker_eab946a2acef3b0b39564da28f29059d.bindPopup(popup_7a0a3fc2fdc94a4ec1492c1b061625b7)
+        ;
+
+        
+    
+    
+                marker_eab946a2acef3b0b39564da28f29059d.setIcon(icon_9626fdea0475d8ac3af037259319cf40);
+            
+    
+            var marker_14ff10bb84856e547e74084e7faf2e78 = L.marker(
+                [-6.9324383, 109.5200433],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_56d22d9633d3e6080e60ae2ad858ec25 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_6b84a5bdc9791bdf29ea7357f1537ce9 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_aab0091b8f59d34465f546bc6d4c2731 = $(`<div id="html_aab0091b8f59d34465f546bc6d4c2731" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2982<br>         <b>Event ID on Trip:</b> 23<br>         <b>Trip ID:</b> be39b43a-973e-43aa-b09c-bf700836bc0b<br>         <b>Pothole Prob:</b> 0.345<br>         </div>`)[0];
+                popup_6b84a5bdc9791bdf29ea7357f1537ce9.setContent(html_aab0091b8f59d34465f546bc6d4c2731);
+            
+        
+
+        marker_14ff10bb84856e547e74084e7faf2e78.bindPopup(popup_6b84a5bdc9791bdf29ea7357f1537ce9)
+        ;
+
+        
+    
+    
+                marker_14ff10bb84856e547e74084e7faf2e78.setIcon(icon_56d22d9633d3e6080e60ae2ad858ec25);
+            
+    
+            var marker_26ffd6be006a2af0c04b04494ed0ffa2 = L.marker(
+                [-6.8808333, 109.4476267],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_a56530a4a1e65cb3950bbe149e6a8a2d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_ea432f8570ab4302f8034517c5d7f0b8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_b892565e2f0b376fb36ad4ed51c13b00 = $(`<div id="html_b892565e2f0b376fb36ad4ed51c13b00" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1529<br>         <b>Event ID on Trip:</b> 39<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.343<br>         </div>`)[0];
+                popup_ea432f8570ab4302f8034517c5d7f0b8.setContent(html_b892565e2f0b376fb36ad4ed51c13b00);
+            
+        
+
+        marker_26ffd6be006a2af0c04b04494ed0ffa2.bindPopup(popup_ea432f8570ab4302f8034517c5d7f0b8)
+        ;
+
+        
+    
+    
+                marker_26ffd6be006a2af0c04b04494ed0ffa2.setIcon(icon_a56530a4a1e65cb3950bbe149e6a8a2d);
+            
+    
+            var marker_d0e8c1e746313bd50e98b9abcf8cf843 = L.marker(
+                [-6.8760125, 109.43757835],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3e0ced8cb81e7182c505918c8768e1da = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_879e50a07fbe5106997dd61c548459a3 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_2d41b2c2d82af7a6f509974d300d2e4a = $(`<div id="html_2d41b2c2d82af7a6f509974d300d2e4a" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 688<br>         <b>Event ID on Trip:</b> 169<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.343<br>         </div>`)[0];
+                popup_879e50a07fbe5106997dd61c548459a3.setContent(html_2d41b2c2d82af7a6f509974d300d2e4a);
+            
+        
+
+        marker_d0e8c1e746313bd50e98b9abcf8cf843.bindPopup(popup_879e50a07fbe5106997dd61c548459a3)
+        ;
+
+        
+    
+    
+                marker_d0e8c1e746313bd50e98b9abcf8cf843.setIcon(icon_3e0ced8cb81e7182c505918c8768e1da);
+            
+    
+            var marker_c385c660d61430fe8147b334565cdcf1 = L.marker(
+                [-6.8291538, 109.5107562],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_6f437ef2d806fdae1e2853c487617840 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_e514e2595da7e6821776effb3c069fcd = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_e4e3815b0badc72fd46ee6eebc2b66e6 = $(`<div id="html_e4e3815b0badc72fd46ee6eebc2b66e6" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2216<br>         <b>Event ID on Trip:</b> 238<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.342<br>         </div>`)[0];
+                popup_e514e2595da7e6821776effb3c069fcd.setContent(html_e4e3815b0badc72fd46ee6eebc2b66e6);
+            
+        
+
+        marker_c385c660d61430fe8147b334565cdcf1.bindPopup(popup_e514e2595da7e6821776effb3c069fcd)
+        ;
+
+        
+    
+    
+                marker_c385c660d61430fe8147b334565cdcf1.setIcon(icon_6f437ef2d806fdae1e2853c487617840);
+            
+    
+            var marker_92c7eb2a52bb67742c5203978d48510d = L.marker(
+                [-6.8189127, 109.51548275],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_48737c21038aee61e37ff959db92d787 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_807cc93439970acc3fbba5c7f39df345 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_77c2413c47b4a09985e6af0035cd4374 = $(`<div id="html_77c2413c47b4a09985e6af0035cd4374" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2132<br>         <b>Event ID on Trip:</b> 154<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.342<br>         </div>`)[0];
+                popup_807cc93439970acc3fbba5c7f39df345.setContent(html_77c2413c47b4a09985e6af0035cd4374);
+            
+        
+
+        marker_92c7eb2a52bb67742c5203978d48510d.bindPopup(popup_807cc93439970acc3fbba5c7f39df345)
+        ;
+
+        
+    
+    
+                marker_92c7eb2a52bb67742c5203978d48510d.setIcon(icon_48737c21038aee61e37ff959db92d787);
+            
+    
+            var marker_aa843fa17c30225216704f35fd1934d5 = L.marker(
+                [-6.8182813, 109.5149605],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_ae49d623d9a5ff3c2ba0c0cb4201c937 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_e162675af4c75d36707ed33ef2f27d59 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_04457715418b6e55829d2673dcebc49d = $(`<div id="html_04457715418b6e55829d2673dcebc49d" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2115<br>         <b>Event ID on Trip:</b> 137<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.341<br>         </div>`)[0];
+                popup_e162675af4c75d36707ed33ef2f27d59.setContent(html_04457715418b6e55829d2673dcebc49d);
+            
+        
+
+        marker_aa843fa17c30225216704f35fd1934d5.bindPopup(popup_e162675af4c75d36707ed33ef2f27d59)
+        ;
+
+        
+    
+    
+                marker_aa843fa17c30225216704f35fd1934d5.setIcon(icon_ae49d623d9a5ff3c2ba0c0cb4201c937);
+            
+    
+            var marker_aaf4f64566e82e49249f7288b0d15616 = L.marker(
+                [-6.8191037, 109.5156341],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_ecc3f43cc2e9248cf175b844fc7ec0d0 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4b7b3bb4677061b6cebf20d8e8f16ae4 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_53467ece4d1d78e9ea2b2bef4392089f = $(`<div id="html_53467ece4d1d78e9ea2b2bef4392089f" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2137<br>         <b>Event ID on Trip:</b> 159<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.340<br>         </div>`)[0];
+                popup_4b7b3bb4677061b6cebf20d8e8f16ae4.setContent(html_53467ece4d1d78e9ea2b2bef4392089f);
+            
+        
+
+        marker_aaf4f64566e82e49249f7288b0d15616.bindPopup(popup_4b7b3bb4677061b6cebf20d8e8f16ae4)
+        ;
+
+        
+    
+    
+                marker_aaf4f64566e82e49249f7288b0d15616.setIcon(icon_ecc3f43cc2e9248cf175b844fc7ec0d0);
+            
+    
+            var marker_25c0077ed489b34147a149fbed52a127 = L.marker(
+                [-6.8731801, 109.4466696],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_7bf9dcac66946bf77b6c6fbdd8055f78 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_be6dcd44325b07383649f960528266ff = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_7e598d78f730c4f0fa5b729ee79addf1 = $(`<div id="html_7e598d78f730c4f0fa5b729ee79addf1" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 756<br>         <b>Event ID on Trip:</b> 237<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.340<br>         </div>`)[0];
+                popup_be6dcd44325b07383649f960528266ff.setContent(html_7e598d78f730c4f0fa5b729ee79addf1);
+            
+        
+
+        marker_25c0077ed489b34147a149fbed52a127.bindPopup(popup_be6dcd44325b07383649f960528266ff)
+        ;
+
+        
+    
+    
+                marker_25c0077ed489b34147a149fbed52a127.setIcon(icon_7bf9dcac66946bf77b6c6fbdd8055f78);
+            
+    
+            var marker_0faaa9b251cb171f3f2fd09a89be0ad6 = L.marker(
+                [-6.8972076, 109.410451],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_08faa28601ffcd3df41652391d6a39ab = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_899eb2f3507c82a39bc7f04eab3f5ff8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_2579a5851f4fd5e1f0b700c3a86e1088 = $(`<div id="html_2579a5851f4fd5e1f0b700c3a86e1088" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 76<br>         <b>Event ID on Trip:</b> 77<br>         <b>Trip ID:</b> bf026662-aa33-4c79-b34d-296f7893c390<br>         <b>Pothole Prob:</b> 0.339<br>         </div>`)[0];
+                popup_899eb2f3507c82a39bc7f04eab3f5ff8.setContent(html_2579a5851f4fd5e1f0b700c3a86e1088);
+            
+        
+
+        marker_0faaa9b251cb171f3f2fd09a89be0ad6.bindPopup(popup_899eb2f3507c82a39bc7f04eab3f5ff8)
+        ;
+
+        
+    
+    
+                marker_0faaa9b251cb171f3f2fd09a89be0ad6.setIcon(icon_08faa28601ffcd3df41652391d6a39ab);
+            
+    
+            var marker_ecd51a4b8eed5a92fc06b6929acd2b6c = L.marker(
+                [-6.8893243, 109.4376667],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_08fc99813f93067779f4587476345c10 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_72b90d749575a701647f7d4f6cf32bcf = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_5cde87e6fb3fcd6a0feeaf2b3c5e7b5e = $(`<div id="html_5cde87e6fb3fcd6a0feeaf2b3c5e7b5e" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 521<br>         <b>Event ID on Trip:</b> 2<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.339<br>         </div>`)[0];
+                popup_72b90d749575a701647f7d4f6cf32bcf.setContent(html_5cde87e6fb3fcd6a0feeaf2b3c5e7b5e);
+            
+        
+
+        marker_ecd51a4b8eed5a92fc06b6929acd2b6c.bindPopup(popup_72b90d749575a701647f7d4f6cf32bcf)
+        ;
+
+        
+    
+    
+                marker_ecd51a4b8eed5a92fc06b6929acd2b6c.setIcon(icon_08fc99813f93067779f4587476345c10);
+            
+    
+            var marker_6ebca4e0d97275cfcfc36a2e0d70fda9 = L.marker(
+                [-6.8492797, 109.4828307],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_83add0d1a3956b2db18ca0dccd25bb1a = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_91c8136b3377e59ccbf20b5ca9376012 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_394b2c5d836592d6861b488077e6b382 = $(`<div id="html_394b2c5d836592d6861b488077e6b382" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1772<br>         <b>Event ID on Trip:</b> 282<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.337<br>         </div>`)[0];
+                popup_91c8136b3377e59ccbf20b5ca9376012.setContent(html_394b2c5d836592d6861b488077e6b382);
+            
+        
+
+        marker_6ebca4e0d97275cfcfc36a2e0d70fda9.bindPopup(popup_91c8136b3377e59ccbf20b5ca9376012)
+        ;
+
+        
+    
+    
+                marker_6ebca4e0d97275cfcfc36a2e0d70fda9.setIcon(icon_83add0d1a3956b2db18ca0dccd25bb1a);
+            
+    
+            var marker_f80ce0fa37f251e732460183e72d7999 = L.marker(
+                [-6.8956288, 109.410463],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_620df44b34053a3e062ce62d14693f67 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_a96f3abace562bfd1c0080505fea4977 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_6830a7a34146c35a90f96c61766a9897 = $(`<div id="html_6830a7a34146c35a90f96c61766a9897" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 257<br>         <b>Event ID on Trip:</b> 62<br>         <b>Trip ID:</b> 16b2f79d-1072-47bc-857d-326afb027ea2<br>         <b>Pothole Prob:</b> 0.337<br>         </div>`)[0];
+                popup_a96f3abace562bfd1c0080505fea4977.setContent(html_6830a7a34146c35a90f96c61766a9897);
+            
+        
+
+        marker_f80ce0fa37f251e732460183e72d7999.bindPopup(popup_a96f3abace562bfd1c0080505fea4977)
+        ;
+
+        
+    
+    
+                marker_f80ce0fa37f251e732460183e72d7999.setIcon(icon_620df44b34053a3e062ce62d14693f67);
+            
+    
+            var marker_395ebf25b854d1b5a4f54c1dc36dadb2 = L.marker(
+                [-6.8384436, 109.4513008],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_51b255b6879b33cfcba96f42a0f70cf3 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_64210e4e7d207c33124ada3c9af1880e = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_6fb70e88c83e46e5a0522914fd0e704c = $(`<div id="html_6fb70e88c83e46e5a0522914fd0e704c" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1191<br>         <b>Event ID on Trip:</b> 318<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.337<br>         </div>`)[0];
+                popup_64210e4e7d207c33124ada3c9af1880e.setContent(html_6fb70e88c83e46e5a0522914fd0e704c);
+            
+        
+
+        marker_395ebf25b854d1b5a4f54c1dc36dadb2.bindPopup(popup_64210e4e7d207c33124ada3c9af1880e)
+        ;
+
+        
+    
+    
+                marker_395ebf25b854d1b5a4f54c1dc36dadb2.setIcon(icon_51b255b6879b33cfcba96f42a0f70cf3);
+            
+    
+            var marker_ead6efcb4d7a2682cb18e5d7f874120c = L.marker(
+                [-6.8485667, 109.4303636],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_2e66a5229a956cf670b86f25697b30c3 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_d484bc6a829b76b711de6bedfcdcacc7 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_01140b9ceeaed9be39a9520b602e9362 = $(`<div id="html_01140b9ceeaed9be39a9520b602e9362" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1315<br>         <b>Event ID on Trip:</b> 49<br>         <b>Trip ID:</b> be5b69cb-890c-4018-87e3-886e6d92e8cc<br>         <b>Pothole Prob:</b> 0.337<br>         </div>`)[0];
+                popup_d484bc6a829b76b711de6bedfcdcacc7.setContent(html_01140b9ceeaed9be39a9520b602e9362);
+            
+        
+
+        marker_ead6efcb4d7a2682cb18e5d7f874120c.bindPopup(popup_d484bc6a829b76b711de6bedfcdcacc7)
+        ;
+
+        
+    
+    
+                marker_ead6efcb4d7a2682cb18e5d7f874120c.setIcon(icon_2e66a5229a956cf670b86f25697b30c3);
+            
+    
+            var marker_8440d17b8b2050d85d3300219afc097f = L.marker(
+                [-6.8205713, 109.5167837],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_71242bf46edd109534846ad5b1c2f588 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_b76526c17c5f6d39bbbef11cc5b23040 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_1a43ec77b24b0d69cfad62bf9786e481 = $(`<div id="html_1a43ec77b24b0d69cfad62bf9786e481" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2083<br>         <b>Event ID on Trip:</b> 105<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.336<br>         </div>`)[0];
+                popup_b76526c17c5f6d39bbbef11cc5b23040.setContent(html_1a43ec77b24b0d69cfad62bf9786e481);
+            
+        
+
+        marker_8440d17b8b2050d85d3300219afc097f.bindPopup(popup_b76526c17c5f6d39bbbef11cc5b23040)
+        ;
+
+        
+    
+    
+                marker_8440d17b8b2050d85d3300219afc097f.setIcon(icon_71242bf46edd109534846ad5b1c2f588);
+            
+    
+            var marker_c741c8f6612909a99c6d2b1ce9003ff5 = L.marker(
+                [-6.9011077, 109.4904503],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_f3621dd763462be21098c7c293adb200 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_725a89591bd7010e51b0b3e73d09c269 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_e3693aa2e066ac1eef695afc3bf9439a = $(`<div id="html_e3693aa2e066ac1eef695afc3bf9439a" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 3781<br>         <b>Event ID on Trip:</b> 108<br>         <b>Trip ID:</b> 690b686e-8ba1-405d-bd2f-84f6516c0890<br>         <b>Pothole Prob:</b> 0.336<br>         </div>`)[0];
+                popup_725a89591bd7010e51b0b3e73d09c269.setContent(html_e3693aa2e066ac1eef695afc3bf9439a);
+            
+        
+
+        marker_c741c8f6612909a99c6d2b1ce9003ff5.bindPopup(popup_725a89591bd7010e51b0b3e73d09c269)
+        ;
+
+        
+    
+    
+                marker_c741c8f6612909a99c6d2b1ce9003ff5.setIcon(icon_f3621dd763462be21098c7c293adb200);
+            
+    
+            var marker_c059f86f68ed076462826120e7e5c3dc = L.marker(
+                [-6.9304733, 109.5241333],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_b7fc68436f9bc0fd19d562c529386518 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_9fa7137ebc84c617274a423f6a81fec2 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_7ff4b28074862ebe8c9bb3199ca573de = $(`<div id="html_7ff4b28074862ebe8c9bb3199ca573de" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2970<br>         <b>Event ID on Trip:</b> 11<br>         <b>Trip ID:</b> be39b43a-973e-43aa-b09c-bf700836bc0b<br>         <b>Pothole Prob:</b> 0.335<br>         </div>`)[0];
+                popup_9fa7137ebc84c617274a423f6a81fec2.setContent(html_7ff4b28074862ebe8c9bb3199ca573de);
+            
+        
+
+        marker_c059f86f68ed076462826120e7e5c3dc.bindPopup(popup_9fa7137ebc84c617274a423f6a81fec2)
+        ;
+
+        
+    
+    
+                marker_c059f86f68ed076462826120e7e5c3dc.setIcon(icon_b7fc68436f9bc0fd19d562c529386518);
+            
+    
+            var marker_2cf5ef8904e6bd2fc6ca0bcebb24ef2a = L.marker(
+                [-6.8230478, 109.5164617],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_dd496ae258b58329d91d334e8b011dc4 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_8d15fffd976d2bad1381fe6fc7dba28a = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_37c4811f5139b7e2874ed83b10763688 = $(`<div id="html_37c4811f5139b7e2874ed83b10763688" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2165<br>         <b>Event ID on Trip:</b> 187<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.334<br>         </div>`)[0];
+                popup_8d15fffd976d2bad1381fe6fc7dba28a.setContent(html_37c4811f5139b7e2874ed83b10763688);
+            
+        
+
+        marker_2cf5ef8904e6bd2fc6ca0bcebb24ef2a.bindPopup(popup_8d15fffd976d2bad1381fe6fc7dba28a)
+        ;
+
+        
+    
+    
+                marker_2cf5ef8904e6bd2fc6ca0bcebb24ef2a.setIcon(icon_dd496ae258b58329d91d334e8b011dc4);
+            
+    
+            var marker_0c61de4e71f5e9a287367ba7db0a379f = L.marker(
+                [-6.8730778, 109.4522665],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_467e409a37bc7d0b5ae08e616fd47f9c = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_2e9868d78c362082849c0f4e7b70f466 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ccd97225699bb77dcbc8452294a5dc61 = $(`<div id="html_ccd97225699bb77dcbc8452294a5dc61" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 784<br>         <b>Event ID on Trip:</b> 265<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.334<br>         </div>`)[0];
+                popup_2e9868d78c362082849c0f4e7b70f466.setContent(html_ccd97225699bb77dcbc8452294a5dc61);
+            
+        
+
+        marker_0c61de4e71f5e9a287367ba7db0a379f.bindPopup(popup_2e9868d78c362082849c0f4e7b70f466)
+        ;
+
+        
+    
+    
+                marker_0c61de4e71f5e9a287367ba7db0a379f.setIcon(icon_467e409a37bc7d0b5ae08e616fd47f9c);
+            
+    
+            var marker_4fe536798c4718f6c9b9d3b3eaba7709 = L.marker(
+                [-6.8233467, 109.51558],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_13469ee13eb67c26fe9f05a60751c52f = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_9eb2a2b7860540329081aa462a604ac8 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_efd8453ff559c96fb84e30c203d203d5 = $(`<div id="html_efd8453ff559c96fb84e30c203d203d5" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2055<br>         <b>Event ID on Trip:</b> 77<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.332<br>         </div>`)[0];
+                popup_9eb2a2b7860540329081aa462a604ac8.setContent(html_efd8453ff559c96fb84e30c203d203d5);
+            
+        
+
+        marker_4fe536798c4718f6c9b9d3b3eaba7709.bindPopup(popup_9eb2a2b7860540329081aa462a604ac8)
+        ;
+
+        
+    
+    
+                marker_4fe536798c4718f6c9b9d3b3eaba7709.setIcon(icon_13469ee13eb67c26fe9f05a60751c52f);
+            
+    
+            var marker_d71c3abf0c1eab967d1e4d91e2dbb369 = L.marker(
+                [-6.8208998, 109.517047],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_5090240403532f5d9211384c97f9dc25 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_86655364403579ab1604977d5b61ba6f = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ec93d379efe69b820cc6cb8d51769a28 = $(`<div id="html_ec93d379efe69b820cc6cb8d51769a28" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 2150<br>         <b>Event ID on Trip:</b> 172<br>         <b>Trip ID:</b> ed73870a-3468-4be8-9919-dd504a197a50<br>         <b>Pothole Prob:</b> 0.332<br>         </div>`)[0];
+                popup_86655364403579ab1604977d5b61ba6f.setContent(html_ec93d379efe69b820cc6cb8d51769a28);
+            
+        
+
+        marker_d71c3abf0c1eab967d1e4d91e2dbb369.bindPopup(popup_86655364403579ab1604977d5b61ba6f)
+        ;
+
+        
+    
+    
+                marker_d71c3abf0c1eab967d1e4d91e2dbb369.setIcon(icon_5090240403532f5d9211384c97f9dc25);
+            
+    
+            var marker_aa560cbbf575cca91a3585c2d9c77aea = L.marker(
+                [-6.8734955, 109.4496572],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_93788959a5ae74e70db33f261a804562 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_3724c96436f2045a2f906a7f51bd690c = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_e34df938141a38eef1d3f309d48c77c4 = $(`<div id="html_e34df938141a38eef1d3f309d48c77c4" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 769<br>         <b>Event ID on Trip:</b> 250<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.331<br>         </div>`)[0];
+                popup_3724c96436f2045a2f906a7f51bd690c.setContent(html_e34df938141a38eef1d3f309d48c77c4);
+            
+        
+
+        marker_aa560cbbf575cca91a3585c2d9c77aea.bindPopup(popup_3724c96436f2045a2f906a7f51bd690c)
+        ;
+
+        
+    
+    
+                marker_aa560cbbf575cca91a3585c2d9c77aea.setIcon(icon_93788959a5ae74e70db33f261a804562);
+            
+    
+            var marker_ae031b61bdbb2ee664737c255f3d0cd0 = L.marker(
+                [-6.8727717, 109.4442633],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_48d33ab730b72d72ee1d6d13219c0b71 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_789e6b5ca86d9162eb9cbbd30ec42902 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_a7195cd9a5bd05ee229de01081f2c6a1 = $(`<div id="html_a7195cd9a5bd05ee229de01081f2c6a1" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 738<br>         <b>Event ID on Trip:</b> 219<br>         <b>Trip ID:</b> 7fe6874a-33f5-4a42-bc51-972d099b647a<br>         <b>Pothole Prob:</b> 0.331<br>         </div>`)[0];
+                popup_789e6b5ca86d9162eb9cbbd30ec42902.setContent(html_a7195cd9a5bd05ee229de01081f2c6a1);
+            
+        
+
+        marker_ae031b61bdbb2ee664737c255f3d0cd0.bindPopup(popup_789e6b5ca86d9162eb9cbbd30ec42902)
+        ;
+
+        
+    
+    
+                marker_ae031b61bdbb2ee664737c255f3d0cd0.setIcon(icon_48d33ab730b72d72ee1d6d13219c0b71);
+            
+    
+            var marker_6de2cf64bd2def63ac5e291a2aceb8e5 = L.marker(
+                [-6.9546093, 109.5084549],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_28887c5aed08b09113d978dfed5bdf89 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_a51e0b26c646e3e99761a0b8dda0d50f = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_93ba0cb3d74ba303c57672450b6312ce = $(`<div id="html_93ba0cb3d74ba303c57672450b6312ce" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 3415<br>         <b>Event ID on Trip:</b> 13<br>         <b>Trip ID:</b> 5f55e871-61cf-46f4-85b8-4f2cab7c3d36<br>         <b>Pothole Prob:</b> 0.331<br>         </div>`)[0];
+                popup_a51e0b26c646e3e99761a0b8dda0d50f.setContent(html_93ba0cb3d74ba303c57672450b6312ce);
+            
+        
+
+        marker_6de2cf64bd2def63ac5e291a2aceb8e5.bindPopup(popup_a51e0b26c646e3e99761a0b8dda0d50f)
+        ;
+
+        
+    
+    
+                marker_6de2cf64bd2def63ac5e291a2aceb8e5.setIcon(icon_28887c5aed08b09113d978dfed5bdf89);
+            
+    
+            var marker_b0f45f0c7c247ab01847737441f7f4ce = L.marker(
+                [-6.8359717, 109.4984917],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_7468f0f29c6c6abf5ee1ee92ba7ba0cd = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_1345461d8835d88af479b959db310f19 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_f89e621e1cda2dcd0f592270c1db2969 = $(`<div id="html_f89e621e1cda2dcd0f592270c1db2969" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1879<br>         <b>Event ID on Trip:</b> 389<br>         <b>Trip ID:</b> d4df5c85-fa57-4561-9857-ec3b64f8ef1c<br>         <b>Pothole Prob:</b> 0.330<br>         </div>`)[0];
+                popup_1345461d8835d88af479b959db310f19.setContent(html_f89e621e1cda2dcd0f592270c1db2969);
+            
+        
+
+        marker_b0f45f0c7c247ab01847737441f7f4ce.bindPopup(popup_1345461d8835d88af479b959db310f19)
+        ;
+
+        
+    
+    
+                marker_b0f45f0c7c247ab01847737441f7f4ce.setIcon(icon_7468f0f29c6c6abf5ee1ee92ba7ba0cd);
+            
+    
+            var marker_909f1444e6ebe4802cf9c04cd2db600d = L.marker(
+                [-6.8366997, 109.4513634],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_3b7ccf101680fdadaa370ba7fd44283d = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_92a314d68e062b29f50a8e1b45643722 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_375abbf8922ca71f6bae77f0160e4b85 = $(`<div id="html_375abbf8922ca71f6bae77f0160e4b85" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 1000<br>         <b>Event ID on Trip:</b> 127<br>         <b>Trip ID:</b> dfb4f7d0-1b39-4322-9c7f-fb304e5d8530<br>         <b>Pothole Prob:</b> 0.330<br>         </div>`)[0];
+                popup_92a314d68e062b29f50a8e1b45643722.setContent(html_375abbf8922ca71f6bae77f0160e4b85);
+            
+        
+
+        marker_909f1444e6ebe4802cf9c04cd2db600d.bindPopup(popup_92a314d68e062b29f50a8e1b45643722)
+        ;
+
+        
+    
+    
+                marker_909f1444e6ebe4802cf9c04cd2db600d.setIcon(icon_3b7ccf101680fdadaa370ba7fd44283d);
+            
+    
+            var marker_4a2527b97ad89e4fd52d060b028bc509 = L.marker(
+                [-6.8966547, 109.4088889],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_05e0d29ddaed9a4f258a53e4b58a48a2 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_e0125fd42118dbcd4c92a9495645594b = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_ee4a53bdb71b72ff653c4dd20b4f3f71 = $(`<div id="html_ee4a53bdb71b72ff653c4dd20b4f3f71" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 91<br>         <b>Event ID on Trip:</b> 92<br>         <b>Trip ID:</b> bf026662-aa33-4c79-b34d-296f7893c390<br>         <b>Pothole Prob:</b> 0.330<br>         </div>`)[0];
+                popup_e0125fd42118dbcd4c92a9495645594b.setContent(html_ee4a53bdb71b72ff653c4dd20b4f3f71);
+            
+        
+
+        marker_4a2527b97ad89e4fd52d060b028bc509.bindPopup(popup_e0125fd42118dbcd4c92a9495645594b)
+        ;
+
+        
+    
+    
+                marker_4a2527b97ad89e4fd52d060b028bc509.setIcon(icon_05e0d29ddaed9a4f258a53e4b58a48a2);
+            
+    
+            var marker_a7b27678b13482735386bbaa0828f7c3 = L.marker(
+                [-6.8967184, 109.3865932],
+                {
+}
+            ).addTo(map_62bc0179259e11a364e76845704e5467);
+        
+    
+            var icon_22aeb9f87fb221c9470fe1af8a56b70a = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "green",
+  "iconColor": "white",
+  "icon": "ok-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_3fc740eaf2240ec6d41306edf38d7c39 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_321fc2e2377d6edc013fd7a45de6a8b3 = $(`<div id="html_321fc2e2377d6edc013fd7a45de6a8b3" style="width: 100.0%; height: 100.0%;">         <b>Type:</b> True Negative (Normal Road)<br>         <b>Event ID:</b> 4133<br>         <b>Event ID on Trip:</b> 22<br>         <b>Trip ID:</b> b2b0d8ca-c7d3-46d5-ab8e-85502ef48faa<br>         <b>Pothole Prob:</b> 0.330<br>         </div>`)[0];
+                popup_3fc740eaf2240ec6d41306edf38d7c39.setContent(html_321fc2e2377d6edc013fd7a45de6a8b3);
+            
+        
+
+        marker_a7b27678b13482735386bbaa0828f7c3.bindPopup(popup_3fc740eaf2240ec6d41306edf38d7c39)
+        ;
+
+        
+    
+    
+                marker_a7b27678b13482735386bbaa0828f7c3.setIcon(icon_22aeb9f87fb221c9470fe1af8a56b70a);
+            
+</script>
+</html>

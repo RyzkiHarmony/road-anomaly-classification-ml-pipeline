@@ -43,9 +43,9 @@ def scale_instance_level(data):
     return (data - means) / stds
 
 
-EPOCHS = 50
-BATCH_SIZE = 32
-LR = 0.001
+EPOCHS = 40
+BATCH_SIZE = 16
+LR = 0.0007795
 SMOTE_RATIO = 0.5
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
@@ -218,7 +218,7 @@ def apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO):
 def main():
     parser = argparse.ArgumentParser(description="CNN Training")
     parser.add_argument("--channels", type=int, default=128, help="Number of base channels")
-    parser.add_argument("--dropout", type=float, default=0.5, help="Dropout rate")
+    parser.add_argument("--dropout", type=float, default=0.48195, help="Dropout rate")
     parser.add_argument("--no-augment", action="store_true", help="Disable data augmentation")
     args = parser.parse_args()
 

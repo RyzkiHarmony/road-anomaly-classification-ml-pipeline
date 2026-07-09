@@ -29,35 +29,30 @@ def scale_instance_level(X, eps=1e-8):
 def main():
     print("Loading data...")
     
-    xgb_df_path = os.path.join(XGB_DATA_DIR, "xgboost_labeled_windows.csv")
-    df = pd.read_csv(xgb_df_path).dropna(subset=['label'])
-    with open(os.path.join(XGB_MODEL_DIR, "xgboost_features.json"), "r") as f:
-        feature_cols = json.load(f)
-    df = df.dropna(subset=feature_cols)
-    
-    y_raw = df['label'].values
-    groups = df['trip_id'].values
-    
-    if 'source' in df.columns:
-        source_values = df['source'].fillna('original').values
-    else:
-        source_values = np.array(['original'] * len(df))
-        
-    _, test_groups_list = get_stratified_group_split(groups, y_raw, train_ratio=0.7)
-    test_mask = np.isin(groups, test_groups_list)
-    
-    is_original_test = np.array([not str(s).startswith('augmented') for s in source_values[test_mask]])
-    
-    # Filter Dataframe for test set original rows
-    df_test = df[test_mask][is_original_test].copy()
-    
-    # Load CNN Data
+    print("Loading CNN Data...")
     X_cnn_all = np.load(os.path.join(CNN_DATA_DIR, "cnn_1d_X.npy"))
-    X_cnn_test = X_cnn_all[test_mask][is_original_test]
+    y_raw = np.load(os.path.join(CNN_DATA_DIR, "cnn_1d_y.npy"))
+    groups = np.load(os.path.join(CNN_DATA_DIR, "cnn_1d_groups.npy"))
+    event_ids = np.load(os.path.join(CNN_DATA_DIR, "cnn_1d_event_ids.npy"))
     
     # Load Label Encoder
     le = joblib.load(os.path.join(XGB_MODEL_DIR, "xgboost_label_encoder.pkl"))
     classes = le.classes_
+    
+    _, test_groups_list = get_stratified_group_split(groups, y_raw, train_ratio=0.7)
+    test_mask = np.isin(groups, test_groups_list)
+    
+    # Filter for test set
+    X_cnn_test = X_cnn_all[test_mask]
+    y_test = y_raw[test_mask]
+    event_ids_test = event_ids[test_mask]
+    groups_test = groups[test_mask]
+    
+    df_test = pd.DataFrame({
+        'event_id': event_ids_test,
+        'trip_id': groups_test,
+        'label': y_test
+    })
     
     # Preprocess CNN Data
     X_cnn_scaled = scale_instance_level(X_cnn_test)
