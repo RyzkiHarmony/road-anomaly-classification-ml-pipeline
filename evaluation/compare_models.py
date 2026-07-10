@@ -65,6 +65,7 @@ def evaluate_xgb():
     X = df[feature_cols].values
     y = df['label'].values
     groups = df['trip_id'].values
+    event_ids = df['event_id'].values
     
     if 'source' in df.columns:
         source_values = df['source'].fillna('original').values
@@ -77,6 +78,7 @@ def evaluate_xgb():
     is_original_test = np.array([not str(s).startswith('augmented') for s in source_values[test_mask]])
     X_test = X[test_mask][is_original_test]
     y_test_raw = y[test_mask][is_original_test]
+    event_ids_test = event_ids[test_mask][is_original_test]
     
     # Load model
     model = joblib.load(os.path.join(XGB_MODEL_DIR, "xgboost_model.pkl"))
@@ -129,23 +131,26 @@ def evaluate_xgb():
             preds[i] = non_event_idx
             
     print(classification_report(y_test, preds, target_names=classes, zero_division=0))
-    return y_test, preds, classes
+    return event_ids_test, y_test, preds, classes
 
 def evaluate_cnn():
     print("\n--- Evaluasi 1D-CNN ---")
     X_path = os.path.join(CNN_DATA_DIR, "cnn_1d_X.npy")
     y_path = os.path.join(CNN_DATA_DIR, "cnn_1d_y.npy")
     groups_path = os.path.join(CNN_DATA_DIR, "cnn_1d_groups.npy")
+    event_ids_path = os.path.join(CNN_DATA_DIR, "cnn_1d_event_ids.npy")
     
     X_all = np.load(X_path)
     y_raw_all = np.load(y_path)
     groups_all = np.load(groups_path)
+    event_ids_all = np.load(event_ids_path)
     
     _, test_groups_list = get_stratified_group_split(groups_all, y_raw_all, train_ratio=0.7)
     test_mask = np.isin(groups_all, test_groups_list)
     
     X_test_np = X_all[test_mask]
     y_test_raw = y_raw_all[test_mask]
+    event_ids_test = event_ids_all[test_mask]
     
     # Load Label Encoder Classes
     classes = np.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_classes.npy"), allow_pickle=True)
@@ -153,13 +158,14 @@ def evaluate_cnn():
     le.classes_ = classes
     y_test = le.transform(y_test_raw)
     
-    def scale_instance_level(data):
-        means = np.mean(data, axis=2, keepdims=True)
-        stds = np.std(data, axis=2, keepdims=True)
-        stds = np.where(stds < 1e-6, 1.0, stds)
-        return (data - means) / stds
+    # Load Global Scaler
+    scaler_path = os.path.join(CNN_MODEL_DIR, "cnn_1d_scaler_params.json")
+    with open(scaler_path, 'r') as f:
+        scaler_params = json.load(f)
+    global_means = np.array(scaler_params['means']).reshape(1, 7, 1)
+    global_stds = np.array(scaler_params['stds']).reshape(1, 7, 1)
         
-    X_test_scaled = scale_instance_level(X_test_np)
+    X_test_scaled = (X_test_np - global_means) / global_stds
     X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
     
     # Load Model
@@ -169,23 +175,40 @@ def evaluate_cnn():
     
     with torch.no_grad():
         outputs = model(X_test_tensor)
-        probas = torch.softmax(outputs, dim=1).numpy()
+        probas = torch.sigmoid(outputs).numpy()
         
     preds = np.argmax(probas, axis=1)
             
     print(classification_report(y_test, preds, target_names=classes, zero_division=0))
-    return y_test, preds, classes
+    return event_ids_test, y_test, preds, classes
 
 if __name__ == "__main__":
-    y_true_xgb, y_pred_xgb, classes_xgb = evaluate_xgb()
-    y_true_cnn, y_pred_cnn, classes_cnn = evaluate_cnn()
+    event_ids_xgb, y_true_xgb, y_pred_xgb, classes_xgb = evaluate_xgb()
+    event_ids_cnn, y_true_cnn, y_pred_cnn, classes_cnn = evaluate_cnn()
+    
+    # Find Intersection of Holdout Event IDs
+    common_event_ids = np.intersect1d(event_ids_xgb, event_ids_cnn)
+    print(f"\n[ALIGNMENT] Menyelaraskan evaluasi pada {len(common_event_ids)} event yang sukses diproses oleh KEDUA model.")
+    
+    # Filter XGBoost Arrays
+    # np.isin does not guarantee order preservation natively if we just boolean index, 
+    # but since we want to compute metrics, order between y_true and y_pred must match internally for each model.
+    # We can just filter them; we don't need to sort them identically as long as (y_true_xgb_aligned, y_pred_xgb_aligned) are paired.
+    xgb_mask = np.isin(event_ids_xgb, common_event_ids)
+    y_true_xgb_aligned = y_true_xgb[xgb_mask]
+    y_pred_xgb_aligned = y_pred_xgb[xgb_mask]
+    
+    # Filter CNN Arrays
+    cnn_mask = np.isin(event_ids_cnn, common_event_ids)
+    y_true_cnn_aligned = y_true_cnn[cnn_mask]
+    y_pred_cnn_aligned = y_pred_cnn[cnn_mask]
     
     # Save a comparison summary table
-    print("\n=== PERBANDINGAN PERFORMA HOLDOUT TEST SET ===")
+    print("\n=== PERBANDINGAN PERFORMA HOLDOUT TEST SET (ALIGNED) ===")
     from sklearn.metrics import precision_recall_fscore_support
     
-    metrics_xgb = precision_recall_fscore_support(y_true_xgb, y_pred_xgb, average=None, labels=range(len(classes_xgb)), zero_division=0)
-    metrics_cnn = precision_recall_fscore_support(y_true_cnn, y_pred_cnn, average=None, labels=range(len(classes_cnn)), zero_division=0)
+    metrics_xgb = precision_recall_fscore_support(y_true_xgb_aligned, y_pred_xgb_aligned, average=None, labels=range(len(classes_xgb)), zero_division=0)
+    metrics_cnn = precision_recall_fscore_support(y_true_cnn_aligned, y_pred_cnn_aligned, average=None, labels=range(len(classes_cnn)), zero_division=0)
     
     comparison_data = []
     for idx, cls in enumerate(classes_xgb):

@@ -35,13 +35,6 @@ REPORT_DIR = os.path.join(_PROJECT_ROOT, "evaluation", "reports", "cnn_1d")
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(REPORT_DIR, exist_ok=True)
 
-def scale_instance_level(data):
-    """Normalize each sequence sample independently across its sequence length (axis 2) per channel."""
-    means = np.mean(data, axis=2, keepdims=True)
-    stds = np.std(data, axis=2, keepdims=True)
-    stds = np.where(stds < 1e-6, 1.0, stds)
-    return (data - means) / stds
-
 
 EPOCHS = 40
 BATCH_SIZE = 16
@@ -282,20 +275,25 @@ def main():
         # ─── SMOTE Oversampling (Disabled for Experiment) ───
         X_train_np, y_train_np = X[train_idx], y[train_idx]
         
+        # Calculate global mean and std from X_train_np (N, C, T) over N and T (axis=(0, 2))
+        global_means = np.mean(X_train_np, axis=(0, 2), keepdims=True)
+        global_stds = np.std(X_train_np, axis=(0, 2), keepdims=True)
+        global_stds = np.where(global_stds < 1e-6, 1.0, global_stds)
+        
         if fold == 0:
             scaler_params = {
-                "means": [0.0] * X_train_np.shape[1],
-                "stds": [1.0] * X_train_np.shape[1]
+                "means": global_means.flatten().tolist(),
+                "stds": global_stds.flatten().tolist()
             }
             scaler_path = os.path.join(MODEL_DIR, "scaler_params.json")
             with open(scaler_path, "w") as f:
                 json.dump(scaler_params, f, indent=4)
-            logger.info(f"Saved dummy scaler parameters to {scaler_path}")
+            logger.info(f"Saved fold scaler parameters to {scaler_path}")
             
-        X_train_scaled = scale_instance_level(X_train_np)
+        X_train_scaled = (X_train_np - global_means) / global_stds
         # Apply the SAME training means and stds to validation data
         X_val_np = X[val_idx]
-        X_val_scaled = scale_instance_level(X_val_np)
+        X_val_scaled = (X_val_np - global_means) / global_stds
         
         X_train = torch.tensor(X_train_scaled, dtype=torch.float32)
         y_train = torch.tensor(y_train_np, dtype=torch.long)
@@ -541,17 +539,21 @@ def main():
     # --- Train Final Model ---
     X_full, y_full = X, y
     
-    # ─── Fit and Save Final Scaler (Dynamic Length) ───
+    # ─── Fit and Save Final Scaler ───
+    final_means = np.mean(X_full, axis=(0, 2), keepdims=True)
+    final_stds = np.std(X_full, axis=(0, 2), keepdims=True)
+    final_stds = np.where(final_stds < 1e-6, 1.0, final_stds)
+    
     final_scaler_params = {
-        "means": [0.0] * X_full.shape[1],
-        "stds": [1.0] * X_full.shape[1]
+        "means": final_means.flatten().tolist(),
+        "stds": final_stds.flatten().tolist()
     }
     scaler_path = os.path.join(MODEL_DIR, "cnn_1d_scaler_params.json")
     with open(scaler_path, "w") as f:
         json.dump(final_scaler_params, f, indent=4)
-    logger.info(f"Saved dummy final scaler parameters to {scaler_path}")
+    logger.info(f"Saved final global scaler parameters to {scaler_path}")
     
-    X_full_scaled = scale_instance_level(X_full)
+    X_full_scaled = (X_full - final_means) / final_stds
     X_full_tensor = torch.tensor(X_full_scaled, dtype=torch.float32)
     y_full_tensor = torch.tensor(y_full, dtype=torch.long)
     
@@ -572,7 +574,7 @@ def main():
                                  num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
     criterion_full = MultiLabelFocalLoss(weight=class_weights_full, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
-    scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
+    scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=EPOCHS, eta_min=1e-6)
     
     for epoch in range(optimal_epochs):
         final_model.train()
@@ -601,8 +603,8 @@ def main():
     logger.info("Mengevaluasi model final pada Holdout Test Set (30%)...")
     final_model.eval()
     
-    # Standardize Test set using instance-level scaling
-    X_test_scaled = scale_instance_level(X_test_np)
+    # Standardize Test set using global scaling
+    X_test_scaled = (X_test_np - final_means) / final_stds
     X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
@@ -659,26 +661,8 @@ def main():
     logger.info(f"Holdout Test confusion matrix disimpan di {cm_test_path}")
 
     # ─── ONNX EXPORT ───
-    logger.info("Exporting final PyTorch model to ONNX format...")
-    onnx_path = os.path.join(MODEL_DIR, "cnn_1d_model.onnx")
-    dummy_input = torch.randn(1, X_full.shape[1], 200, requires_grad=True).to(device)
-    final_model.eval()
-    try:
-        torch.onnx.export(
-            final_model,
-            dummy_input,
-            onnx_path,
-            export_params=True,
-            opset_version=18,
-            do_constant_folding=True,
-            input_names=['input'],
-            output_names=['output'],
-            dynamo=False,
-            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
-        )
-        logger.info(f"Model successfully exported to ONNX format at {onnx_path}")
-    except Exception as e:
-        logger.error(f"Failed to export model to ONNX: {e}")
+    logger.info("ONNX export is now handled exclusively by export_onnx.py to ensure MobileInferenceWrapper is applied.")
+    logger.info("Please run `python src/cnn_model/export_onnx.py` manually after training.")
 
 if __name__ == "__main__":
     main()

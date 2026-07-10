@@ -94,12 +94,14 @@ def main():
     else:
         xgb_probas = xgb_raw_probas
         
-    def scale_instance_level(X, eps=1e-8):
-        mean = np.mean(X, axis=2, keepdims=True)
-        std = np.std(X, axis=2, keepdims=True)
-        return (X - mean) / (std + eps)
     
-    X_cnn_scaled = scale_instance_level(X_cnn_test)
+    # Load Global Scaler
+    scaler_path = os.path.join(CNN_MODEL_DIR, "cnn_1d_scaler_params.json")
+    with open(scaler_path, 'r') as f:
+        scaler_params = json.load(f)
+    global_means = np.array(scaler_params['means']).reshape(1, 7, 1)
+    global_stds = np.array(scaler_params['stds']).reshape(1, 7, 1)
+    X_cnn_scaled = (X_cnn_test - global_means) / global_stds
     X_cnn_tensor = torch.tensor(X_cnn_scaled, dtype=torch.float32)
     
     cnn_model = InceptionTime1D(in_channels=X_cnn_tensor.shape[1], num_classes=len(classes))
@@ -108,7 +110,7 @@ def main():
     
     with torch.no_grad():
         outputs = cnn_model(X_cnn_tensor)
-        cnn_probas = torch.softmax(outputs, dim=1).numpy()
+        cnn_probas = torch.sigmoid(outputs).numpy()
         
     # 3. OPTIMIZE WEIGHTS
     best_f1_macro = 0

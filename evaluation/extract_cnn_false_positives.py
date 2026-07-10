@@ -21,11 +21,6 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "evaluation", "reports", "cnn_1d")
 from model import InceptionTime1D
 from data_utils import get_stratified_group_split
 
-def scale_instance_level(X, eps=1e-8):
-    mean = np.mean(X, axis=2, keepdims=True)
-    std = np.std(X, axis=2, keepdims=True)
-    return (X - mean) / (std + eps)
-
 def main():
     print("Loading data...")
     
@@ -55,7 +50,13 @@ def main():
     })
     
     # Preprocess CNN Data
-    X_cnn_scaled = scale_instance_level(X_cnn_test)
+    # Load Global Scaler
+    scaler_path = os.path.join(CNN_MODEL_DIR, "cnn_1d_scaler_params.json")
+    with open(scaler_path, 'r') as f:
+        scaler_params = json.load(f)
+    global_means = np.array(scaler_params['means']).reshape(1, 7, 1)
+    global_stds = np.array(scaler_params['stds']).reshape(1, 7, 1)
+    X_cnn_scaled = (X_cnn_test - global_means) / global_stds
     X_cnn_tensor = torch.tensor(X_cnn_scaled, dtype=torch.float32)
     
     # Load Model
@@ -68,7 +69,7 @@ def main():
     print("Running Inference...")
     with torch.no_grad():
         outputs = cnn_model(X_cnn_tensor)
-        cnn_probas = torch.softmax(outputs, dim=1).numpy()
+        cnn_probas = torch.sigmoid(outputs).numpy()
         
     cnn_preds = np.argmax(cnn_probas, axis=1)
     cnn_pred_labels = le.inverse_transform(cnn_preds)

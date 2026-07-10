@@ -22,11 +22,6 @@ CNN_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "cnn_1d")
 from model import InceptionTime1D
 from data_utils import get_stratified_group_split
 
-def scale_instance_level(X, eps=1e-8):
-    mean = np.mean(X, axis=2, keepdims=True)
-    std = np.std(X, axis=2, keepdims=True)
-    return (X - mean) / (std + eps)
-
 def main():
     print("Loading data for visualization...")
     xgb_df_path = os.path.join(XGB_DATA_DIR, "xgboost_labeled_windows.csv")
@@ -51,8 +46,13 @@ def main():
     
     le = joblib.load(os.path.join(XGB_MODEL_DIR, "xgboost_label_encoder.pkl"))
     classes = le.classes_
+    scaler_path = os.path.join(CNN_MODEL_DIR, "cnn_1d_scaler_params.json")
+    with open(scaler_path, 'r') as f:
+        scaler_params = json.load(f)
+    global_means = np.array(scaler_params['means']).reshape(1, 7, 1)
+    global_stds = np.array(scaler_params['stds']).reshape(1, 7, 1)
+    X_cnn_scaled = (X_cnn_test - global_means) / global_stds
     
-    X_cnn_scaled = scale_instance_level(X_cnn_test)
     X_cnn_tensor = torch.tensor(X_cnn_scaled, dtype=torch.float32)
     
     cnn_model = InceptionTime1D(in_channels=X_cnn_tensor.shape[1], num_classes=len(classes))
