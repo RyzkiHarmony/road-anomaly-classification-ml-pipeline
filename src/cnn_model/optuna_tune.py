@@ -21,7 +21,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 sys.path.append(os.path.join(_PROJECT_ROOT, "src", "utils"))
 
 from model import InceptionTime1D
-from train import DynamicJitterDataset, MultiLabelFocalLoss, set_seed, scale_instance_level
+from train import DynamicJitterDataset, MultiLabelFocalLoss, set_seed
 from config import CNN_OUT_DIR
 from data_utils import get_stratified_group_split
 
@@ -52,9 +52,9 @@ def evaluate_loader(model, loader, device, classes, criterion):
     return avg_loss, macro_f1
 
 def make_loader(X_np, y_np, batch_size, is_train=False):
-    Xs = scale_instance_level(X_np)
+    # Data is now pre-scaled globally before being passed here
     ds = DynamicJitterDataset(
-        torch.tensor(Xs, dtype=torch.float32),
+        torch.tensor(X_np, dtype=torch.float32),
         torch.tensor(y_np, dtype=torch.long),
         max_jitter=0, noise_std=0, scale_range=None, is_train=is_train
     )
@@ -101,8 +101,16 @@ def objective(trial):
         X_tr, y_tr = X_dev[tr_idx], y_dev[tr_idx]
         X_vl, y_vl = X_dev[vl_idx], y_dev[vl_idx]
         
-        tr_ld = make_loader(X_tr, y_tr, batch_size, is_train=True)
-        vl_ld = make_loader(X_vl, y_vl, batch_size, is_train=False)
+        # Calculate global mean and std from X_tr
+        global_means = np.mean(X_tr, axis=(0, 2), keepdims=True)
+        global_stds = np.std(X_tr, axis=(0, 2), keepdims=True)
+        global_stds = np.where(global_stds < 1e-6, 1.0, global_stds)
+        
+        X_tr_scaled = (X_tr - global_means) / global_stds
+        X_vl_scaled = (X_vl - global_means) / global_stds
+        
+        tr_ld = make_loader(X_tr_scaled, y_tr, batch_size, is_train=True)
+        vl_ld = make_loader(X_vl_scaled, y_vl, batch_size, is_train=False)
         
         model = InceptionTime1D(in_channels=in_channels, num_classes=len(classes), dropout_rate=dropout).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)

@@ -1,0 +1,182 @@
+15:53:44 - Split Summary (Trip-Based):
+15:53:44 -   Dev Set (70%): 9 trips, 3111 samples
+15:53:44 -   Test Set (30%): 7 trips, 1575 samples
+15:53:44 - Using device: cpu
+15:53:44 - === Fold 1 ===
+15:53:44 - Saved fold scaler parameters to D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d\scaler_params.json
+15:54:05 -   [Epoch 01/40] Train Loss: 0.0667 | Val Loss: 0.0508
+15:54:21 -   [Epoch 02/40] Train Loss: 0.0535 | Val Loss: 0.0507
+15:54:38 -   [Epoch 03/40] Train Loss: 0.0476 | Val Loss: 0.0432
+15:54:55 -   [Epoch 04/40] Train Loss: 0.0423 | Val Loss: 0.0389
+15:55:13 -   [Epoch 05/40] Train Loss: 0.0402 | Val Loss: 0.0390
+15:55:31 -   [Epoch 06/40] Train Loss: 0.0421 | Val Loss: 0.0334
+15:55:49 -   [Epoch 07/40] Train Loss: 0.0364 | Val Loss: 0.0345
+15:56:07 -   [Epoch 08/40] Train Loss: 0.0373 | Val Loss: 0.0343
+15:56:25 -   [Epoch 09/40] Train Loss: 0.0351 | Val Loss: 0.0338
+15:56:43 -   [Epoch 10/40] Train Loss: 0.0332 | Val Loss: 0.0386
+15:57:01 -   [Epoch 11/40] Train Loss: 0.0318 | Val Loss: 0.0344
+15:57:19 -   [Epoch 12/40] Train Loss: 0.0311 | Val Loss: 0.0396
+15:57:37 -   [Epoch 13/40] Train Loss: 0.0320 | Val Loss: 0.0356
+15:57:55 -   [Epoch 14/40] Train Loss: 0.0308 | Val Loss: 0.0389
+15:58:15 -   [Epoch 15/40] Train Loss: 0.0281 | Val Loss: 0.0353
+15:58:34 -   [Epoch 16/40] Train Loss: 0.0267 | Val Loss: 0.0370
+15:58:51 -   [Epoch 17/40] Train Loss: 0.0252 | Val Loss: 0.0437
+15:59:09 -   [Epoch 18/40] Train Loss: 0.0258 | Val Loss: 0.0394
+15:59:27 -   [Epoch 19/40] Train Loss: 0.0238 | Val Loss: 0.0476
+15:59:44 -   [Epoch 20/40] Train Loss: 0.0213 | Val Loss: 0.0444
+16:00:03 -   [Epoch 21/40] Train Loss: 0.0214 | Val Loss: 0.0394
+16:00:21 -   [Epoch 22/40] Train Loss: 0.0208 | Val Loss: 0.0434
+16:00:39 -   [Epoch 23/40] Train Loss: 0.0217 | Val Loss: 0.0322
+16:00:56 -   [Epoch 24/40] Train Loss: 0.0176 | Val Loss: 0.0273
+16:01:14 -   [Epoch 25/40] Train Loss: 0.0187 | Val Loss: 0.0298
+16:01:33 -   [Epoch 26/40] Train Loss: 0.0171 | Val Loss: 0.0292
+16:01:54 -   [Epoch 27/40] Train Loss: 0.0186 | Val Loss: 0.0295
+16:02:14 -   [Epoch 28/40] Train Loss: 0.0149 | Val Loss: 0.0323
+16:02:35 -   [Epoch 29/40] Train Loss: 0.0160 | Val Loss: 0.0292
+16:02:52 -   [Epoch 30/40] Train Loss: 0.0141 | Val Loss: 0.0330
+16:03:14 -   [Epoch 31/40] Train Loss: 0.0131 | Val Loss: 0.0290
+16:03:36 -   [Epoch 32/40] Train Loss: 0.0135 | Val Loss: 0.0360
+16:03:57 -   [Epoch 33/40] Train Loss: 0.0144 | Val Loss: 0.0324
+16:04:21 -   [Epoch 34/40] Train Loss: 0.0141 | Val Loss: 0.0331
+16:04:46 -   [Epoch 35/40] Train Loss: 0.0122 | Val Loss: 0.0315
+16:05:06 -   [Epoch 36/40] Train Loss: 0.0130 | Val Loss: 0.0333
+16:05:27 -   [Epoch 37/40] Train Loss: 0.0138 | Val Loss: 0.0322
+16:05:48 -   [Epoch 38/40] Train Loss: 0.0113 | Val Loss: 0.0336
+16:06:09 -   [Epoch 39/40] Train Loss: 0.0125 | Val Loss: 0.0327
+16:06:30 -   [Epoch 40/40] Train Loss: 0.0118 | Val Loss: 0.0330
+16:06:33 - Fold 1 Best Val Loss: 0.0273 @ Epoch 24 | Val Pothole F1: 0.6194 | Val PR-AUC: 0.6164
+16:06:33 - === Fold 2 ===
+16:06:56 -   [Epoch 01/40] Train Loss: 0.0645 | Val Loss: 0.0558
+16:07:17 -   [Epoch 02/40] Train Loss: 0.0503 | Val Loss: 0.0501
+16:07:38 -   [Epoch 03/40] Train Loss: 0.0447 | Val Loss: 0.0536
+16:08:00 -   [Epoch 04/40] Train Loss: 0.0390 | Val Loss: 0.0467
+16:08:22 -   [Epoch 05/40] Train Loss: 0.0383 | Val Loss: 0.0585
+16:08:44 -   [Epoch 06/40] Train Loss: 0.0361 | Val Loss: 0.0437
+16:09:09 -   [Epoch 07/40] Train Loss: 0.0371 | Val Loss: 0.0494
+16:09:31 -   [Epoch 08/40] Train Loss: 0.0332 | Val Loss: 0.0630
+16:09:53 -   [Epoch 09/40] Train Loss: 0.0312 | Val Loss: 0.0587
+16:10:17 -   [Epoch 10/40] Train Loss: 0.0289 | Val Loss: 0.0652
+16:10:45 -   [Epoch 11/40] Train Loss: 0.0324 | Val Loss: 0.0410
+16:11:12 -   [Epoch 12/40] Train Loss: 0.0289 | Val Loss: 0.0410
+16:11:53 -   [Epoch 13/40] Train Loss: 0.0259 | Val Loss: 0.0492
+16:12:24 -   [Epoch 14/40] Train Loss: 0.0264 | Val Loss: 0.0468
+16:12:55 -   [Epoch 15/40] Train Loss: 0.0262 | Val Loss: 0.0351
+16:13:22 -   [Epoch 16/40] Train Loss: 0.0261 | Val Loss: 0.0414
+16:13:49 -   [Epoch 17/40] Train Loss: 0.0242 | Val Loss: 0.0417
+16:14:22 -   [Epoch 18/40] Train Loss: 0.0231 | Val Loss: 0.0543
+16:14:49 -   [Epoch 19/40] Train Loss: 0.0224 | Val Loss: 0.0396
+16:15:18 -   [Epoch 20/40] Train Loss: 0.0191 | Val Loss: 0.0377
+16:15:43 -   [Epoch 21/40] Train Loss: 0.0207 | Val Loss: 0.0385
+16:16:08 -   [Epoch 22/40] Train Loss: 0.0202 | Val Loss: 0.0384
+16:16:34 -   [Epoch 23/40] Train Loss: 0.0161 | Val Loss: 0.0370
+16:16:59 -   [Epoch 24/40] Train Loss: 0.0159 | Val Loss: 0.0347
+16:17:24 -   [Epoch 25/40] Train Loss: 0.0177 | Val Loss: 0.0591
+16:17:48 -   [Epoch 26/40] Train Loss: 0.0174 | Val Loss: 0.0373
+16:18:13 -   [Epoch 27/40] Train Loss: 0.0157 | Val Loss: 0.0360
+16:18:38 -   [Epoch 28/40] Train Loss: 0.0172 | Val Loss: 0.0442
+16:19:02 -   [Epoch 29/40] Train Loss: 0.0143 | Val Loss: 0.0314
+16:19:26 -   [Epoch 30/40] Train Loss: 0.0126 | Val Loss: 0.0340
+16:19:51 -   [Epoch 31/40] Train Loss: 0.0127 | Val Loss: 0.0374
+16:20:15 -   [Epoch 32/40] Train Loss: 0.0119 | Val Loss: 0.0363
+16:20:40 -   [Epoch 33/40] Train Loss: 0.0125 | Val Loss: 0.0356
+16:21:04 -   [Epoch 34/40] Train Loss: 0.0116 | Val Loss: 0.0368
+16:21:29 -   [Epoch 35/40] Train Loss: 0.0111 | Val Loss: 0.0357
+16:21:50 -   [Epoch 36/40] Train Loss: 0.0148 | Val Loss: 0.0371
+16:22:11 -   [Epoch 37/40] Train Loss: 0.0115 | Val Loss: 0.0353
+16:22:33 -   [Epoch 38/40] Train Loss: 0.0110 | Val Loss: 0.0338
+16:22:54 -   [Epoch 39/40] Train Loss: 0.0112 | Val Loss: 0.0364
+16:23:16 -   [Epoch 40/40] Train Loss: 0.0116 | Val Loss: 0.0351
+16:23:20 - Fold 2 Best Val Loss: 0.0340 @ Epoch 30 | Val Pothole F1: 0.6581 | Val PR-AUC: 0.7441
+16:23:20 - === Fold 3 ===
+16:23:45 -   [Epoch 01/40] Train Loss: 0.0598 | Val Loss: 0.0682
+16:24:10 -   [Epoch 02/40] Train Loss: 0.0410 | Val Loss: 0.0766
+16:24:36 -   [Epoch 03/40] Train Loss: 0.0360 | Val Loss: 0.0671
+16:25:03 -   [Epoch 04/40] Train Loss: 0.0344 | Val Loss: 0.0540
+16:25:39 -   [Epoch 05/40] Train Loss: 0.0311 | Val Loss: 0.0632
+16:26:23 -   [Epoch 06/40] Train Loss: 0.0291 | Val Loss: 0.0836
+16:27:05 -   [Epoch 07/40] Train Loss: 0.0288 | Val Loss: 0.0654
+16:27:44 -   [Epoch 08/40] Train Loss: 0.0287 | Val Loss: 0.0691
+16:28:23 -   [Epoch 09/40] Train Loss: 0.0259 | Val Loss: 0.0730
+16:28:55 -   [Epoch 10/40] Train Loss: 0.0268 | Val Loss: 0.0875
+16:29:19 -   [Epoch 11/40] Train Loss: 0.0256 | Val Loss: 0.0591
+16:29:41 -   [Epoch 12/40] Train Loss: 0.0241 | Val Loss: 0.0632
+16:30:05 -   [Epoch 13/40] Train Loss: 0.0249 | Val Loss: 0.0638
+16:30:31 -   [Epoch 14/40] Train Loss: 0.0249 | Val Loss: 0.0882
+16:30:56 -   [Epoch 15/40] Train Loss: 0.0213 | Val Loss: 0.0825
+16:31:20 -   [Epoch 16/40] Train Loss: 0.0232 | Val Loss: 0.0592
+16:31:52 -   [Epoch 17/40] Train Loss: 0.0222 | Val Loss: 0.0559
+16:32:35 -   [Epoch 18/40] Train Loss: 0.0219 | Val Loss: 0.0488
+16:33:05 -   [Epoch 19/40] Train Loss: 0.0195 | Val Loss: 0.0968
+16:33:36 -   [Epoch 20/40] Train Loss: 0.0195 | Val Loss: 0.0651
+16:34:09 -   [Epoch 21/40] Train Loss: 0.0187 | Val Loss: 0.0467
+16:34:45 -   [Epoch 22/40] Train Loss: 0.0172 | Val Loss: 0.0711
+16:35:22 -   [Epoch 23/40] Train Loss: 0.0175 | Val Loss: 0.0533
+16:35:59 -   [Epoch 24/40] Train Loss: 0.0171 | Val Loss: 0.0670
+16:36:31 -   [Epoch 25/40] Train Loss: 0.0172 | Val Loss: 0.0703
+16:38:06 -   [Epoch 26/40] Train Loss: 0.0162 | Val Loss: 0.0544
+16:38:53 -   [Epoch 27/40] Train Loss: 0.0135 | Val Loss: 0.0564
+16:39:26 -   [Epoch 28/40] Train Loss: 0.0152 | Val Loss: 0.0547
+16:39:59 -   [Epoch 29/40] Train Loss: 0.0139 | Val Loss: 0.0488
+16:40:22 -   [Epoch 30/40] Train Loss: 0.0117 | Val Loss: 0.0575
+16:40:46 -   [Epoch 31/40] Train Loss: 0.0113 | Val Loss: 0.0572
+16:41:11 -   [Epoch 32/40] Train Loss: 0.0115 | Val Loss: 0.0552
+16:41:34 -   [Epoch 33/40] Train Loss: 0.0106 | Val Loss: 0.0462
+16:41:56 -   [Epoch 34/40] Train Loss: 0.0099 | Val Loss: 0.0499
+16:42:22 -   [Epoch 35/40] Train Loss: 0.0099 | Val Loss: 0.0560
+16:42:45 -   [Epoch 36/40] Train Loss: 0.0102 | Val Loss: 0.0505
+16:43:10 -   [Epoch 37/40] Train Loss: 0.0089 | Val Loss: 0.0529
+16:43:35 -   [Epoch 38/40] Train Loss: 0.0106 | Val Loss: 0.0544
+16:44:08 -   [Epoch 39/40] Train Loss: 0.0107 | Val Loss: 0.0626
+16:44:47 -   [Epoch 40/40] Train Loss: 0.0117 | Val Loss: 0.0509
+16:44:50 - Fold 3 Best Val Loss: 0.0462 @ Epoch 33 | Val Pothole F1: 0.6269 | Val PR-AUC: 0.6946
+16:44:50 - Average Pothole F1: 0.6348 | Average PR-AUC: 0.6850
+16:44:50 - Best epochs per fold: [24, 30, 33] | Optimal Epoch Average: 29
+16:44:51 - Confusion matrix disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\cnn_1d\cnn_1d_confusion_matrix_oof.png
+16:44:51 - OOF predictions disimpan untuk analisis ulang.
+16:44:51 - Saved final global scaler parameters to D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d\cnn_1d_scaler_params.json
+16:44:51 - Melatih final model dengan seluruh dataset sebanyak 29 epoch...
+16:59:06 - Model final PyTorch disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d\cnn_1d_model.pth
+16:59:06 - Mengevaluasi model final pada Holdout Test Set (30%)...
+16:59:10 - Holdout Test confusion matrix disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\cnn_1d\cnn_1d_confusion_matrix_holdout.png
+16:59:10 - ONNX export is now handled exclusively by export_onnx.py to ensure MobileInferenceWrapper is applied.
+16:59:10 - Please run `python src/cnn_model/export_onnx.py` manually after training.
+------------------------------------------------------------
+
+============================================================
+      OOF REPORT      
+============================================================
+              precision    recall  f1-score   support
+
+   Non-Event       0.97      0.93      0.95      2675
+     Pothole       0.56      0.75      0.64       252
+  Speed Bump       0.69      0.77      0.72       184
+
+    accuracy                           0.91      3111
+   macro avg       0.74      0.81      0.77      3111
+weighted avg       0.92      0.91      0.91      3111
+
+------------------------------------------------------------
+        CONFUSION MATRIX (Out-of-Fold)
+------------------------------------------------------------
+               Non-Event     Pothole  Speed Bump
+------------------------------------------------
+   Non-Event        2493         134          48
+     Pothole          48         188          16
+  Speed Bump          27          16         141
+============================================================
+
+============================================================
+     HOLDOUT TEST     
+============================================================
+              precision    recall  f1-score   support
+
+   Non-Event       0.98      0.98      0.98      1425
+     Pothole       0.73      0.63      0.67        91
+  Speed Bump       0.68      0.85      0.76        59
+
+    accuracy                           0.95      1575
+   macro avg       0.80      0.82      0.80      1575
+weighted avg       0.95      0.95      0.95      1575
+
+============================================================
+

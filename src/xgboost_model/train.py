@@ -143,19 +143,32 @@ def main():
                 X_train = np.vstack([X_train, X_train[0]])
                 y_train = np.append(y_train, mc)
 
-        # XGBoost with strong regularization to prevent overfitting on Hard Negatives
-        model = XGBClassifier(
-            n_estimators=100,
-            max_depth=4,
-            min_child_weight=1,
-            learning_rate=0.1,
-            subsample=0.7,
-            colsample_bytree=0.7,
-            reg_lambda=10.0,
-            reg_alpha=1.0,
-            random_state=42,
-            n_jobs=1
-        )
+        # Load tuned parameters if available
+        _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        best_params_path = os.path.join(_PROJECT_ROOT, "evaluation", "models", "xgboost", "best_params.json")
+        
+        if os.path.exists(best_params_path):
+            with open(best_params_path, 'r') as f:
+                xgb_params = json.load(f)
+            xgb_params['random_state'] = 42
+            xgb_params['n_jobs'] = 1
+        else:
+            # Fallback to defaults
+            xgb_params = {
+                'n_estimators': 100,
+                'max_depth': 4,
+                'min_child_weight': 1,
+                'learning_rate': 0.1,
+                'subsample': 0.7,
+                'colsample_bytree': 0.7,
+                'reg_lambda': 10.0,
+                'reg_alpha': 1.0,
+                'random_state': 42,
+                'n_jobs': 1
+            }
+
+        # XGBClassifier with loaded or default parameters
+        model = XGBClassifier(**xgb_params)
         
         # Calculate sample weights to combat base rate fallacy
         weights_train = compute_sample_weight('balanced', y_train)
@@ -243,18 +256,13 @@ def main():
 
     # ---------- TRAIN FINAL MODEL ON DEV SET ----------
     logger.info("Melatih final model pada seluruh Dev Set...")
-    final_model = XGBClassifier(
-        n_estimators=100,
-        max_depth=4,
-        min_child_weight=1,
-        learning_rate=0.1,
-        subsample=0.7,
-        colsample_bytree=0.7,
-        reg_lambda=10.0,
-        reg_alpha=1.0,
-        random_state=42,
-        n_jobs=1
-    )
+    
+    if os.path.exists(best_params_path):
+        logger.info(f"Using Optuna tuned parameters from {best_params_path}")
+    else:
+        logger.info("Using default hardcoded parameters")
+        
+    final_model = XGBClassifier(**xgb_params)
     weights_final = compute_sample_weight('balanced', y_dev)
     final_model.fit(X_dev, y_dev, sample_weight=weights_final)
 

@@ -1,6 +1,6 @@
 # Panduan Integrasi Android: Preprocessing Alignment & ONNX Inference
 
-Dokumen ini menjelaskan spesifikasi input model, penyelarasan (*alignment*) preprocessing, dan menyediakan kelas bantuan **Kotlin** untuk menjalankan inferensi model **1D-CNN** secara *real-time* di aplikasi Android menggunakan library **ONNX Runtime Mobile**.
+Dokumen ini menjelaskan spesifikasi input model, penyelarasan (*alignment*) preprocessing, dan menyediakan panduan integrasi untuk menjalankan inferensi model **1D-CNN** secara *real-time* di aplikasi Android menggunakan library **ONNX Runtime Mobile**.
 
 ---
 
@@ -8,42 +8,36 @@ Dokumen ini menjelaskan spesifikasi input model, penyelarasan (*alignment*) prep
 
 *   **Nama Input:** `input`
 *   **Tipe Data:** `Float32`
-*   **Dimensi Input:** `[1, 14, 200]` (Batch size = 1, Channels = 14, Sequence length = 200 / 2 detik pada 100Hz)
+*   **Dimensi Input:** `[1, 7, 200]` (Batch size = 1, Channels = 7, Sequence length = 200 / 2 detik pada 100Hz)
 *   **Nama Output:** `output`
 *   **Dimensi Output:** `[1, 3]` (Kelas: `0 = Non-Event`, `1 = Pothole`, `2 = Speed Bump`)
 
-### Urutan 14 Channel Sinyal (Kritis: Harus Sesuai!)
+### Urutan 7 Channel Sinyal (Kritis: Harus Sesuai!)
 
-| Index Channel | Nama Sinyal | Keterangan Preprocessing |
+Model hanya membutuhkan 7 sinyal fitur mentah dasar yang dikumpulkan pada **100Hz**:
+
+| Index Channel | Nama Sinyal | Keterangan Preprocessing Dasar |
 |:---:|---|---|
-| **0** | `a_vertical` | Akselerasi vertikal linear (gravitasi dibuang) |
-| **1** | `a_horizontal` | Amplitudo akselerasi horizontal (magnitudo XY) |
-| **2** | `speed` | Kecepatan kendaraan dalam m/s (dari GPS) |
-| **3** | `a_vertical_crest_factor` | Faktor puncak akselerasi vertikal (rolling window) |
-| **4** | `a_vertical_jerk` | Jerk akselerasi vertikal (turunan pertama terhadap waktu) |
-| **5** | `gx` | Kecepatan sudut giroskop roll (X-axis) |
-| **6** | `gy` | Kecepatan sudut giroskop pitch (Y-axis) |
-| **7** | `gz` | Kecepatan sudut giroskop yaw (Z-axis) |
-| **8** | `g_roll_accel` | Akselerasi sudut roll (turunan pertama `gx`) |
-| **9** | `g_pitch_accel` | Akselerasi sudut pitch (turunan pertama `gy`) |
-| **10** | `a_vertical_rms` | Root Mean Square (RMS) akselerasi vertikal (rolling window) |
-| **11** | `a_vertical_zcr` | Zero Crossing Rate akselerasi vertikal (rolling window) |
-| **12** | `a_horizontal_rms` | Root Mean Square (RMS) akselerasi horizontal (rolling window) |
-| **13** | `energy_ratio_vh` | Rasio energi vertikal terhadap horizontal: `vertical_rms / (horizontal_rms + 1e-6)` |
+| **0** | `speed` | Kecepatan kendaraan dalam m/s (dari GPS) |
+| **1** | `a_x` | Akselerasi sumbu X (termasuk gravitasi jika menggunakan Sensor.TYPE_ACCELEROMETER) |
+| **2** | `a_y` | Akselerasi sumbu Y |
+| **3** | `a_z` | Akselerasi sumbu Z |
+| **4** | `gx` | Kecepatan sudut giroskop roll (X-axis) |
+| **5** | `gy` | Kecepatan sudut giroskop pitch (Y-axis) |
+| **6** | `gz` | Kecepatan sudut giroskop yaw (Z-axis) |
 
 ---
 
 ## 2. Penyelarasan Preprocessing (Python vs Kotlin)
 
-Untuk mencegah perbedaan performa di ponsel (*training-serving skew*), Anda wajib mengimplementasikan formula penyelarasan berikut di Kotlin:
+Penyelarasan pada model versi terbaru telah disederhanakan drastis berkat penggunaan `MobileInferenceWrapper` selama proses ekspor ONNX di Python.
 
-### A. Standardisasi Sinyal (Z-Score Scaling)
-Sebelum dimasukkan ke ONNX, setiap titik data pada channel $c$ harus distandardisasi menggunakan parameter dari `cnn_1d_scaler_params.json`:
-$$x_{\text{scaled}} = \frac{x_{\text{raw}} - \mu_c}{\sigma_c}$$
+### A. Standardisasi Sinyal (Z-Score Scaling) - Otomatis
+Anda **TIDAK PERLU** melakukan Z-Score Scaling secara manual di Kotlin. Parameter *mean* dan *standard deviation* (sebelumnya ada di `cnn_1d_scaler_params.json`) telah ditanam (*embedded*) ke dalam graf arsitektur ONNX. 
+Kirimkan saja *raw data sensor* (dalam tipe Float32) langsung ke ONNX.
 
-### B. Perhitungan Jerk (Turunan Sinyal)
-Gunakan delta waktu ($\Delta t$) nyata antara dua pembacaan sensor (idealnya 10ms atau 0.01 detik):
-$$\text{Jerk}_t = \frac{a_t - a_{t-1}}{\Delta t}$$
+### B. Aktivasi Probabilitas (Sigmoid) - Otomatis
+Sama seperti scaler, fungsi aktivasi Sigmoid untuk mendapatkan skor probabilitas independen dari masing-masing kelas telah ditanam ke dalam model ONNX. Keluaran dari model ini **sudah berwujud probabilitas [0.0 - 1.0]**, sehingga tidak perlu kalkulasi *Softmax* atau *Sigmoid* secara manual.
 
 ---
 
@@ -56,142 +50,77 @@ dependencies {
 }
 ```
 
-Berikut adalah kelas Helper Kotlin lengkap yang mengurus preprocessing, scaling, dan inferensi ONNX:
+Berikut adalah contoh referensi kelas `OnnxModelRunner` yang minimalis namun optimal:
 
 ```kotlin
-package com.skripsi.roaddetection
+package com.pemalang.roaddamage.domain
 
 import android.content.Context
+import android.util.Log
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
-import java.io.InputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.nio.FloatBuffer
-import kotlin.math.sqrt
 
-class RoadAnomalyDetector(context: Context) {
-    private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
-    private val session: OrtSession
+class OnnxModelRunner(private val context: Context) {
+    private var ortEnvironment: OrtEnvironment? = null
+    private var ortSession: OrtSession? = null
 
-    // Parameter standardisasi (Disinkronkan dari cnn_1d_scaler_params.json)
-    private val channelMeans = floatArrayOf(
-        0.0524f,  // a_vertical
-        0.1235f,  // a_horizontal
-        7.8598f,  // speed
-        3.4418f,  // a_vertical_crest_factor
-        196.94f,  // a_vertical_jerk
-        0.0012f,  // gx
-        -0.0045f, // gy
-        0.0008f,  // gz
-        1.205f,   // g_roll_accel
-        -0.450f,  // g_pitch_accel
-        1.528f,   // a_vertical_rms
-        0.142f,   // a_vertical_zcr
-        0.825f,   // a_horizontal_rms
-        13.910f   // energy_ratio_vh
-    )
-    
-    private val channelStds = floatArrayOf(
-        1.245f,   // a_vertical
-        0.512f,   // a_horizontal
-        3.708f,   // speed
-        4.149f,   // a_vertical_crest_factor
-        122.34f,  // a_vertical_jerk
-        0.410f,   // gx
-        0.380f,   // gy
-        0.290f,   // gz
-        15.82f,   // g_roll_accel
-        8.24f,    // g_pitch_accel
-        0.897f,   // a_vertical_rms
-        0.095f,   // a_vertical_zcr
-        0.506f,   // a_horizontal_rms
-        28.318f   // energy_ratio_vh
-    )
-
-    // Threshold Optimal Hasil Tuning & Calibration
-    companion object {
-        const val THRESHOLD_POTHOLE = 0.5500f
-        const val THRESHOLD_SPEED_BUMP = 0.5000f
-    }
-
-    init {
-        // Load model dari folder assets Android
+    fun initialize() {
+        ortEnvironment = OrtEnvironment.getEnvironment()
         val modelBytes = context.assets.open("cnn_1d_model.onnx").readBytes()
-        session = env.createSession(modelBytes)
-    }
-
-    /**
-     * Menjalankan klasifikasi pada satu jendela sensor berukuran 2 detik (200 sampel).
-     * @param rawData Array 2D berdimensi [14][200] berisi sinyal mentah preprocessing.
-     * @return String label hasil deteksi ("Non-Event", "Pothole", atau "Speed Bump").
-     */
-    fun detectAnomaly(rawData: Array<FloatArray>): String {
-        require(rawData.size == 14) { "Data input harus memiliki 14 channels" }
-        require(rawData[0].size == 200) { "Panjang jendela harus tepat 200 sampel" }
-
-        // 1. Jalankan Standardisasi (Z-score scaling)
-        val scaledData = FloatBuffer.allocate(1 * 14 * 200)
-        for (c in 0 until 14) {
-            val mean = channelMeans[c]
-            val std = channelStds[c]
-            for (t in 0 until 200) {
-                val scaledVal = (rawData[c][t] - mean) / std
-                scaledData.put(scaledVal)
-            }
-        }
-        scaledData.rewind()
-
-        // 2. Wrap ke OnnxTensor
-        val inputShape = longArrayOf(1, 14, 200)
-        val inputTensor = OnnxTensor.createTensor(env, scaledData, inputShape)
-
-        // 3. Jalankan Inference
-        val inputs = mapOf("input" to inputTensor)
-        session.execute(inputs).use { results ->
-            val outputTensor = results[0] as OnnxTensor
-            val logits = (outputTensor.value as Array<FloatArray>)[0]
-
-            // 4. Hitung Softmax untuk probabilitas kelas
-            val probs = softmax(logits)
-
-            // 5. Terapkan Threshold Terkalibrasi untuk Klasifikasi
-            val probNonEvent = probs[0]
-            val probPothole = probs[1]
-            val probSpeedBump = probs[2]
-
-            val potholeTriggered = probPothole >= THRESHOLD_POTHOLE
-            val speedBumpTriggered = probSpeedBump >= THRESHOLD_SPEED_BUMP
-
-            return when {
-                potholeTriggered && speedBumpTriggered -> {
-                    if (probPothole >= probSpeedBump) "Pothole" else "Speed Bump"
-                }
-                potholeTriggered -> "Pothole"
-                speedBumpTriggered -> "Speed Bump"
-                else -> "Non-Event"
-            }
-        }
-    }
-
-    private fun softmax(logits: FloatArray): FloatArray {
-        var max = Float.NEGATIVE_INFINITY
-        for (v in logits) if (v > max) max = v
         
-        var sum = 0.0f
-        val exp = FloatArray(logits.size)
-        for (i in logits.indices) {
-            exp[i] = Math.exp((logits[i] - max).toDouble()).toFloat()
-            sum += exp[i]
+        val options = OrtSession.SessionOptions()
+        try {
+            options.addNnapi() // Aktifkan akselerasi perangkat keras
+        } catch (e: Exception) {
+            Log.w("OnnxRunner", "NNAPI not available, fallback to CPU.")
         }
-        for (i in exp.indices) {
-            exp[i] /= sum
+        
+        ortSession = ortEnvironment?.createSession(modelBytes, options)
+    }
+
+    suspend fun predict(flatData: FloatArray): FloatArray = withContext(Dispatchers.Default) {
+        val env = ortEnvironment ?: throw IllegalStateException("ONNX Environment not initialized")
+        val session = ortSession ?: throw IllegalStateException("ONNX Session not initialized")
+
+        // Bentuk input tensor: [Batch=1, Channels=7, Length=200]
+        val shape = longArrayOf(1, 7, 200)
+        
+        val byteBuffer = java.nio.ByteBuffer.allocateDirect(flatData.size * 4)
+        byteBuffer.order(java.nio.ByteOrder.nativeOrder())
+        val floatBuffer = byteBuffer.asFloatBuffer()
+        floatBuffer.put(flatData)
+        floatBuffer.rewind()
+        
+        val tensor = OnnxTensor.createTensor(env, floatBuffer, shape)
+        
+        try {
+            val inputName = session.inputNames.iterator().next()
+            val inputs = mapOf(inputName to tensor)
+            
+            val result = session.run(inputs)
+            try {
+                // Output langsung berupa probabilitas, tak perlu Sigmoid manual
+                val outputTensor = result.iterator().next().value as OnnxTensor
+                val outFloatBuffer = outputTensor.floatBuffer
+                val probs = FloatArray(3) // [0: Non-Event, 1: Pothole, 2: Speed Bump]
+                outFloatBuffer.get(probs)
+                
+                return@withContext probs
+            } finally {
+                result.close()
+            }
+        } finally {
+            tensor.close()
         }
-        return exp
     }
 
     fun close() {
-        session.close()
-        env.close()
+        ortSession?.close()
+        ortEnvironment?.close()
     }
 }
 ```
@@ -202,6 +131,6 @@ class RoadAnomalyDetector(context: Context) {
 
 Sebelum merilis aplikasi, pastikan developer Android memverifikasi hal berikut:
 
-- [ ] **Frekuensi Sensor (100Hz):** Pembacaan sensor Android dikumpulkan setiap `10ms` secara konstan (menggunakan buffer ring/interpolasi jika rate hardware berfluktuasi).
-- [ ] **Urutan Axis GIROSKOP:** Pastikan axis giroskop (`gx`, `gy`, `gz`) telah terorientasi secara fisik sama dengan orientasi smartphone yang terpasang pada sepeda motor.
-- [ ] **Kausalitas Low-Pass Filter:** Gravity removal filter di Android harus bertipe *causal* (tidak boleh menggunakan data di masa depan/non-causal filter) agar tidak memicu delay deteksi.
+- [ ] **Frekuensi Sensor (100Hz):** Pembacaan sensor Android dikumpulkan atau di-*resample* menjadi `10ms` secara konstan (menggunakan interpolasi untuk menambal *gap* temporal jika diperlukan).
+- [ ] **Urutan Axis GIROSKOP & AKSELEROMETER:** Pastikan axis giroskop (`gx`, `gy`, `gz`) dan akselerometer terorientasi secara konsisten, lalu urutannya dimasukkan ke *flat array* sama persis seperti tabel di atas.
+- [ ] **Filter Diam/Berhenti:** Lewati proses *inferensi* (jangan panggil `predict()`) apabila `speed` GPS mencatat laju di bawah `1.0 m/s` untuk menghindari *false positive* saat macet / berhenti.
