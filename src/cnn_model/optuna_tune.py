@@ -21,7 +21,7 @@ _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 sys.path.append(os.path.join(_PROJECT_ROOT, "src", "utils"))
 
 from model import InceptionTime1D
-from train import DynamicJitterDataset, MultiLabelFocalLoss, set_seed
+from train import DynamicJitterDataset, MultiClassFocalLoss, set_seed
 from config import CNN_OUT_DIR
 from data_utils import get_stratified_group_split
 
@@ -35,8 +35,7 @@ def evaluate_loader(model, loader, device, classes, criterion):
         for bx, by in loader:
             bx, by = bx.to(device), by.to(device)
             out = model(bx)
-            by_oh = torch.nn.functional.one_hot(by, num_classes=len(classes)).float()
-            loss = criterion(out, by_oh)
+            loss = criterion(out, by)
             total_loss += loss.item() * bx.size(0)
             probs = torch.softmax(out, dim=1)
             probas.extend(probs.cpu().numpy())
@@ -53,11 +52,20 @@ def evaluate_loader(model, loader, device, classes, criterion):
 
 def make_loader(X_np, y_np, batch_size, is_train=False):
     # Data is now pre-scaled globally before being passed here
-    ds = DynamicJitterDataset(
-        torch.tensor(X_np, dtype=torch.float32),
-        torch.tensor(y_np, dtype=torch.long),
-        max_jitter=0, noise_std=0, scale_range=None, is_train=is_train
-    )
+    if is_train:
+        ds = DynamicJitterDataset(
+            torch.tensor(X_np, dtype=torch.float32),
+            torch.tensor(y_np, dtype=torch.long),
+            max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15),
+            time_warp_prob=0.8, channel_drop_prob=0.1, is_train=True
+        )
+    else:
+        ds = DynamicJitterDataset(
+            torch.tensor(X_np, dtype=torch.float32),
+            torch.tensor(y_np, dtype=torch.long),
+            max_jitter=0, noise_std=0, scale_range=None,
+            time_warp_prob=0, channel_drop_prob=0, is_train=False
+        )
     return DataLoader(ds, batch_size=batch_size, shuffle=is_train)
 
 def objective(trial):
@@ -118,7 +126,7 @@ def objective(trial):
         
         cw = compute_class_weight("balanced", classes=np.unique(y_tr), y=y_tr)
         cw = cw / cw.sum() * len(cw)
-        criterion = MultiLabelFocalLoss(weight=torch.tensor(cw, dtype=torch.float32).to(device), gamma=2.0)
+        criterion = MultiClassFocalLoss(weight=None, gamma=2.0)
         
         models.append(model)
         optimizers.append(optimizer)
@@ -137,8 +145,7 @@ def objective(trial):
             for bx, by in tr_loaders[fold]:
                 bx, by = bx.to(device), by.to(device)
                 optimizers[fold].zero_grad()
-                by_oh = torch.nn.functional.one_hot(by, num_classes=len(classes)).float()
-                loss = criterions[fold](models[fold](bx), by_oh)
+                loss = criterions[fold](models[fold](bx), by)
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(models[fold].parameters(), max_norm=1.0)
                 optimizers[fold].step()

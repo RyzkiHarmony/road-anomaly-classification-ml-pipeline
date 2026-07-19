@@ -33,8 +33,8 @@ class MobileInferenceWrapper(torch.nn.Module):
         # 2. Base Model Forward
         logits = self.base_model(x_scaled)
         
-        # 3. Sigmoid Probabilities (Matches MultiLabelFocalLoss used in training)
-        return torch.sigmoid(logits)
+        # 3. Softmax Probabilities (Matches MultiClassFocalLoss used in training)
+        return torch.softmax(logits, dim=1)
 
 def main():
     import json
@@ -95,8 +95,8 @@ def main():
         "speed_bump_class_index": int(sb_idx),
         "non_event_class_index": int(ne_idx),
         "class_names": list(classes),
-        "calibration_method": "sigmoid",
-        "note": "Probabilities are natively outputted by the ONNX model (embedded sigmoid)."
+        "calibration_method": "softmax",
+        "note": "Probabilities are natively outputted by the ONNX model (embedded softmax)."
     }
     thresh_json_path = os.path.join(MODEL_DIR, "cnn_1d_thresholds.json")
     with open(thresh_json_path, "w") as f:
