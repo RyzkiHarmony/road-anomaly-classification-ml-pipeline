@@ -11,6 +11,7 @@ from sklearn.isotonic import IsotonicRegression
 
 # Path Setup
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(BASE_DIR, "src", "utils"))
 sys.path.append(os.path.join(BASE_DIR, "src", "cnn_model"))
 
 XGB_DATA_DIR = os.path.join(BASE_DIR, "data", "processed", "xgboost")
@@ -20,37 +21,7 @@ CNN_MODEL_DIR = os.path.join(BASE_DIR, "evaluation", "models", "cnn_1d")
 
 from model import InceptionTime1D
 
-def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
-    unique_classes = np.unique(y_raw)
-    class_to_idx = {c: i for i, c in enumerate(unique_classes)}
-    y_idx = np.array([class_to_idx[val] for val in y_raw])
-
-    group_names = np.unique(groups)
-    group_counts = {g: np.array([np.sum(y_idx[groups == g] == i) for i in range(len(unique_classes))]) for g in group_names}
-    total_counts = np.sum(list(group_counts.values()), axis=0)
-
-    train_groups = set()
-    test_groups = set()
-    current_train = np.zeros(len(unique_classes))
-
-    minority_indices = [class_to_idx[c] for c in ['Pothole', 'Speed Bump'] if c in class_to_idx]
-    sorted_groups = sorted(group_names, key=lambda g: np.sum(group_counts[g][minority_indices]), reverse=True)
-
-    for g in sorted_groups:
-        counts = group_counts[g]
-        ratio_if_train = (current_train + counts) / (total_counts + 1e-9)
-        err_train = np.sum((ratio_if_train - train_ratio) ** 2)
-        
-        ratio_if_test = current_train / (total_counts + 1e-9)
-        err_test = np.sum((ratio_if_test - train_ratio) ** 2)
-        
-        if err_train < err_test:
-            train_groups.add(g)
-            current_train += counts
-        else:
-            test_groups.add(g)
-
-    return list(train_groups), list(test_groups)
+from data_utils import get_stratified_group_split
 
 def evaluate_xgb():
     print("\n--- Evaluasi XGBoost ---")
@@ -186,29 +157,12 @@ if __name__ == "__main__":
     event_ids_xgb, y_true_xgb, y_pred_xgb, classes_xgb = evaluate_xgb()
     event_ids_cnn, y_true_cnn, y_pred_cnn, classes_cnn = evaluate_cnn()
     
-    # Find Intersection of Holdout Event IDs
-    common_event_ids = np.intersect1d(event_ids_xgb, event_ids_cnn)
-    print(f"\n[ALIGNMENT] Menyelaraskan evaluasi pada {len(common_event_ids)} event yang sukses diproses oleh KEDUA model.")
-    
-    # Filter XGBoost Arrays
-    # np.isin does not guarantee order preservation natively if we just boolean index, 
-    # but since we want to compute metrics, order between y_true and y_pred must match internally for each model.
-    # We can just filter them; we don't need to sort them identically as long as (y_true_xgb_aligned, y_pred_xgb_aligned) are paired.
-    xgb_mask = np.isin(event_ids_xgb, common_event_ids)
-    y_true_xgb_aligned = y_true_xgb[xgb_mask]
-    y_pred_xgb_aligned = y_pred_xgb[xgb_mask]
-    
-    # Filter CNN Arrays
-    cnn_mask = np.isin(event_ids_cnn, common_event_ids)
-    y_true_cnn_aligned = y_true_cnn[cnn_mask]
-    y_pred_cnn_aligned = y_pred_cnn[cnn_mask]
-    
-    # Save a comparison summary table
-    print("\n=== PERBANDINGAN PERFORMA HOLDOUT TEST SET (ALIGNED) ===")
+    # Save a comparison summary table on each model's holdout split directly.
+    print("\n=== PERBANDINGAN PERFORMA HOLDOUT TEST SET ===")
     from sklearn.metrics import precision_recall_fscore_support
     
-    metrics_xgb = precision_recall_fscore_support(y_true_xgb_aligned, y_pred_xgb_aligned, average=None, labels=range(len(classes_xgb)), zero_division=0)
-    metrics_cnn = precision_recall_fscore_support(y_true_cnn_aligned, y_pred_cnn_aligned, average=None, labels=range(len(classes_cnn)), zero_division=0)
+    metrics_xgb = precision_recall_fscore_support(y_true_xgb, y_pred_xgb, average=None, labels=range(len(classes_xgb)), zero_division=0)
+    metrics_cnn = precision_recall_fscore_support(y_true_cnn, y_pred_cnn, average=None, labels=range(len(classes_cnn)), zero_division=0)
     
     comparison_data = []
     for idx, cls in enumerate(classes_xgb):

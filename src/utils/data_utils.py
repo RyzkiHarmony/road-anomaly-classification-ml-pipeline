@@ -1,6 +1,16 @@
 import numpy as np
 
 def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
+    groups = np.asarray(groups)
+    y_raw = np.asarray(y_raw)
+
+    if groups.shape[0] != y_raw.shape[0]:
+        raise ValueError("groups and y_raw must have the same length")
+    if groups.shape[0] == 0:
+        raise ValueError("groups and y_raw must not be empty")
+    if not 0.0 < train_ratio < 1.0:
+        raise ValueError("train_ratio must be between 0 and 1")
+
     unique_classes = np.unique(y_raw)
     class_to_idx = {c: i for i, c in enumerate(unique_classes)}
     y_idx = np.array([class_to_idx[val] for val in y_raw])
@@ -34,4 +44,7 @@ def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
         else:
             test_groups.add(g)
 
-    return list(train_groups), list(test_groups)
+    if not train_groups or not test_groups:
+        raise ValueError("Split failed: train_groups or test_groups is empty")
+
+    return sorted(train_groups), sorted(test_groups)

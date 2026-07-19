@@ -1,0 +1,7 @@
+03:54:10 - Loading dataset from D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\data\processed\xgboost\xgboost_labeled_windows.csv...
+03:54:10 - Split Summary (Trip-Based):
+03:54:10 -   Dev Set (70%): 4 trips, 1089 samples
+03:54:10 -   Holdout Test Set (30%): 2 trips, 639 samples (original only)
+03:54:10 - Feature Selection: ranking 56 features using Dev Set only...
+03:54:10 - Top 25 features selected (Dev-only): ['peak_mag', 'peak_mag_g', 'speed_mean', 'vertical_energy', 'max_jerk', 'peak_to_peak', 'zcr', 'kurtosis', 'skewness', 'gyro_pitch_energy', 'gyro_yaw_energy', 'gyro_pitch_roll_ratio', 'speed_vert_interaction', 'speed_normalized_p2p', 'hjorth_activity', 'hjorth_mobility', 'hjorth_complexity', 'corr_xy', 'impulse_factor', 'clearance_factor', 'shape_factor', 'time_center_of_mass', 'rise_time_ratio', 'brake_to_bump_ratio', 'down_up_asymmetry']
+03:54:10 - Using Optuna tuned parameters from D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\xgboost\best_params.json

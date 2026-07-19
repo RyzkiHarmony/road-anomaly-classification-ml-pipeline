@@ -44,7 +44,7 @@ SMOTE_RATIO = 0.5
 class DynamicJitterDataset(torch.utils.data.Dataset):
     def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15),
                  time_warp_prob=0.8, time_warp_mag=0.1, channel_drop_prob=0.1,
-                 is_train=True, non_event_idx=0):
+                 is_train=True):
         self.X = X
         self.y = y
         self.max_jitter = max_jitter
@@ -54,7 +54,6 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
         self.time_warp_mag = time_warp_mag
         self.channel_drop_prob = channel_drop_prob
         self.is_train = is_train
-        self.non_event_idx = non_event_idx
 
     def __len__(self):
         return len(self.X)
@@ -62,19 +61,13 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         x = self.X[idx].clone() # Clone to avoid in-place modification of dataset array
         y_val = self.y[idx]
-        
         if self.is_train:
-            # Class-Conditioned Probabilities: High for minority, low (but NOT ZERO) for majority
-            # Prevents Artifact Data Leakage where the model learns the "augmentation noise" as a shortcut
-            is_majority = (y_val == self.non_event_idx)
-            aug_multiplier = 0.05 if is_majority else 1.0
-            
             # 1. Random Crop (Replaces padding-based temporal jitter)
             # The input sequence is EXTENDED_SEQ_LEN (e.g. 230). We need to crop it down to SEQ_LEN (e.g. 200).
             seq_len = 200
             if x.shape[-1] > seq_len:
                 max_start_idx = x.shape[-1] - seq_len
-                start_idx = np.random.randint(0, max_start_idx + 1) if self.max_jitter > 0 and np.random.rand() < aug_multiplier else max_start_idx // 2
+                start_idx = np.random.randint(0, max_start_idx + 1) if self.max_jitter > 0 else max_start_idx // 2
                 x = x[..., start_idx:start_idx + seq_len]
             elif x.shape[-1] == seq_len:
                 pass
@@ -84,7 +77,7 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
             # 2. Time Warping (non-linear temporal deformation)
             # Simulates variable vehicle speed by warping the time axis
             # using a smooth random curve (4 control points, cubic interp)
-            if self.time_warp_prob > 0 and np.random.rand() < (self.time_warp_prob * aug_multiplier):
+            if self.time_warp_prob > 0 and np.random.rand() < self.time_warp_prob:
                 T = x.shape[-1]
                 # Generate smooth warping curve with 4 control points
                 n_knots = 4
@@ -111,12 +104,12 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
                 x = x[:, warped_int] * (1 - warped_frac_t) + x[:, warped_int_next] * warped_frac_t
             
             # 3. Gaussian Noise Injection
-            if self.noise_std > 0 and np.random.rand() < aug_multiplier:
+            if self.noise_std > 0 and np.random.rand() < 1.0:
                 noise = torch.randn_like(x) * self.noise_std
                 x = x + noise
             
             # 4. Magnitude Scaling (per-channel random scale)
-            if self.scale_range is not None and np.random.rand() < aug_multiplier:
+            if self.scale_range is not None and np.random.rand() < 1.0:
                 lo, hi = self.scale_range
                 n_channels = x.shape[0]
                 scale = torch.FloatTensor(n_channels, 1).uniform_(lo, hi)
@@ -124,7 +117,7 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
             
             # 5. Channel Dropout (zero out a random channel)
             # Simulates sensor fault or device orientation change
-            if self.channel_drop_prob > 0 and np.random.rand() < (self.channel_drop_prob * aug_multiplier):
+            if self.channel_drop_prob > 0 and np.random.rand() < self.channel_drop_prob:
                 n_channels = x.shape[0]
                 drop_idx = np.random.randint(0, n_channels)
                 x[drop_idx, :] = 0.0
@@ -148,65 +141,31 @@ def set_seed(seed=42):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-class MultiLabelFocalLoss(nn.Module):
+class MultiClassFocalLoss(nn.Module):
     def __init__(self, weight=None, gamma=2.0, reduction='mean'):
-        super(MultiLabelFocalLoss, self).__init__()
+        super(MultiClassFocalLoss, self).__init__()
         self.weight = weight
         self.gamma = gamma
         self.reduction = reduction
 
     def forward(self, inputs, targets):
-        bce_loss = nn.functional.binary_cross_entropy_with_logits(inputs, targets, reduction='none', pos_weight=self.weight)
-        pt = torch.exp(-bce_loss)  # probability of correct prediction
-        focal_loss = ((1 - pt) ** self.gamma) * bce_loss
+        # Calculate raw CE loss WITHOUT weights to get correct pt mathematically
+        ce_loss = nn.functional.cross_entropy(inputs, targets, reduction='none', weight=None)
+        pt = torch.exp(-ce_loss)  # probability of correct prediction
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+
+        # Apply class weights manually if provided
+        if self.weight is not None:
+            target_weights = self.weight[targets]
+            focal_loss = focal_loss * target_weights
 
         if self.reduction == 'mean':
+            if self.weight is not None:
+                return focal_loss.sum() / target_weights.sum()
             return focal_loss.mean()
         elif self.reduction == 'sum':
             return focal_loss.sum()
         return focal_loss
-
-def apply_smote(X_train_np, y_train_np, ratio=SMOTE_RATIO):
-    N, C, T = X_train_np.shape
-    X_flat = X_train_np.reshape(N, C * T)
-    
-    # Hitung target jumlah sampel per kelas
-    unique, counts = np.unique(y_train_np, return_counts=True)
-    max_count = counts.max()
-    
-    # Tentukan sampling strategy: minority di-boost ke ratio * max_count
-    # tapi tidak boleh kurang dari jumlah asli
-    sampling_strategy = {}
-    for cls, cnt in zip(unique, counts):
-        target = max(cnt, int(max_count * ratio))
-        sampling_strategy[cls] = target
-    
-    # k_neighbors harus < jumlah sampel di kelas terkecil
-    min_minority = min(counts[counts < max_count]) if np.sum(counts < max_count) > 0 else counts.min()
-    k_neighbors = min(5, min_minority - 1)
-    
-    if k_neighbors < 1:
-        logger.warning(f"Terlalu sedikit sampel minority ({min_minority}) untuk SMOTE. Skip oversampling.")
-        return X_train_np, y_train_np
-    
-    smote = SMOTE(
-        sampling_strategy=sampling_strategy,
-        k_neighbors=k_neighbors,
-        random_state=42
-    )
-    
-    X_resampled, y_resampled = smote.fit_resample(X_flat, y_train_np)
-    X_resampled = X_resampled.reshape(-1, C, T)
-    
-    # Log distribusi sebelum dan sesudah
-    unique_after, counts_after = np.unique(y_resampled, return_counts=True)
-    before_str = ", ".join([f"{u}:{c}" for u, c in zip(unique, counts)])
-    after_str = ", ".join([f"{u}:{c}" for u, c in zip(unique_after, counts_after)])
-    logger.info(f"SMOTE: {before_str} -> {after_str} (total: {len(y_train_np)} -> {len(y_resampled)})")
-    
-    return X_resampled, y_resampled
-
-
 
 def main():
     parser = argparse.ArgumentParser(description="CNN Training")
@@ -320,9 +279,9 @@ def main():
         train_dataset = DynamicJitterDataset(X_train, y_train, max_jitter=max_j,
                                              noise_std=n_std, scale_range=s_range,
                                              time_warp_prob=warp_p, channel_drop_prob=drop_p,
-                                             is_train=True, non_event_idx=non_event_idx)
+                                             is_train=True)
         val_dataset = DynamicJitterDataset(X_val, y_val, max_jitter=0,
-                                           noise_std=0, scale_range=None, is_train=False, non_event_idx=non_event_idx)
+                                           noise_std=0, scale_range=None, is_train=False)
         
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -334,7 +293,7 @@ def main():
         
         model = InceptionTime1D(in_channels=X_train.shape[1], num_classes=len(classes),
                                num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
-        criterion = MultiLabelFocalLoss(weight=class_weights, gamma=2.0)
+        criterion = MultiClassFocalLoss(weight=None, gamma=2.0)
         optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
@@ -352,9 +311,7 @@ def main():
                 optimizer.zero_grad()
                 outputs = model(batch_x)
                 
-                # Gunakan versi one-hot untuk MultiLabelFocalLoss
-                batch_y_one_hot = torch.nn.functional.one_hot(batch_y, num_classes=len(classes)).float()
-                loss = criterion(outputs, batch_y_one_hot)
+                loss = criterion(outputs, batch_y)
                 
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -377,13 +334,12 @@ def main():
                     batch_x, batch_y = batch_x.to(device), batch_y.to(device)
                     outputs = model(batch_x)
                     
-                    batch_y_one_hot = torch.nn.functional.one_hot(batch_y, num_classes=len(classes)).float()
-                    loss = criterion(outputs, batch_y_one_hot)
+                    loss = criterion(outputs, batch_y)
                     
                     val_loss += loss.item() * batch_x.size(0)
                     
-                    # Gunakan Sigmoid untuk Multi-label
-                    probs = torch.sigmoid(outputs)
+                    # Gunakan Softmax untuk Multi-class
+                    probs = torch.nn.functional.softmax(outputs, dim=1)
                     _, preds = torch.max(probs, 1) # Default evaluation argmax
                     
                     val_preds.extend(preds.cpu().numpy())
@@ -441,7 +397,7 @@ def main():
             for batch_x, batch_y in val_loader:
                 batch_x = batch_x.to(device)
                 outputs = model(batch_x)
-                probs = torch.sigmoid(outputs)
+                probs = torch.nn.functional.softmax(outputs, dim=1)
                 _, preds = torch.max(probs, 1)
                 all_probas.extend(probs.cpu().numpy())
                 all_preds.extend(preds.cpu().numpy())
@@ -562,7 +518,7 @@ def main():
     full_dataset = DynamicJitterDataset(X_full_tensor, y_full_tensor, max_jitter=max_j,
                                          noise_std=n_std, scale_range=s_range, 
                                          time_warp_prob=warp_p, channel_drop_prob=drop_p,
-                                         is_train=True, non_event_idx=non_event_idx)
+                                         is_train=True)
     full_loader = DataLoader(full_dataset, batch_size=BATCH_SIZE, shuffle=True)
     
     class_weights_full = compute_class_weight('balanced', classes=np.unique(y_full), y=y_full)
@@ -572,7 +528,7 @@ def main():
     
     final_model = InceptionTime1D(in_channels=X_full.shape[1], num_classes=len(classes),
                                  num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
-    criterion_full = MultiLabelFocalLoss(weight=class_weights_full, gamma=2.0)
+    criterion_full = MultiClassFocalLoss(weight=None, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
     scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=EPOCHS, eta_min=1e-6)
     
@@ -582,9 +538,7 @@ def main():
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             optimizer_full.zero_grad()
             outputs = final_model(batch_x)
-            
-            batch_y_one_hot = torch.nn.functional.one_hot(batch_y, num_classes=len(classes)).float()
-            loss = criterion_full(outputs, batch_y_one_hot)
+            loss = criterion_full(outputs, batch_y)
             
             loss.backward()
             torch.nn.utils.clip_grad_norm_(final_model.parameters(), max_norm=1.0)
@@ -609,7 +563,7 @@ def main():
     y_test_tensor = torch.tensor(y_test, dtype=torch.long)
     
     test_dataset = DynamicJitterDataset(X_test_tensor, y_test_tensor, max_jitter=0,
-                                        noise_std=0, scale_range=None, is_train=False, non_event_idx=non_event_idx)
+                                        noise_std=0, scale_range=None, is_train=False)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     
     test_probas = []
@@ -619,7 +573,7 @@ def main():
         for batch_x, batch_y in test_loader:
             batch_x = batch_x.to(device)
             outputs = final_model(batch_x)
-            probs = torch.sigmoid(outputs)
+            probs = torch.nn.functional.softmax(outputs, dim=1)
             test_probas.extend(probs.cpu().numpy())
             test_trues.extend(batch_y.numpy())
             

@@ -48,7 +48,7 @@ def get_csv_path_for_trip(trip_id):
 
 # Augmentasi linear telah dihapus secara permanen (menghindari bias fisika)
 
-rng = np.random.default_rng(RANDOM_SEED)
+RNG_SEED = 42
 
 def main():
     if not os.path.exists(GT_PATH) or not os.path.exists(EVENTS_PATH):
@@ -79,6 +79,8 @@ def main():
     # [CRITICAL] Re-extract features to include new Senior ML Engineer recommendations
     logger.info("Re-extracting features for labeled events to include new features (PSD, Interaction)...")
     re_extracted_records = []
+    skipped_events = 0
+    skipped_by_trip = {}
     
     # GROUP BY TRIP TO AVOID RE-READING AND RE-PROCESSING FILES
     grouped_by_trip = df_labeled.groupby("trip_id")
@@ -92,12 +94,8 @@ def main():
                     t_event = row["time_s"]
                     try:
                         times_raw = raw_df["timestamp"].astype(float).values / 1000.0
-                        
-                        # [CRITICAL] Random Jittering to prevent Alignment Bias
-                        # Geser window secara acak antara -0.5 hingga 0.5 detik dari pusat event
-                        jitter = rng.uniform(-0.5, 0.5)
-                        t_window_center = t_event + jitter
-                        
+                        t_window_center = t_event
+
                         mask = (times_raw >= t_window_center - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_window_center + (WINDOW_SIZE_S / 2.0))
                         window_df = raw_df[mask]
                         feats = extract_event_shape_features(window_df)
@@ -106,18 +104,25 @@ def main():
                         re_extracted_records.append(row_dict)
                     except Exception as e:
                         logger.error(f"Failed re-extraction for event {row['event_id']}: {e}")
-                        re_extracted_records.append(row.to_dict())
+                        skipped_events += 1
+                        skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
             except Exception as e:
                 logger.error(f"Failed to load or fuse trip {trip_id}: {e}")
                 for _, row in group.iterrows():
-                    re_extracted_records.append(row.to_dict())
+                    skipped_events += 1
+                    skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
         else:
             for _, row in group.iterrows():
-                re_extracted_records.append(row.to_dict())
+                skipped_events += 1
+                skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
                 
     df_labeled = pd.DataFrame(re_extracted_records)
 
     logger.info(f"Basis data: {len(df_labeled)} event.")
+    if skipped_events:
+        logger.warning(f"Skipped {skipped_events} events because feature re-extraction failed or trip CSV was unavailable.")
+        top_skipped = sorted(skipped_by_trip.items(), key=lambda item: item[1], reverse=True)[:5]
+        logger.warning("Top skipped trips: " + ", ".join([f"{trip_id}:{count}" for trip_id, count in top_skipped]))
 
     # 2. AUGMENTATION (Dihapus karena naif secara fisika)
     # df_augmented = pd.DataFrame()

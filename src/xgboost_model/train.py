@@ -7,8 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.model_selection import GroupShuffleSplit, StratifiedGroupKFold
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve, auc
 from sklearn.isotonic import IsotonicRegression
 from sklearn.utils.class_weight import compute_sample_weight
@@ -20,6 +19,50 @@ from config import XGB_OUT_DIR, get_logger, BEST_FEATURES
 from data_utils import get_stratified_group_split
 
 logger = get_logger(__name__)
+
+
+def _build_xgb_params(best_params_path: str, num_classes: int) -> dict:
+    """Load tuned parameters and enforce multiclass settings explicitly."""
+    if os.path.exists(best_params_path):
+        with open(best_params_path, 'r') as f:
+            xgb_params = json.load(f)
+        logger.info(f"Using Optuna tuned parameters from {best_params_path}")
+    else:
+        xgb_params = {
+            'n_estimators': 100,
+            'max_depth': 4,
+            'min_child_weight': 1,
+            'learning_rate': 0.1,
+            'subsample': 0.7,
+            'colsample_bytree': 0.7,
+            'reg_lambda': 10.0,
+            'reg_alpha': 1.0,
+        }
+        logger.info("Using default hardcoded parameters")
+
+    xgb_params['objective'] = 'multi:softprob'
+    xgb_params['num_class'] = int(num_classes)
+    xgb_params['random_state'] = 42
+    xgb_params['n_jobs'] = 1
+    return xgb_params
+
+
+def _rank_top_features(X: np.ndarray, y: np.ndarray, feature_names: list[str], top_n: int, num_classes: int) -> list[str]:
+    """Rank features using only the development split to avoid holdout leakage."""
+    selector = XGBClassifier(
+        n_estimators=50,
+        max_depth=4,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective='multi:softprob',
+        num_class=int(num_classes),
+        random_state=42,
+        n_jobs=1,
+    )
+    selector.fit(X, y)
+    importances = selector.feature_importances_
+    top_idx = np.argsort(importances)[::-1][:top_n]
+    return [feature_names[i] for i in sorted(top_idx)]
 
 def main():
     # ---------- LOAD DATA ----------
@@ -38,15 +81,6 @@ def main():
     # Menghapus row yang memiliki NaN pada kolom fitur atau label
     df = df.dropna(subset=['label'])
     
-    # ---------- FEATURE SELECTION (TOP-N BY GAIN) ----------
-    # Approach: 2-pass selection.
-    # Pass 1: Train lightweight XGBoost on full dev set → rank features by gain.
-    # Pass 2: Retrain main model with only TOP_N_FEATURES best features.
-    # Rationale: Reduces overfitting on the 206-sample Pothole minority class,
-    # forces model to rely on the most signal-rich dimensions, and aligns with
-    # the thesis design constraint of a leaner, interpretable model.
-    TOP_N_FEATURES = 25
-
     # DROP DATA LEAKAGE AND NON-KOTLIN-FRIENDLY FEATURES
     banned_cols = ['lat', 'lon', 'suggestion_confidence', 'score']
     metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
@@ -56,24 +90,6 @@ def main():
     df = df.dropna(subset=all_feature_cols)
     X_all = df[all_feature_cols].values
     y_all = df['label'].values
-    groups_all_fs = df['trip_id'].values
-
-    # Pass 1: Quick feature importance ranking on full dataset
-    logger.info(f"Feature Selection Pass 1: ranking {len(all_feature_cols)} features by XGBoost gain...")
-    le_fs = LabelEncoder()
-    y_all_enc = le_fs.fit_transform(y_all)
-    selector = XGBClassifier(n_estimators=50, max_depth=4, subsample=0.8,
-                             colsample_bytree=0.8, random_state=42, n_jobs=1)
-    selector.fit(X_all, y_all_enc)
-    importances = selector.feature_importances_
-    top_idx = np.argsort(importances)[::-1][:TOP_N_FEATURES]
-    feature_cols = [all_feature_cols[i] for i in sorted(top_idx)]  # sorted for reproducibility
-
-    logger.info(f"Top {TOP_N_FEATURES} features selected (by gain): {feature_cols}")
-
-    # Pass 2: Use only top features
-    X = df[feature_cols].values
-    y = df['label'].values
     groups = df['trip_id'].values
 
     # Save source column as array to easily filter out augmented twins in validation
@@ -86,35 +102,46 @@ def main():
     # ---------- SPLIT DEV SET (70%) AND HOLDOUT TEST SET (30%) ----------
 
     # Split Dev/Holdout based on trip_id using the custom function
-    dev_groups_list, test_groups_list = get_stratified_group_split(groups, y, train_ratio=0.7)
+    dev_groups_list, test_groups_list = get_stratified_group_split(groups, y_all, train_ratio=0.7)
     
     dev_mask = np.isin(groups, dev_groups_list)
     test_mask = np.isin(groups, test_groups_list)
 
     # Dev Set data (for cross-validation and training the final model)
-    X_dev = X[dev_mask]
-    y_dev_raw = y[dev_mask]
+    X_dev_full = X_all[dev_mask]
+    y_dev_raw = y_all[dev_mask]
     groups_dev = groups[dev_mask]
     source_dev = source_values[dev_mask]
 
     # Holdout Test Set data (for final evaluation)
     # Filter out augmented twins from holdout test set to prevent leakage validation mirages
     is_original_test = np.array([not str(s).startswith('augmented') for s in source_values[test_mask]])
-    X_test = X[test_mask][is_original_test]
-    y_test_raw = y[test_mask][is_original_test]
+    X_test_full = X_all[test_mask][is_original_test]
+    y_test_raw = y_all[test_mask][is_original_test]
     groups_test = groups[test_mask][is_original_test]
 
     logger.info(f"Split Summary (Trip-Based):")
-    logger.info(f"  Dev Set (70%): {len(dev_groups_list)} trips, {len(X_dev)} samples")
-    logger.info(f"  Holdout Test Set (30%): {len(test_groups_list)} trips, {len(X_test)} samples (original only)")
+    logger.info(f"  Dev Set (70%): {len(dev_groups_list)} trips, {len(X_dev_full)} samples")
+    logger.info(f"  Holdout Test Set (30%): {len(test_groups_list)} trips, {len(X_test_full)} samples (original only)")
 
     le = LabelEncoder()
     y_dev = le.fit_transform(y_dev_raw)
     y_test = le.transform(y_test_raw)
     classes = le.classes_
+    TOP_N_FEATURES = min(25, len(all_feature_cols))
+    logger.info(f"Feature Selection: ranking {len(all_feature_cols)} features using Dev Set only...")
+    feature_cols = _rank_top_features(X_dev_full, y_dev, all_feature_cols, TOP_N_FEATURES, len(classes))
+    logger.info(f"Top {TOP_N_FEATURES} features selected (Dev-only): {feature_cols}")
+
+    X_dev = pd.DataFrame(X_dev_full, columns=all_feature_cols)[feature_cols].values
+    X_test = pd.DataFrame(X_test_full, columns=all_feature_cols)[feature_cols].values
     p_idx = list(classes).index("Pothole")
     sb_idx = list(classes).index("Speed Bump") if "Speed Bump" in list(classes) else -1
     non_event_idx = list(classes).index("Non-Event") if "Non-Event" in classes else 0
+
+    _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    best_params_path = os.path.join(_PROJECT_ROOT, "evaluation", "models", "xgboost", "best_params.json")
+    xgb_params = _build_xgb_params(best_params_path, len(classes))
 
     # ---------- CROSS-VALIDATION (3-FOLD STRATIFIED GROUP K-FOLD ON DEV SET) ----------
     sgkf = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
@@ -135,37 +162,6 @@ def main():
         clean_val_idx = val_idx[is_original_val]
         
         X_val, y_val = X_dev[clean_val_idx], y_dev[clean_val_idx]
-
-        # Inject missing classes in the training split if a class is entirely absent
-        missing_classes = set(range(len(classes))) - set(y_train)
-        if missing_classes:
-            for mc in missing_classes:
-                X_train = np.vstack([X_train, X_train[0]])
-                y_train = np.append(y_train, mc)
-
-        # Load tuned parameters if available
-        _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        best_params_path = os.path.join(_PROJECT_ROOT, "evaluation", "models", "xgboost", "best_params.json")
-        
-        if os.path.exists(best_params_path):
-            with open(best_params_path, 'r') as f:
-                xgb_params = json.load(f)
-            xgb_params['random_state'] = 42
-            xgb_params['n_jobs'] = 1
-        else:
-            # Fallback to defaults
-            xgb_params = {
-                'n_estimators': 100,
-                'max_depth': 4,
-                'min_child_weight': 1,
-                'learning_rate': 0.1,
-                'subsample': 0.7,
-                'colsample_bytree': 0.7,
-                'reg_lambda': 10.0,
-                'reg_alpha': 1.0,
-                'random_state': 42,
-                'n_jobs': 1
-            }
 
         # XGBClassifier with loaded or default parameters
         model = XGBClassifier(**xgb_params)
@@ -256,12 +252,7 @@ def main():
 
     # ---------- TRAIN FINAL MODEL ON DEV SET ----------
     logger.info("Melatih final model pada seluruh Dev Set...")
-    
-    if os.path.exists(best_params_path):
-        logger.info(f"Using Optuna tuned parameters from {best_params_path}")
-    else:
-        logger.info("Using default hardcoded parameters")
-        
+
     final_model = XGBClassifier(**xgb_params)
     weights_final = compute_sample_weight('balanced', y_dev)
     final_model.fit(X_dev, y_dev, sample_weight=weights_final)
