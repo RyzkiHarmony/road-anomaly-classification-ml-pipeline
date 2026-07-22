@@ -76,15 +76,15 @@ def objective(trial):
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     dropout = trial.suggest_float("dropout", 0.1, 0.7)
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
-    epochs = 40
-    n_splits = 3
+    epochs = 50
+    n_splits = 4
     
     # Load Data (Only Dev set)
     X_all = np.load(os.path.join(DATA_DIR, "cnn_1d_X.npy"))
     y_all = np.load(os.path.join(DATA_DIR, "cnn_1d_y.npy"))
     groups_all = np.load(os.path.join(DATA_DIR, "cnn_1d_groups.npy"))
     
-    dev_g, test_g = get_stratified_group_split(groups_all, y_all, train_ratio=0.7)
+    dev_g, test_g = get_stratified_group_split(groups_all, y_all, train_ratio=0.8)
     dev_m = np.isin(groups_all, dev_g)
     
     X_dev, y_raw_dev, groups_dev = X_all[dev_m], y_all[dev_m], groups_all[dev_m]

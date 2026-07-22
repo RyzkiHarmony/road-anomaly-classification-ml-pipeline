@@ -36,10 +36,9 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(REPORT_DIR, exist_ok=True)
 
 
-EPOCHS = 40
-BATCH_SIZE = 16
-LR = 0.0007795
-SMOTE_RATIO = 0.5
+EPOCHS = 50
+BATCH_SIZE = 32
+LR = 0.005297583200310586
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
     def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15),
@@ -170,7 +169,7 @@ class MultiClassFocalLoss(nn.Module):
 def main():
     parser = argparse.ArgumentParser(description="CNN Training")
     parser.add_argument("--channels", type=int, default=128, help="Number of base channels")
-    parser.add_argument("--dropout", type=float, default=0.48195, help="Dropout rate")
+    parser.add_argument("--dropout", type=float, default=0.6138161201886472, help="Dropout rate")
     parser.add_argument("--no-augment", action="store_true", help="Disable data augmentation")
     args = parser.parse_args()
 
@@ -187,8 +186,8 @@ def main():
     y_raw_all = np.load(y_path)
     groups_all = np.load(groups_path)
     
-    # Stratified split 70% Dev Set, 30% Holdout Test Set based on trip_id
-    dev_groups_list, test_groups_list = get_stratified_group_split(groups_all, y_raw_all, train_ratio=0.7)
+    # Stratified split 80% Dev Set, 20% Holdout Test Set based on trip_id
+    dev_groups_list, test_groups_list = get_stratified_group_split(groups_all, y_raw_all, train_ratio=0.8)
     
     dev_mask = np.isin(groups_all, dev_groups_list)
     test_mask = np.isin(groups_all, test_groups_list)
@@ -204,8 +203,8 @@ def main():
     groups_test = groups_all[test_mask]
     
     logger.info(f"Split Summary (Trip-Based):")
-    logger.info(f"  Dev Set (70%): {len(dev_groups_list)} trips, {len(X)} samples")
-    logger.info(f"  Test Set (30%): {len(test_groups_list)} trips, {len(X_test_np)} samples")
+    logger.info(f"  Dev Set (80%): {len(dev_groups_list)} trips, {len(X)} samples")
+    logger.info(f"  Test Set (20%): {len(test_groups_list)} trips, {len(X_test_np)} samples")
     
     le = LabelEncoder()
     y = le.fit_transform(y_raw)
@@ -218,7 +217,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
     
-    sgkf = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
+    sgkf = StratifiedGroupKFold(n_splits=4, shuffle=True, random_state=42)
     
     fold_metrics = []
     
@@ -530,7 +529,7 @@ def main():
                                  num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
     criterion_full = MultiClassFocalLoss(weight=None, gamma=2.0)
     optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
-    scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=EPOCHS, eta_min=1e-6)
+    scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
     
     for epoch in range(optimal_epochs):
         final_model.train()

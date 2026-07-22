@@ -13,7 +13,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.append(os.path.dirname(__file__))
 
 from config import OUT_FOLDER, CSV_FOLDER, XGB_OUT_DIR, get_logger, WINDOW_SIZE_S
-from sensor_fusion import apply_sensor_fusion
+from sensor_fusion import apply_sensor_fusion, split_contiguous_segments
 from feature_extraction import extract_event_shape_features
 
 logger = get_logger(__name__)
@@ -89,25 +89,42 @@ def main():
         if csv_path:
             try:
                 raw_df = pd.read_csv(csv_path)
-                raw_df = apply_sensor_fusion(raw_df)
-                for _, row in group.iterrows():
-                    t_event = row["time_s"]
+                segments = split_contiguous_segments(raw_df)
+                
+                for segment_raw in segments:
+                    segment_start_s = float(segment_raw["timestamp"].iloc[0]) / 1000.0
+                    segment_end_s = float(segment_raw["timestamp"].iloc[-1]) / 1000.0
+                    segment_events = group[(group["time_s"] >= segment_start_s) & (group["time_s"] <= segment_end_s)]
+                    
+                    if segment_events.empty:
+                        continue
+                        
                     try:
-                        times_raw = raw_df["timestamp"].astype(float).values / 1000.0
-                        t_window_center = t_event
+                        segment_fused = apply_sensor_fusion(segment_raw)
+                        
+                        for _, row in segment_events.iterrows():
+                            t_event = row["time_s"]
+                            try:
+                                times_raw = segment_fused["timestamp"].astype(float).values / 1000.0
+                                t_window_center = t_event
 
-                        mask = (times_raw >= t_window_center - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_window_center + (WINDOW_SIZE_S / 2.0))
-                        window_df = raw_df[mask]
-                        feats = extract_event_shape_features(window_df)
-                        row_dict = row.to_dict()
-                        row_dict.update(feats)
-                        re_extracted_records.append(row_dict)
+                                mask = (times_raw >= t_window_center - (WINDOW_SIZE_S / 2.0)) & (times_raw <= t_window_center + (WINDOW_SIZE_S / 2.0))
+                                window_df = segment_fused[mask]
+                                feats = extract_event_shape_features(window_df)
+                                row_dict = row.to_dict()
+                                row_dict.update(feats)
+                                re_extracted_records.append(row_dict)
+                            except Exception as e:
+                                logger.error(f"Failed re-extraction for event {row['event_id']}: {e}")
+                                skipped_events += 1
+                                skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
                     except Exception as e:
-                        logger.error(f"Failed re-extraction for event {row['event_id']}: {e}")
-                        skipped_events += 1
-                        skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
+                        logger.error(f"Failed to apply sensor fusion on segment of trip {trip_id}: {e}")
+                        for _, row in segment_events.iterrows():
+                            skipped_events += 1
+                            skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
             except Exception as e:
-                logger.error(f"Failed to load or fuse trip {trip_id}: {e}")
+                logger.error(f"Failed to read CSV for trip {trip_id}: {e}")
                 for _, row in group.iterrows():
                     skipped_events += 1
                     skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1

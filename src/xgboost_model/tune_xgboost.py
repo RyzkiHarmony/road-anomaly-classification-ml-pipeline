@@ -52,7 +52,7 @@ def objective(trial):
         source_values = np.array(['original'] * len(df))
 
     # Splitting
-    dev_groups_list, _ = get_stratified_group_split(groups, y, train_ratio=0.7)
+    dev_groups_list, _ = get_stratified_group_split(groups, y, train_ratio=0.8)
     dev_mask = np.isin(groups, dev_groups_list)
     
     X_dev = X[dev_mask]
@@ -84,7 +84,7 @@ def objective(trial):
     }
 
     # ---------- CROSS-VALIDATION ----------
-    sgkf = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
+    sgkf = StratifiedGroupKFold(n_splits=4, shuffle=True, random_state=42)
     fold_prauc = []
 
     for fold, (train_idx, val_idx) in enumerate(sgkf.split(X_dev, y_dev, groups_dev)):

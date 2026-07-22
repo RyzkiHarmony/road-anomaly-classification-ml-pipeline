@@ -102,7 +102,7 @@ def main():
     # ---------- SPLIT DEV SET (70%) AND HOLDOUT TEST SET (30%) ----------
 
     # Split Dev/Holdout based on trip_id using the custom function
-    dev_groups_list, test_groups_list = get_stratified_group_split(groups, y_all, train_ratio=0.7)
+    dev_groups_list, test_groups_list = get_stratified_group_split(groups, y_all, train_ratio=0.8)
     
     dev_mask = np.isin(groups, dev_groups_list)
     test_mask = np.isin(groups, test_groups_list)
@@ -121,8 +121,8 @@ def main():
     groups_test = groups[test_mask][is_original_test]
 
     logger.info(f"Split Summary (Trip-Based):")
-    logger.info(f"  Dev Set (70%): {len(dev_groups_list)} trips, {len(X_dev_full)} samples")
-    logger.info(f"  Holdout Test Set (30%): {len(test_groups_list)} trips, {len(X_test_full)} samples (original only)")
+    logger.info(f"  Dev Set (80%): {len(dev_groups_list)} trips, {len(X_dev_full)} samples")
+    logger.info(f"  Holdout Test Set (20%): {len(test_groups_list)} trips, {len(X_test_full)} samples (original only)")
 
     le = LabelEncoder()
     y_dev = le.fit_transform(y_dev_raw)
@@ -143,8 +143,8 @@ def main():
     best_params_path = os.path.join(_PROJECT_ROOT, "evaluation", "models", "xgboost", "best_params.json")
     xgb_params = _build_xgb_params(best_params_path, len(classes))
 
-    # ---------- CROSS-VALIDATION (3-FOLD STRATIFIED GROUP K-FOLD ON DEV SET) ----------
-    sgkf = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
+    # ---------- CROSS-VALIDATION (4-FOLD STRATIFIED GROUP K-FOLD ON DEV SET) ----------
+    sgkf = StratifiedGroupKFold(n_splits=4, shuffle=True, random_state=42)
     
     fold_metrics = []
     

@@ -1,0 +1,67 @@
+21:51:02 - Loading dataset from D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\data\processed\xgboost\xgboost_labeled_windows.csv...
+21:51:03 - Split Summary (Trip-Based):
+21:51:03 -   Dev Set (80%): 11 trips, 3749 samples
+21:51:03 -   Holdout Test Set (20%): 5 trips, 945 samples (original only)
+21:51:03 - Feature Selection: ranking 56 features using Dev Set only...
+21:51:04 - Top 25 features selected (Dev-only): ['peak_mag_g', 'speed_mean', 'vert_jrk', 'vertical_energy', 'gyro_energy', 'max_jerk', 'peak_to_peak', 'zcr', 'kurtosis', 'gyro_yaw_energy', 'gyro_pitch_roll_ratio', 'speed_normalized_p2p', 'horizontal_to_vertical_ratio', 'grav_y_std', 'linear_jerk_3d_max', 'hjorth_mobility', 'hjorth_complexity', 'corr_xy', 'impulse_factor', 'clearance_factor', 'shape_factor', 'first_peak_polarity', 'rise_time_ratio', 'waveform_complexity', 'down_up_asymmetry']
+21:51:04 - Using Optuna tuned parameters from D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\xgboost\best_params.json
+21:51:06 - Fold 1 | Train Pothole F1: 0.9302 | Val Pothole F1: 0.5694 | Val PR-AUC: 0.5796
+21:51:10 - Fold 2 | Train Pothole F1: 0.9173 | Val Pothole F1: 0.6446 | Val PR-AUC: 0.7840
+21:51:12 - Fold 3 | Train Pothole F1: 0.9231 | Val Pothole F1: 0.6918 | Val PR-AUC: 0.7624
+21:51:14 - Fold 4 | Train Pothole F1: 0.9147 | Val Pothole F1: 0.5586 | Val PR-AUC: 0.5393
+21:51:14 - Average Pothole F1: 0.6161 | Average PR-AUC: 0.6663
+21:51:14 - OOF predictions saved for error audit.
+21:51:15 - OOF Confusion matrix disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\xgboost\xgboost_confusion_matrix_oof.png
+21:51:15 - Melatih final model pada seluruh Dev Set...
+21:51:18 - Applying Isotonic Probability Calibration on OOF data...
+21:51:18 -   Non-Event: raw mean=0.8418 -> cal mean=0.8698
+21:51:18 -   Pothole: raw mean=0.1004 -> cal mean=0.0766
+21:51:18 -   Speed Bump: raw mean=0.0578 -> cal mean=0.0536
+21:51:18 - Calibrated OOF report (sanity check):
+21:51:18 - 
+              precision    recall  f1-score   support
+
+   Non-Event       0.95      0.97      0.96      3261
+     Pothole       0.64      0.59      0.61       287
+  Speed Bump       0.77      0.57      0.66       201
+
+    accuracy                           0.92      3749
+   macro avg       0.79      0.71      0.74      3749
+weighted avg       0.92      0.92      0.92      3749
+
+21:51:18 - Raw model saved at D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\xgboost\xgboost_model.pkl
+21:51:18 - Calibrated model saved at D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\xgboost\xgboost_calibrators.pkl
+21:51:18 - Threshold config saved at D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\xgboost\xgboost_thresholds.json
+21:51:18 - Mengevaluasi CALIBRATED model pada Holdout Test Set (30%)...
+21:51:18 - Holdout Test confusion matrix disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\xgboost\xgboost_confusion_matrix_holdout.png
+21:51:19 - Exporting final model to ONNX format for Android deployment...
+21:51:19 - Model successfully exported to ONNX format at D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\xgboost\xgboost_model.onnx
+------------------------------------------------------------
+
+Out-of-Fold Classification Report (Default Argmax):
+              precision    recall  f1-score   support
+
+   Non-Event       0.97      0.95      0.96      3261
+     Pothole       0.55      0.69      0.61       287
+  Speed Bump       0.71      0.62      0.66       201
+
+    accuracy                           0.91      3749
+   macro avg       0.74      0.75      0.74      3749
+weighted avg       0.92      0.91      0.92      3749
+
+
+============================================================
+     HOLDOUT TEST ù DEFAULT ARGMAX (Primary Metric)     
+============================================================
+              precision    recall  f1-score   support
+
+   Non-Event       0.97      0.99      0.98       847
+     Pothole       0.67      0.66      0.67        56
+  Speed Bump       0.52      0.38      0.44        42
+
+    accuracy                           0.94       945
+   macro avg       0.72      0.68      0.70       945
+weighted avg       0.94      0.94      0.94       945
+
+============================================================
+
