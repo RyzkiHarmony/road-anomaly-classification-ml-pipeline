@@ -58,7 +58,14 @@ def main():
         
     X_cnn_tensor = torch.tensor(X_cnn_scaled, dtype=torch.float32)
     
-    cnn_model = InceptionTime1D(in_channels=X_cnn_tensor.shape[1], num_classes=len(classes))
+    best_params_path = os.path.join(BASE_DIR, "src", "cnn_model", "best_optuna_params.json")
+    with open(best_params_path, 'r') as f:
+        bp = json.load(f)
+        
+    cnn_model = InceptionTime1D(in_channels=X_cnn_tensor.shape[1], num_classes=len(classes),
+                                num_blocks=3, channels=bp['channels'], 
+                                bottleneck_channels=bp['channels']//4, 
+                                dropout_rate=bp['dropout'])
     cnn_model.load_state_dict(torch.load(os.path.join(CNN_MODEL_DIR, "cnn_1d_model.pth"), map_location=torch.device('cpu')))
     cnn_model.eval()
     
@@ -91,8 +98,8 @@ def main():
     df_test['trip_index'] = df_test['trip_id'].apply(lambda x: np.where(unique_trips == x)[0][0] + 1)
     df_test['trip_filename'] = df_test['trip_id'].map(lambda x: trip_to_filename.get(x, 'Unknown Trip'))
     
-    # Filter FN: Asli Pothole/Speed Bump tapi diprediksi Non-Event
-    fn_mask = (df_test['label'].isin(['Pothole', 'Speed Bump'])) & (df_test['cnn_prediction'] == 'Non-Event')
+    # Filter FN: Asli Pothole tapi diprediksi Non-Event
+    fn_mask = (df_test['label'] == 'Pothole') & (df_test['cnn_prediction'] == 'Non-Event')
     
     df_fn = df_test[fn_mask].copy()
     X_fn = X_cnn_test[fn_mask] # Raw unscaled data

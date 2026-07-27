@@ -1,0 +1,32 @@
+14:38:32 - Starting Optuna Multivariate Search for 1D-CNN (10 Trials)...
+[I 2026-07-26 14:38:32,653] A new study created in memory with name: no-name-b71d261b-9b8a-4aa8-8151-d428ea196a31
+15:07:43 - Trial 0 finished. Mean F1: 0.3857, Std F1: 0.0642, Score: 0.3215
+[I 2026-07-26 15:07:43,838] Trial 0 finished with value: 0.321464445756794 and parameters: {'lr': 0.00013132267057794375, 'dropout': 0.35888236772073423, 'batch_size': 128, 'weight_decay': 0.00016529295512919653, 'channels': 16, 'gamma': 2.946321947609143}. Best is trial 0 with value: 0.321464445756794.
+16:18:04 - Trial 1 finished. Mean F1: 0.8064, Std F1: 0.0243, Score: 0.7821
+[I 2026-07-26 16:18:04,516] Trial 1 finished with value: 0.7820587904708728 and parameters: {'lr': 0.00812996495782974, 'dropout': 0.3892006378217202, 'batch_size': 32, 'weight_decay': 1.5965582639416982e-05, 'channels': 64, 'gamma': 2.650261777022835}. Best is trial 1 with value: 0.7820587904708728.
+16:52:22 - Trial 2 finished. Mean F1: 0.5580, Std F1: 0.0770, Score: 0.4810
+[I 2026-07-26 16:52:22,457] Trial 2 finished with value: 0.4809988003432293 and parameters: {'lr': 0.0001799730806156437, 'dropout': 0.4794180208295189, 'batch_size': 32, 'weight_decay': 0.00026427859222714873, 'channels': 16, 'gamma': 2.2285420193439087}. Best is trial 1 with value: 0.7820587904708728.
+18:06:17 - Trial 3 finished. Mean F1: 0.8163, Std F1: 0.0307, Score: 0.7856
+[I 2026-07-26 18:06:17,765] Trial 3 finished with value: 0.7856139042844199 and parameters: {'lr': 0.00039485424369465634, 'dropout': 0.47954505319125096, 'batch_size': 16, 'weight_decay': 0.0004799474672656761, 'channels': 64, 'gamma': 2.8130521262567623}. Best is trial 3 with value: 0.7856139042844199.
+19:10:01 - Trial 4 finished. Mean F1: 0.8035, Std F1: 0.0190, Score: 0.7844
+[I 2026-07-26 19:10:01,359] Trial 4 finished with value: 0.784443231084315 and parameters: {'lr': 0.005129012700853478, 'dropout': 0.3654979195477138, 'batch_size': 128, 'weight_decay': 0.00016730393088736244, 'channels': 64, 'gamma': 2.9922941128614413}. Best is trial 3 with value: 0.7856139042844199.
+20:07:35 - Trial 5 finished. Mean F1: 0.8188, Std F1: 0.0181, Score: 0.8007
+[I 2026-07-26 20:07:35,037] Trial 5 finished with value: 0.8006628775728446 and parameters: {'lr': 0.009998381571560641, 'dropout': 0.2186889728918982, 'batch_size': 32, 'weight_decay': 3.5178968066452597e-05, 'channels': 32, 'gamma': 2.805618526407355}. Best is trial 5 with value: 0.8006628775728446.
+[I 2026-07-26 20:28:59,700] Trial 6 pruned. 
+[I 2026-07-26 20:52:42,462] Trial 7 pruned. 
+21:47:51 - Trial 8 finished. Mean F1: 0.8203, Std F1: 0.0148, Score: 0.8055
+[I 2026-07-26 21:47:51,812] Trial 8 finished with value: 0.8055014267680876 and parameters: {'lr': 0.0037725842739519877, 'dropout': 0.4770714971194232, 'batch_size': 32, 'weight_decay': 9.946915780269255e-05, 'channels': 32, 'gamma': 1.1155109763056137}. Best is trial 8 with value: 0.8055014267680876.
+22:34:29 - Trial 9 finished. Mean F1: 0.8188, Std F1: 0.0200, Score: 0.7988
+[I 2026-07-26 22:34:29,093] Trial 9 finished with value: 0.7988394144802254 and parameters: {'lr': 0.003194250196878173, 'dropout': 0.3371944048847475, 'batch_size': 16, 'weight_decay': 4.096652333964146e-05, 'channels': 48, 'gamma': 2.3394269498326987}. Best is trial 8 with value: 0.8055014267680876.
+22:34:29 - Study finished!
+22:34:29 - Number of finished trials: 10
+22:34:29 - Best trial: 8
+22:34:29 - Best robust score: 0.8055
+22:34:29 - Best Params:
+22:34:29 -   lr: 0.0037725842739519877
+22:34:29 -   dropout: 0.4770714971194232
+22:34:29 -   batch_size: 32
+22:34:29 -   weight_decay: 9.946915780269255e-05
+22:34:29 -   channels: 32
+22:34:29 -   gamma: 1.1155109763056137
+22:34:29 - Saved best params to D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\src\cnn_model\best_optuna_params.json

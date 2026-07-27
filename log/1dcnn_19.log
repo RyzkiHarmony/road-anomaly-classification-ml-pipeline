@@ -1,0 +1,265 @@
+16:45:42 - Loaded Optuna best parameters from D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\src\cnn_model\best_optuna_params.json
+16:45:42 - Using Params -> LR: 0.001246, Batch: 64, Channels: 64, Dropout: 0.3441, WD: 0.000162, Gamma: 2.09
+16:45:42 - Split Summary (Trip-Based):
+16:45:42 -   Dev Set (80%): 11 trips, 3742 samples
+16:45:42 -   Test Set (20%): 5 trips, 941 samples
+16:45:42 - Using device: cpu
+16:45:42 - === Fold 1 ===
+16:45:53 -   [Epoch 01/50] Train Loss: 0.2717 | Val Loss: 0.1370 | Val Macro F1: 0.4067
+16:46:02 -   [Epoch 02/50] Train Loss: 0.1617 | Val Loss: 0.1153 | Val Macro F1: 0.3320
+16:46:10 -   [Epoch 03/50] Train Loss: 0.1437 | Val Loss: 0.1044 | Val Macro F1: 0.5218
+16:46:19 -   [Epoch 04/50] Train Loss: 0.1231 | Val Loss: 0.0904 | Val Macro F1: 0.6547
+16:46:27 -   [Epoch 05/50] Train Loss: 0.1092 | Val Loss: 0.0947 | Val Macro F1: 0.6679
+16:46:36 -   [Epoch 06/50] Train Loss: 0.0980 | Val Loss: 0.0865 | Val Macro F1: 0.6628
+16:46:45 -   [Epoch 07/50] Train Loss: 0.0959 | Val Loss: 0.0808 | Val Macro F1: 0.6754
+16:46:54 -   [Epoch 08/50] Train Loss: 0.0839 | Val Loss: 0.0730 | Val Macro F1: 0.6932
+16:47:02 -   [Epoch 09/50] Train Loss: 0.0829 | Val Loss: 0.0699 | Val Macro F1: 0.7034
+16:47:11 -   [Epoch 10/50] Train Loss: 0.0844 | Val Loss: 0.0754 | Val Macro F1: 0.6733
+16:47:20 -   [Epoch 11/50] Train Loss: 0.0801 | Val Loss: 0.0700 | Val Macro F1: 0.7231
+16:47:29 -   [Epoch 12/50] Train Loss: 0.0741 | Val Loss: 0.0661 | Val Macro F1: 0.7220
+16:47:38 -   [Epoch 13/50] Train Loss: 0.0736 | Val Loss: 0.0731 | Val Macro F1: 0.6855
+16:47:48 -   [Epoch 14/50] Train Loss: 0.0718 | Val Loss: 0.0702 | Val Macro F1: 0.7270
+16:47:57 -   [Epoch 15/50] Train Loss: 0.0670 | Val Loss: 0.0721 | Val Macro F1: 0.7155
+16:48:07 -   [Epoch 16/50] Train Loss: 0.0678 | Val Loss: 0.0619 | Val Macro F1: 0.8024
+16:48:16 -   [Epoch 17/50] Train Loss: 0.0651 | Val Loss: 0.0615 | Val Macro F1: 0.7733
+16:48:24 -   [Epoch 18/50] Train Loss: 0.0577 | Val Loss: 0.0813 | Val Macro F1: 0.6861
+16:48:33 -   [Epoch 19/50] Train Loss: 0.0573 | Val Loss: 0.0656 | Val Macro F1: 0.7352
+16:48:42 -   [Epoch 20/50] Train Loss: 0.0595 | Val Loss: 0.0628 | Val Macro F1: 0.7741
+16:48:52 -   [Epoch 21/50] Train Loss: 0.0608 | Val Loss: 0.0620 | Val Macro F1: 0.7805
+16:49:03 -   [Epoch 22/50] Train Loss: 0.0521 | Val Loss: 0.0588 | Val Macro F1: 0.7804
+16:49:20 -   [Epoch 23/50] Train Loss: 0.0569 | Val Loss: 0.0592 | Val Macro F1: 0.7890
+16:49:43 -   [Epoch 24/50] Train Loss: 0.0532 | Val Loss: 0.0664 | Val Macro F1: 0.7411
+16:49:55 -   [Epoch 25/50] Train Loss: 0.0509 | Val Loss: 0.0643 | Val Macro F1: 0.7754
+16:50:05 -   [Epoch 26/50] Train Loss: 0.0489 | Val Loss: 0.0665 | Val Macro F1: 0.7521
+16:50:14 -   [Epoch 27/50] Train Loss: 0.0457 | Val Loss: 0.0662 | Val Macro F1: 0.7959
+16:50:23 -   [Epoch 28/50] Train Loss: 0.0515 | Val Loss: 0.0717 | Val Macro F1: 0.7318
+16:50:32 -   [Epoch 29/50] Train Loss: 0.0474 | Val Loss: 0.0667 | Val Macro F1: 0.7672
+16:50:41 -   [Epoch 30/50] Train Loss: 0.0420 | Val Loss: 0.0547 | Val Macro F1: 0.8144
+16:50:49 -   [Epoch 31/50] Train Loss: 0.0451 | Val Loss: 0.0698 | Val Macro F1: 0.8028
+16:50:59 -   [Epoch 32/50] Train Loss: 0.0432 | Val Loss: 0.0640 | Val Macro F1: 0.7844
+16:51:09 -   [Epoch 33/50] Train Loss: 0.0426 | Val Loss: 0.0616 | Val Macro F1: 0.7819
+16:51:18 -   [Epoch 34/50] Train Loss: 0.0431 | Val Loss: 0.0552 | Val Macro F1: 0.8127
+16:51:27 -   [Epoch 35/50] Train Loss: 0.0433 | Val Loss: 0.0611 | Val Macro F1: 0.8252
+16:51:36 -   [Epoch 36/50] Train Loss: 0.0380 | Val Loss: 0.0600 | Val Macro F1: 0.7942
+16:51:45 -   [Epoch 37/50] Train Loss: 0.0403 | Val Loss: 0.0588 | Val Macro F1: 0.7902
+16:51:54 -   [Epoch 38/50] Train Loss: 0.0400 | Val Loss: 0.0594 | Val Macro F1: 0.7805
+16:52:06 -   [Epoch 39/50] Train Loss: 0.0378 | Val Loss: 0.0573 | Val Macro F1: 0.7987
+16:52:15 -   [Epoch 40/50] Train Loss: 0.0365 | Val Loss: 0.0599 | Val Macro F1: 0.7843
+16:52:24 -   [Epoch 41/50] Train Loss: 0.0363 | Val Loss: 0.0571 | Val Macro F1: 0.8035
+16:52:32 -   [Epoch 42/50] Train Loss: 0.0389 | Val Loss: 0.0584 | Val Macro F1: 0.8016
+16:52:41 -   [Epoch 43/50] Train Loss: 0.0332 | Val Loss: 0.0591 | Val Macro F1: 0.8194
+16:52:50 -   [Epoch 44/50] Train Loss: 0.0389 | Val Loss: 0.0580 | Val Macro F1: 0.8095
+16:52:59 -   [Epoch 45/50] Train Loss: 0.0356 | Val Loss: 0.0594 | Val Macro F1: 0.8023
+16:53:08 -   [Epoch 46/50] Train Loss: 0.0384 | Val Loss: 0.0570 | Val Macro F1: 0.8171
+16:53:18 -   [Epoch 47/50] Train Loss: 0.0340 | Val Loss: 0.0590 | Val Macro F1: 0.8040
+16:53:29 -   [Epoch 48/50] Train Loss: 0.0400 | Val Loss: 0.0582 | Val Macro F1: 0.8133
+16:53:41 -   [Epoch 49/50] Train Loss: 0.0339 | Val Loss: 0.0582 | Val Macro F1: 0.7977
+16:53:52 -   [Epoch 50/50] Train Loss: 0.0360 | Val Loss: 0.0589 | Val Macro F1: 0.8078
+16:53:53 - Fold 1 Best Val Loss: 0.0547 @ Epoch 30 | Val Pothole F1: 0.6218 | Val PR-AUC: 0.7132
+16:53:53 - === Fold 2 ===
+16:54:03 -   [Epoch 01/50] Train Loss: 0.2046 | Val Loss: 0.1461 | Val Macro F1: 0.3763
+16:54:13 -   [Epoch 02/50] Train Loss: 0.1564 | Val Loss: 0.1197 | Val Macro F1: 0.4899
+16:54:24 -   [Epoch 03/50] Train Loss: 0.1278 | Val Loss: 0.0834 | Val Macro F1: 0.5508
+16:54:35 -   [Epoch 04/50] Train Loss: 0.1123 | Val Loss: 0.0968 | Val Macro F1: 0.6662
+16:54:46 -   [Epoch 05/50] Train Loss: 0.1025 | Val Loss: 0.0859 | Val Macro F1: 0.6138
+16:54:57 -   [Epoch 06/50] Train Loss: 0.1009 | Val Loss: 0.1013 | Val Macro F1: 0.6382
+16:55:09 -   [Epoch 07/50] Train Loss: 0.0941 | Val Loss: 0.0632 | Val Macro F1: 0.7495
+16:55:19 -   [Epoch 08/50] Train Loss: 0.0883 | Val Loss: 0.0621 | Val Macro F1: 0.6898
+16:55:29 -   [Epoch 09/50] Train Loss: 0.0838 | Val Loss: 0.1169 | Val Macro F1: 0.5156
+16:55:39 -   [Epoch 10/50] Train Loss: 0.0835 | Val Loss: 0.0813 | Val Macro F1: 0.7085
+16:55:48 -   [Epoch 11/50] Train Loss: 0.0820 | Val Loss: 0.0735 | Val Macro F1: 0.7236
+16:55:57 -   [Epoch 12/50] Train Loss: 0.0757 | Val Loss: 0.0719 | Val Macro F1: 0.7000
+16:56:07 -   [Epoch 13/50] Train Loss: 0.0726 | Val Loss: 0.0571 | Val Macro F1: 0.7748
+16:56:19 -   [Epoch 14/50] Train Loss: 0.0725 | Val Loss: 0.0551 | Val Macro F1: 0.7934
+16:56:28 -   [Epoch 15/50] Train Loss: 0.0694 | Val Loss: 0.0913 | Val Macro F1: 0.6499
+16:56:38 -   [Epoch 16/50] Train Loss: 0.0640 | Val Loss: 0.0678 | Val Macro F1: 0.7560
+16:56:47 -   [Epoch 17/50] Train Loss: 0.0667 | Val Loss: 0.0587 | Val Macro F1: 0.7935
+16:56:57 -   [Epoch 18/50] Train Loss: 0.0570 | Val Loss: 0.0439 | Val Macro F1: 0.8311
+16:57:06 -   [Epoch 19/50] Train Loss: 0.0596 | Val Loss: 0.0650 | Val Macro F1: 0.7513
+16:57:16 -   [Epoch 20/50] Train Loss: 0.0653 | Val Loss: 0.0598 | Val Macro F1: 0.8016
+16:57:26 -   [Epoch 21/50] Train Loss: 0.0593 | Val Loss: 0.0437 | Val Macro F1: 0.8084
+16:57:35 -   [Epoch 22/50] Train Loss: 0.0567 | Val Loss: 0.0710 | Val Macro F1: 0.7304
+16:57:45 -   [Epoch 23/50] Train Loss: 0.0498 | Val Loss: 0.0499 | Val Macro F1: 0.8279
+16:57:57 -   [Epoch 24/50] Train Loss: 0.0511 | Val Loss: 0.0787 | Val Macro F1: 0.7547
+16:58:07 -   [Epoch 25/50] Train Loss: 0.0565 | Val Loss: 0.0465 | Val Macro F1: 0.8371
+16:58:18 -   [Epoch 26/50] Train Loss: 0.0505 | Val Loss: 0.0603 | Val Macro F1: 0.7850
+16:58:32 -   [Epoch 27/50] Train Loss: 0.0534 | Val Loss: 0.0816 | Val Macro F1: 0.7389
+16:58:45 -   [Epoch 28/50] Train Loss: 0.0506 | Val Loss: 0.0605 | Val Macro F1: 0.7885
+16:58:58 -   [Epoch 29/50] Train Loss: 0.0499 | Val Loss: 0.0532 | Val Macro F1: 0.8223
+16:59:12 -   [Epoch 30/50] Train Loss: 0.0443 | Val Loss: 0.0679 | Val Macro F1: 0.7719
+16:59:25 -   [Epoch 31/50] Train Loss: 0.0478 | Val Loss: 0.0488 | Val Macro F1: 0.8306
+16:59:38 -   [Epoch 32/50] Train Loss: 0.0458 | Val Loss: 0.0483 | Val Macro F1: 0.8436
+16:59:52 -   [Epoch 33/50] Train Loss: 0.0407 | Val Loss: 0.0546 | Val Macro F1: 0.8155
+17:00:05 -   [Epoch 34/50] Train Loss: 0.0390 | Val Loss: 0.0428 | Val Macro F1: 0.8397
+17:00:19 -   [Epoch 35/50] Train Loss: 0.0428 | Val Loss: 0.0661 | Val Macro F1: 0.7506
+17:00:32 -   [Epoch 36/50] Train Loss: 0.0413 | Val Loss: 0.0553 | Val Macro F1: 0.8155
+17:00:41 -   [Epoch 37/50] Train Loss: 0.0374 | Val Loss: 0.0510 | Val Macro F1: 0.8026
+17:00:51 -   [Epoch 38/50] Train Loss: 0.0406 | Val Loss: 0.0670 | Val Macro F1: 0.7618
+17:01:04 -   [Epoch 39/50] Train Loss: 0.0400 | Val Loss: 0.0565 | Val Macro F1: 0.7882
+17:01:17 -   [Epoch 40/50] Train Loss: 0.0397 | Val Loss: 0.0550 | Val Macro F1: 0.8059
+17:01:32 -   [Epoch 41/50] Train Loss: 0.0371 | Val Loss: 0.0480 | Val Macro F1: 0.8196
+17:01:45 -   [Epoch 42/50] Train Loss: 0.0377 | Val Loss: 0.0511 | Val Macro F1: 0.8120
+17:01:57 -   [Epoch 43/50] Train Loss: 0.0358 | Val Loss: 0.0514 | Val Macro F1: 0.8076
+17:02:05 -   [Epoch 44/50] Train Loss: 0.0359 | Val Loss: 0.0511 | Val Macro F1: 0.8148
+17:02:15 -   [Epoch 45/50] Train Loss: 0.0374 | Val Loss: 0.0511 | Val Macro F1: 0.8076
+17:02:24 -   [Epoch 46/50] Train Loss: 0.0359 | Val Loss: 0.0501 | Val Macro F1: 0.8132
+17:02:35 -   [Epoch 47/50] Train Loss: 0.0355 | Val Loss: 0.0499 | Val Macro F1: 0.8132
+17:02:45 -   [Epoch 48/50] Train Loss: 0.0346 | Val Loss: 0.0509 | Val Macro F1: 0.8132
+17:02:54 -   [Epoch 49/50] Train Loss: 0.0345 | Val Loss: 0.0528 | Val Macro F1: 0.8226
+17:03:03 -   [Epoch 50/50] Train Loss: 0.0347 | Val Loss: 0.0517 | Val Macro F1: 0.8226
+17:03:03 - Fold 2 Best Val Loss: 0.0428 @ Epoch 34 | Val Pothole F1: 0.7253 | Val PR-AUC: 0.8286
+17:03:03 - === Fold 3 ===
+17:03:13 -   [Epoch 01/50] Train Loss: 0.2174 | Val Loss: 0.1900 | Val Macro F1: 0.3050
+17:03:21 -   [Epoch 02/50] Train Loss: 0.1382 | Val Loss: 0.1818 | Val Macro F1: 0.3278
+17:03:33 -   [Epoch 03/50] Train Loss: 0.1146 | Val Loss: 0.1453 | Val Macro F1: 0.5126
+17:03:46 -   [Epoch 04/50] Train Loss: 0.0983 | Val Loss: 0.1196 | Val Macro F1: 0.5958
+17:03:58 -   [Epoch 05/50] Train Loss: 0.0899 | Val Loss: 0.1106 | Val Macro F1: 0.6214
+17:04:12 -   [Epoch 06/50] Train Loss: 0.0848 | Val Loss: 0.0998 | Val Macro F1: 0.6400
+17:04:24 -   [Epoch 07/50] Train Loss: 0.0853 | Val Loss: 0.1142 | Val Macro F1: 0.6223
+17:04:37 -   [Epoch 08/50] Train Loss: 0.0808 | Val Loss: 0.1929 | Val Macro F1: 0.4714
+17:04:49 -   [Epoch 09/50] Train Loss: 0.0766 | Val Loss: 0.1693 | Val Macro F1: 0.6315
+17:05:01 -   [Epoch 10/50] Train Loss: 0.0793 | Val Loss: 0.1011 | Val Macro F1: 0.7329
+17:05:14 -   [Epoch 11/50] Train Loss: 0.0717 | Val Loss: 0.1217 | Val Macro F1: 0.6754
+17:05:26 -   [Epoch 12/50] Train Loss: 0.0701 | Val Loss: 0.1419 | Val Macro F1: 0.6947
+17:05:38 -   [Epoch 13/50] Train Loss: 0.0680 | Val Loss: 0.1167 | Val Macro F1: 0.7286
+17:05:51 -   [Epoch 14/50] Train Loss: 0.0696 | Val Loss: 0.0990 | Val Macro F1: 0.7610
+17:06:06 -   [Epoch 15/50] Train Loss: 0.0621 | Val Loss: 0.1064 | Val Macro F1: 0.6866
+17:06:19 -   [Epoch 16/50] Train Loss: 0.0630 | Val Loss: 0.1080 | Val Macro F1: 0.6705
+17:06:30 -   [Epoch 17/50] Train Loss: 0.0586 | Val Loss: 0.1127 | Val Macro F1: 0.7487
+17:06:43 -   [Epoch 18/50] Train Loss: 0.0582 | Val Loss: 0.1082 | Val Macro F1: 0.7262
+17:06:51 -   [Epoch 19/50] Train Loss: 0.0553 | Val Loss: 0.1765 | Val Macro F1: 0.6150
+17:07:00 -   [Epoch 20/50] Train Loss: 0.0574 | Val Loss: 0.1720 | Val Macro F1: 0.6715
+17:07:12 -   [Epoch 21/50] Train Loss: 0.0563 | Val Loss: 0.1355 | Val Macro F1: 0.7053
+17:07:24 -   [Epoch 22/50] Train Loss: 0.0539 | Val Loss: 0.1230 | Val Macro F1: 0.6783
+17:07:36 -   [Epoch 23/50] Train Loss: 0.0582 | Val Loss: 0.0903 | Val Macro F1: 0.7276
+17:07:48 -   [Epoch 24/50] Train Loss: 0.0550 | Val Loss: 0.1208 | Val Macro F1: 0.6707
+17:08:00 -   [Epoch 25/50] Train Loss: 0.0464 | Val Loss: 0.0880 | Val Macro F1: 0.8045
+17:08:12 -   [Epoch 26/50] Train Loss: 0.0504 | Val Loss: 0.1183 | Val Macro F1: 0.8029
+17:08:24 -   [Epoch 27/50] Train Loss: 0.0441 | Val Loss: 0.1082 | Val Macro F1: 0.7830
+17:08:35 -   [Epoch 28/50] Train Loss: 0.0480 | Val Loss: 0.1108 | Val Macro F1: 0.7511
+17:08:47 -   [Epoch 29/50] Train Loss: 0.0466 | Val Loss: 0.1211 | Val Macro F1: 0.7403
+17:08:59 -   [Epoch 30/50] Train Loss: 0.0433 | Val Loss: 0.1101 | Val Macro F1: 0.7535
+17:09:12 -   [Epoch 31/50] Train Loss: 0.0483 | Val Loss: 0.1331 | Val Macro F1: 0.6981
+17:09:23 -   [Epoch 32/50] Train Loss: 0.0406 | Val Loss: 0.1108 | Val Macro F1: 0.7918
+17:09:35 -   [Epoch 33/50] Train Loss: 0.0396 | Val Loss: 0.0960 | Val Macro F1: 0.8067
+17:09:47 -   [Epoch 34/50] Train Loss: 0.0376 | Val Loss: 0.1058 | Val Macro F1: 0.7895
+17:10:00 -   [Epoch 35/50] Train Loss: 0.0401 | Val Loss: 0.1250 | Val Macro F1: 0.7527
+17:10:11 -   [Epoch 36/50] Train Loss: 0.0366 | Val Loss: 0.1040 | Val Macro F1: 0.7719
+17:10:23 -   [Epoch 37/50] Train Loss: 0.0343 | Val Loss: 0.1037 | Val Macro F1: 0.7913
+17:10:35 -   [Epoch 38/50] Train Loss: 0.0347 | Val Loss: 0.1142 | Val Macro F1: 0.7585
+17:10:47 -   [Epoch 39/50] Train Loss: 0.0343 | Val Loss: 0.1068 | Val Macro F1: 0.7618
+17:10:59 -   [Epoch 40/50] Train Loss: 0.0381 | Val Loss: 0.1091 | Val Macro F1: 0.7686
+17:11:11 -   [Epoch 41/50] Train Loss: 0.0352 | Val Loss: 0.1074 | Val Macro F1: 0.7760
+17:11:23 -   [Epoch 42/50] Train Loss: 0.0347 | Val Loss: 0.1075 | Val Macro F1: 0.7677
+17:11:35 -   [Epoch 43/50] Train Loss: 0.0363 | Val Loss: 0.1130 | Val Macro F1: 0.7681
+17:11:47 -   [Epoch 44/50] Train Loss: 0.0335 | Val Loss: 0.1073 | Val Macro F1: 0.7741
+17:12:01 -   [Epoch 45/50] Train Loss: 0.0350 | Val Loss: 0.1090 | Val Macro F1: 0.7656
+17:12:14 -   [Epoch 46/50] Train Loss: 0.0352 | Val Loss: 0.1101 | Val Macro F1: 0.7656
+17:12:26 -   [Epoch 47/50] Train Loss: 0.0377 | Val Loss: 0.1041 | Val Macro F1: 0.7803
+17:12:38 -   [Epoch 48/50] Train Loss: 0.0342 | Val Loss: 0.1081 | Val Macro F1: 0.7677
+17:12:51 -   [Epoch 49/50] Train Loss: 0.0308 | Val Loss: 0.1129 | Val Macro F1: 0.7625
+17:13:03 -   [Epoch 50/50] Train Loss: 0.0357 | Val Loss: 0.1082 | Val Macro F1: 0.7715
+17:13:04 - Fold 3 Best Val Loss: 0.0880 @ Epoch 25 | Val Pothole F1: 0.6190 | Val PR-AUC: 0.8024
+17:13:04 - === Fold 4 ===
+17:13:17 -   [Epoch 01/50] Train Loss: 0.1948 | Val Loss: 0.1825 | Val Macro F1: 0.3934
+17:13:30 -   [Epoch 02/50] Train Loss: 0.1484 | Val Loss: 0.1490 | Val Macro F1: 0.3845
+17:13:43 -   [Epoch 03/50] Train Loss: 0.1348 | Val Loss: 0.1333 | Val Macro F1: 0.5130
+17:13:56 -   [Epoch 04/50] Train Loss: 0.1133 | Val Loss: 0.3404 | Val Macro F1: 0.4649
+17:14:07 -   [Epoch 05/50] Train Loss: 0.1039 | Val Loss: 0.1133 | Val Macro F1: 0.5991
+17:14:16 -   [Epoch 06/50] Train Loss: 0.0918 | Val Loss: 0.1152 | Val Macro F1: 0.5201
+17:14:30 -   [Epoch 07/50] Train Loss: 0.0878 | Val Loss: 0.1028 | Val Macro F1: 0.7093
+17:14:42 -   [Epoch 08/50] Train Loss: 0.0866 | Val Loss: 0.1345 | Val Macro F1: 0.5030
+17:14:53 -   [Epoch 09/50] Train Loss: 0.0763 | Val Loss: 0.1016 | Val Macro F1: 0.6557
+17:15:04 -   [Epoch 10/50] Train Loss: 0.0739 | Val Loss: 0.0964 | Val Macro F1: 0.6457
+17:15:13 -   [Epoch 11/50] Train Loss: 0.0716 | Val Loss: 0.0934 | Val Macro F1: 0.6582
+17:15:22 -   [Epoch 12/50] Train Loss: 0.0673 | Val Loss: 0.1069 | Val Macro F1: 0.7156
+17:15:30 -   [Epoch 13/50] Train Loss: 0.0668 | Val Loss: 0.0919 | Val Macro F1: 0.6533
+17:15:39 -   [Epoch 14/50] Train Loss: 0.0698 | Val Loss: 0.0959 | Val Macro F1: 0.7134
+17:15:47 -   [Epoch 15/50] Train Loss: 0.0599 | Val Loss: 0.0952 | Val Macro F1: 0.6759
+17:15:57 -   [Epoch 16/50] Train Loss: 0.0672 | Val Loss: 0.0884 | Val Macro F1: 0.7627
+17:16:10 -   [Epoch 17/50] Train Loss: 0.0610 | Val Loss: 0.1389 | Val Macro F1: 0.6003
+17:16:23 -   [Epoch 18/50] Train Loss: 0.0593 | Val Loss: 0.1516 | Val Macro F1: 0.6273
+17:16:36 -   [Epoch 19/50] Train Loss: 0.0588 | Val Loss: 0.0932 | Val Macro F1: 0.6751
+17:16:49 -   [Epoch 20/50] Train Loss: 0.0506 | Val Loss: 0.1257 | Val Macro F1: 0.6408
+17:17:05 -   [Epoch 21/50] Train Loss: 0.0517 | Val Loss: 0.0936 | Val Macro F1: 0.7281
+17:17:17 -   [Epoch 22/50] Train Loss: 0.0495 | Val Loss: 0.0955 | Val Macro F1: 0.7275
+17:17:30 -   [Epoch 23/50] Train Loss: 0.0510 | Val Loss: 0.1196 | Val Macro F1: 0.7018
+17:17:43 -   [Epoch 24/50] Train Loss: 0.0476 | Val Loss: 0.0981 | Val Macro F1: 0.6983
+17:17:56 -   [Epoch 25/50] Train Loss: 0.0471 | Val Loss: 0.0868 | Val Macro F1: 0.7512
+17:18:09 -   [Epoch 26/50] Train Loss: 0.0429 | Val Loss: 0.1170 | Val Macro F1: 0.7118
+17:18:22 -   [Epoch 27/50] Train Loss: 0.0465 | Val Loss: 0.0915 | Val Macro F1: 0.7468
+17:18:34 -   [Epoch 28/50] Train Loss: 0.0410 | Val Loss: 0.0882 | Val Macro F1: 0.7647
+17:18:46 -   [Epoch 29/50] Train Loss: 0.0465 | Val Loss: 0.0961 | Val Macro F1: 0.7128
+17:18:58 -   [Epoch 30/50] Train Loss: 0.0405 | Val Loss: 0.0923 | Val Macro F1: 0.7524
+17:19:11 -   [Epoch 31/50] Train Loss: 0.0423 | Val Loss: 0.0953 | Val Macro F1: 0.7227
+17:19:23 -   [Epoch 32/50] Train Loss: 0.0434 | Val Loss: 0.1192 | Val Macro F1: 0.6845
+17:19:36 -   [Epoch 33/50] Train Loss: 0.0402 | Val Loss: 0.0865 | Val Macro F1: 0.7755
+17:19:48 -   [Epoch 34/50] Train Loss: 0.0372 | Val Loss: 0.0958 | Val Macro F1: 0.7351
+17:20:01 -   [Epoch 35/50] Train Loss: 0.0372 | Val Loss: 0.0980 | Val Macro F1: 0.7565
+17:20:16 -   [Epoch 36/50] Train Loss: 0.0309 | Val Loss: 0.1003 | Val Macro F1: 0.7497
+17:20:29 -   [Epoch 37/50] Train Loss: 0.0372 | Val Loss: 0.0992 | Val Macro F1: 0.7235
+17:20:44 -   [Epoch 38/50] Train Loss: 0.0329 | Val Loss: 0.0918 | Val Macro F1: 0.7618
+17:20:57 -   [Epoch 39/50] Train Loss: 0.0393 | Val Loss: 0.0961 | Val Macro F1: 0.7680
+17:21:16 -   [Epoch 40/50] Train Loss: 0.0332 | Val Loss: 0.0883 | Val Macro F1: 0.7708
+17:21:38 -   [Epoch 41/50] Train Loss: 0.0340 | Val Loss: 0.0919 | Val Macro F1: 0.7517
+17:21:54 -   [Epoch 42/50] Train Loss: 0.0335 | Val Loss: 0.0877 | Val Macro F1: 0.7595
+17:22:09 -   [Epoch 43/50] Train Loss: 0.0322 | Val Loss: 0.0919 | Val Macro F1: 0.7392
+17:22:21 -   [Epoch 44/50] Train Loss: 0.0323 | Val Loss: 0.0901 | Val Macro F1: 0.7476
+17:22:33 -   [Epoch 45/50] Train Loss: 0.0322 | Val Loss: 0.0886 | Val Macro F1: 0.7552
+17:22:45 -   [Epoch 46/50] Train Loss: 0.0305 | Val Loss: 0.0884 | Val Macro F1: 0.7493
+17:22:59 -   [Epoch 47/50] Train Loss: 0.0299 | Val Loss: 0.0875 | Val Macro F1: 0.7567
+17:23:12 -   [Epoch 48/50] Train Loss: 0.0319 | Val Loss: 0.0885 | Val Macro F1: 0.7555
+17:23:25 -   [Epoch 49/50] Train Loss: 0.0313 | Val Loss: 0.0879 | Val Macro F1: 0.7479
+17:23:38 -   [Epoch 50/50] Train Loss: 0.0327 | Val Loss: 0.0900 | Val Macro F1: 0.7646
+17:23:39 - Fold 4 Best Val Loss: 0.0877 @ Epoch 42 | Val Pothole F1: 0.6471 | Val PR-AUC: 0.6892
+17:23:39 - Average Pothole F1: 0.6533 | Average PR-AUC: 0.7583
+17:23:39 - Best epochs per fold: [30, 34, 25, 42] | Optimal Epoch Average: 33
+17:23:40 - Confusion matrix disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\cnn_1d\cnn_1d_confusion_matrix_oof.png
+17:23:40 - OOF predictions disimpan untuk analisis ulang.
+17:23:40 - Saved final global scaler parameters to D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d\cnn_1d_scaler_params.json
+17:23:40 - Melatih final model dengan seluruh dataset sebanyak 33 epoch...
+17:30:25 - Model final PyTorch disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d\cnn_1d_model.pth
+17:30:25 - Mengevaluasi model final pada Holdout Test Set (30%)...
+17:30:26 - Holdout Test confusion matrix disimpan di D:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\cnn_1d\cnn_1d_confusion_matrix_holdout.png
+17:30:26 - ONNX export is now handled exclusively by export_onnx.py to ensure MobileInferenceWrapper is applied.
+17:30:26 - Please run `python src/cnn_model/export_onnx.py` manually after training.
+------------------------------------------------------------
+
+============================================================
+      OOF REPORT      
+============================================================
+              precision    recall  f1-score   support
+
+   Non-Event       0.95      0.98      0.97      3254
+     Pothole       0.75      0.57      0.65       287
+  Speed Bump       0.93      0.64      0.76       201
+
+    accuracy                           0.93      3742
+   macro avg       0.87      0.73      0.79      3742
+weighted avg       0.93      0.93      0.93      3742
+
+------------------------------------------------------------
+        CONFUSION MATRIX (Out-of-Fold)
+------------------------------------------------------------
+               Non-Event     Pothole  Speed Bump
+------------------------------------------------
+   Non-Event        3204          44           6
+     Pothole         119         164           4
+  Speed Bump          62          11         128
+============================================================
+
+============================================================
+     HOLDOUT TEST     
+============================================================
+              precision    recall  f1-score   support
+
+   Non-Event       0.96      0.99      0.97       843
+     Pothole       0.85      0.62      0.72        56
+  Speed Bump       0.91      0.69      0.78        42
+
+    accuracy                           0.95       941
+   macro avg       0.91      0.77      0.83       941
+weighted avg       0.95      0.95      0.95       941
+
+============================================================
+

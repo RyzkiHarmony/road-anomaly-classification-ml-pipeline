@@ -11,12 +11,10 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import f1_score, precision_recall_curve, auc, precision_recall_fscore_support, confusion_matrix
-from imblearn.over_sampling import SMOTE
 
 import sys
-# Fix Windows Emoji crash in PyTorch ONNX exporter
+
 sys.stdout.reconfigure(encoding='utf-8')
 sys.stderr.reconfigure(encoding='utf-8')
 
@@ -35,10 +33,15 @@ REPORT_DIR = os.path.join(_PROJECT_ROOT, "evaluation", "reports", "cnn_1d")
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(REPORT_DIR, exist_ok=True)
 
-
+#baseline
 EPOCHS = 50
+LR = 0.001
+DROPOUT = 0.2
 BATCH_SIZE = 32
-LR = 0.005297583200310586
+WEIGHT_DECAY = 0.0001
+CHANNELS = 32
+GAMMA = 2.0
+
 
 class DynamicJitterDataset(torch.utils.data.Dataset):
     def __init__(self, X, y, max_jitter=15, noise_std=0.02, scale_range=(0.85, 1.15),
@@ -62,7 +65,6 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
         y_val = self.y[idx]
         if self.is_train:
             # 1. Random Crop (Replaces padding-based temporal jitter)
-            # The input sequence is EXTENDED_SEQ_LEN (e.g. 230). We need to crop it down to SEQ_LEN (e.g. 200).
             seq_len = 200
             if x.shape[-1] > seq_len:
                 max_start_idx = x.shape[-1] - seq_len
@@ -74,8 +76,6 @@ class DynamicJitterDataset(torch.utils.data.Dataset):
                 raise ValueError(f"Input sequence length {x.shape[-1]} is shorter than target length {seq_len}")
             
             # 2. Time Warping (non-linear temporal deformation)
-            # Simulates variable vehicle speed by warping the time axis
-            # using a smooth random curve (4 control points, cubic interp)
             if self.time_warp_prob > 0 and np.random.rand() < self.time_warp_prob:
                 T = x.shape[-1]
                 # Generate smooth warping curve with 4 control points
@@ -168,10 +168,34 @@ class MultiClassFocalLoss(nn.Module):
 
 def main():
     parser = argparse.ArgumentParser(description="CNN Training")
-    parser.add_argument("--channels", type=int, default=128, help="Number of base channels")
-    parser.add_argument("--dropout", type=float, default=0.6138161201886472, help="Dropout rate")
     parser.add_argument("--no-augment", action="store_true", help="Disable data augmentation")
     args = parser.parse_args()
+    
+    # ─── Load Optuna Best Params ───
+    best_params_path = os.path.join(_PROJECT_ROOT, "src", "cnn_model", "best_optuna_params.json")
+    
+    # Defaults
+    lr_val = LR
+    batch_size_val = BATCH_SIZE
+    weight_decay_val = WEIGHT_DECAY
+    gamma_val = GAMMA
+    channels_val = CHANNELS
+    dropout_val = DROPOUT
+    
+    if os.path.exists(best_params_path):
+        with open(best_params_path, 'r') as f:
+            best_params = json.load(f)
+        logger.info(f"Loaded Optuna best parameters from {best_params_path}")
+        lr_val = best_params.get("lr", lr_val)
+        batch_size_val = best_params.get("batch_size", batch_size_val)
+        channels_val = best_params.get("channels", channels_val)
+        dropout_val = best_params.get("dropout", dropout_val)
+        weight_decay_val = best_params.get("weight_decay", weight_decay_val)
+        gamma_val = best_params.get("gamma", gamma_val)
+        
+        logger.info(f"Using Params -> LR: {lr_val:.6f}, Batch: {batch_size_val}, Channels: {channels_val}, Dropout: {dropout_val:.4f}, WD: {weight_decay_val:.6f}, Gamma: {gamma_val:.2f}")
+    else:
+        logger.warning(f"No best_params.json found at {best_params_path}. Using default parameters.")
 
     set_seed(42)
     X_path = os.path.join(DATA_DIR, "cnn_1d_X.npy")
@@ -230,26 +254,15 @@ def main():
     for fold, (train_idx, val_idx) in enumerate(sgkf.split(X, y, groups)):
         logger.info(f"=== Fold {fold+1} ===")
         
-        # ─── SMOTE Oversampling (Disabled for Experiment) ───
         X_train_np, y_train_np = X[train_idx], y[train_idx]
         
         # Calculate global mean and std from X_train_np (N, C, T) over N and T (axis=(0, 2))
         global_means = np.mean(X_train_np, axis=(0, 2), keepdims=True)
         global_stds = np.std(X_train_np, axis=(0, 2), keepdims=True)
         global_stds = np.where(global_stds < 1e-6, 1.0, global_stds)
-        
-        if fold == 0:
-            scaler_params = {
-                "means": global_means.flatten().tolist(),
-                "stds": global_stds.flatten().tolist()
-            }
-            scaler_path = os.path.join(MODEL_DIR, "scaler_params.json")
-            with open(scaler_path, "w") as f:
-                json.dump(scaler_params, f, indent=4)
-            logger.info(f"Saved fold scaler parameters to {scaler_path}")
-            
+       
         X_train_scaled = (X_train_np - global_means) / global_stds
-        # Apply the SAME training means and stds to validation data
+        # Apply the SAME training means and stds to validation data (no leakage)
         X_val_np = X[val_idx]
         X_val_scaled = (X_val_np - global_means) / global_stds
         
@@ -282,18 +295,13 @@ def main():
         val_dataset = DynamicJitterDataset(X_val, y_val, max_jitter=0,
                                            noise_std=0, scale_range=None, is_train=False)
         
-        train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-        
-        # Dampened Class Weights
-        class_weights = compute_class_weight('balanced', classes=np.unique(y_train_np), y=y_train_np)
-        class_weights = class_weights / class_weights.sum() * len(class_weights)
-        class_weights = torch.tensor(class_weights, dtype=torch.float32).to(device)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size_val, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=False)
         
         model = InceptionTime1D(in_channels=X_train.shape[1], num_classes=len(classes),
-                               num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
-        criterion = MultiClassFocalLoss(weight=None, gamma=2.0)
-        optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
+                               num_blocks=3, channels=channels_val, bottleneck_channels=channels_val//4, dropout_rate=dropout_val).to(device)
+        criterion = MultiClassFocalLoss(weight=None, gamma=gamma_val)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr_val, weight_decay=weight_decay_val)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
         
         best_val_loss = float('inf')
@@ -347,11 +355,14 @@ def main():
                     
             val_loss /= len(val_loader.dataset)
             
-            logger.info(f"  [Epoch {epoch+1:02d}/{EPOCHS}] Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
-            
-            # Hitung PR-AUC untuk kelas minoritas pada data validasi epoch ini (threshold-independent)
             val_probas_np = np.array(val_probas)
             val_trues_np = np.array(val_trues)
+            val_preds_np = np.array(val_preds)
+            val_macro_f1 = f1_score(val_trues_np, val_preds_np, average='macro', zero_division=0)
+            
+            logger.info(f"  [Epoch {epoch+1:02d}/{EPOCHS}] Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Macro F1: {val_macro_f1:.4f}")
+            
+            # Hitung PR-AUC untuk kelas minoritas pada data validasi epoch ini (threshold-independent)
             
             # PR-AUC Pothole
             y_val_pothole = (val_trues_np == p_idx).astype(int)
@@ -518,31 +529,41 @@ def main():
                                          noise_std=n_std, scale_range=s_range, 
                                          time_warp_prob=warp_p, channel_drop_prob=drop_p,
                                          is_train=True)
-    full_loader = DataLoader(full_dataset, batch_size=BATCH_SIZE, shuffle=True)
     
-    class_weights_full = compute_class_weight('balanced', classes=np.unique(y_full), y=y_full)
-    # class_weights_full = np.sqrt(class_weights_full)  # Dihapus agar konsisten dengan cross-validation
-    class_weights_full = class_weights_full / class_weights_full.sum() * len(class_weights_full)
-    class_weights_full = torch.tensor(class_weights_full, dtype=torch.float32).to(device)
-    
+    # Load best params
+    best_params_path = os.path.join(_PROJECT_ROOT, "src", "cnn_model", "best_optuna_params.json")
+    if os.path.exists(best_params_path):
+        with open(best_params_path, 'r') as f:
+            bp = json.load(f)
+            lr_val = bp.get('lr', LR)
+            batch_size_val = bp.get('batch_size', BATCH_SIZE)
+            dropout_val = bp.get('dropout', DROPOUT)
+            channels_val = bp.get('channels', CHANNELS)
+            weight_decay_val = bp.get('weight_decay', WEIGHT_DECAY)
+            gamma_val = bp.get('gamma', GAMMA)
+    else:
+        lr_val, batch_size_val, dropout_val, channels_val, weight_decay_val, gamma_val = LR, BATCH_SIZE, DROPOUT, CHANNELS, WEIGHT_DECAY, GAMMA
+
+    full_loader = DataLoader(full_dataset, batch_size=batch_size_val, shuffle=True)
+
     final_model = InceptionTime1D(in_channels=X_full.shape[1], num_classes=len(classes),
-                                 num_blocks=3, channels=args.channels, bottleneck_channels=args.channels//4, dropout_rate=args.dropout).to(device)
-    criterion_full = MultiClassFocalLoss(weight=None, gamma=2.0)
-    optimizer_full = torch.optim.Adam(final_model.parameters(), lr=LR, weight_decay=1e-4)
-    scheduler_full = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_full, T_max=optimal_epochs, eta_min=1e-6)
+                                 num_blocks=3, channels=channels_val, bottleneck_channels=channels_val//4, dropout_rate=dropout_val).to(device)
+    final_criterion = MultiClassFocalLoss(weight=None, gamma=gamma_val)
+    final_optimizer = torch.optim.Adam(final_model.parameters(), lr=lr_val, weight_decay=weight_decay_val)
+    final_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(final_optimizer, T_max=optimal_epochs, eta_min=1e-6)
     
     for epoch in range(optimal_epochs):
         final_model.train()
         for batch_x, batch_y in full_loader:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-            optimizer_full.zero_grad()
+            final_optimizer.zero_grad()
             outputs = final_model(batch_x)
-            loss = criterion_full(outputs, batch_y)
+            loss = final_criterion(outputs, batch_y)
             
             loss.backward()
             torch.nn.utils.clip_grad_norm_(final_model.parameters(), max_norm=1.0)
-            optimizer_full.step()
-        scheduler_full.step()
+            final_optimizer.step()
+        final_scheduler.step()
             
     # Save Model
     torch.save(final_model.state_dict(), os.path.join(MODEL_DIR, "cnn_1d_model.pth"))
@@ -552,8 +573,8 @@ def main():
     
     logger.info("Model final PyTorch disimpan di " + os.path.join(MODEL_DIR, "cnn_1d_model.pth"))
     
-    # --- Evaluate Final Model on Holdout Test Set (30%) ---
-    logger.info("Mengevaluasi model final pada Holdout Test Set (30%)...")
+    # --- Evaluate Final Model on Holdout Test Set (20%) ---
+    logger.info("Mengevaluasi model final pada Holdout Test Set (20%)...")
     final_model.eval()
     
     # Standardize Test set using global scaling

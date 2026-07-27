@@ -46,7 +46,8 @@ def main():
         n_needed = (n_pos * BACKGROUND_RATIO) - n_neg_manual
         logger.info(f"Mengambil {n_needed} sampel background tambahan...")
         for trip_id in labeled_trip_ids:
-            csv_candidates = glob.glob(os.path.join(CSV_FOLDER, f"*{trip_id}*.csv"))
+            # [DETERMINISM]: sorted() agar urutan CSV konsisten lintas OS
+            csv_candidates = sorted(glob.glob(os.path.join(CSV_FOLDER, f"*{trip_id}*.csv")))
             if not csv_candidates: continue
             try:
                 raw_df = pd.read_csv(csv_candidates[0])

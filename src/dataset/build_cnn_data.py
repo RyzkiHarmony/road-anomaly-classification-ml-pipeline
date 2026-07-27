@@ -80,7 +80,9 @@ def _event_overlaps_buffered_gap(t_event, gap_intervals):
 
 def get_csv_path_for_trip(trip_id):
     meta_dir = os.path.join(os.path.dirname(CSV_FOLDER), "meta")
-    meta_files = glob.glob(os.path.join(meta_dir, "*.json"))
+    # [DETERMINISM]: sorted() WAJIB agar urutan file konsisten lintas OS (Linux vs Windows).
+    # glob.glob() tidak menjamin urutan — tanpa sorted(), pipeline non-deterministik.
+    meta_files = sorted(glob.glob(os.path.join(meta_dir, "*.json")))
     for jf in meta_files:
         try:
             with open(jf, 'r') as f:
@@ -146,6 +148,11 @@ def main():
     df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
     
     shared_bg_path = os.path.join(OUT_FOLDER, "shared_background.csv")
+    # [DOKUMENTASI]: shared_background.csv adalah sampel kelas Non-Event yang di-generate
+    # secara acak dari trip yang sama dengan data ground truth untuk menyeimbangkan kelas.
+    # Karena trip_id dipertahankan aslinya, pembagian StratifiedGroupKFold berdasarkan 
+    # trip_id di train.py memastikan sampel background ini TIDAK menyebabkan data leakage 
+    # lintas set (train vs test).
     if os.path.exists(shared_bg_path):
         try:
             df_bg = pd.read_csv(shared_bg_path)

@@ -47,8 +47,26 @@ def main():
         
     classes = np.load(classes_path)
     
+    # Load best params to match the saved model
+    best_params_path = os.path.join(_PROJECT_ROOT, "src", "cnn_model", "best_optuna_params.json")
+    channels_val = 32  # Default from train.py argparse
+    dropout_val = 0.5
+    if os.path.exists(best_params_path):
+        import json
+        with open(best_params_path, 'r') as f:
+            bp = json.load(f)
+            channels_val = bp.get('channels', channels_val)
+            dropout_val = bp.get('dropout', dropout_val)
+            
     # Initialize base model with exactly 7 channels
-    base_model = InceptionTime1D(in_channels=7, num_classes=len(classes))
+    base_model = InceptionTime1D(
+        in_channels=7, 
+        num_classes=len(classes),
+        num_blocks=3, 
+        channels=channels_val, 
+        bottleneck_channels=channels_val // 4, 
+        dropout_rate=dropout_val
+    )
     base_model.load_state_dict(torch.load(pth_path, map_location='cpu'))
     base_model.eval()
     

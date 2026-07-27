@@ -102,11 +102,13 @@ def resample_100hz(df, target_hz=TARGET_HZ):
     # [CRITICAL FIX]: limit=5 means we ONLY interpolate gaps up to 50ms (5 samples).
     # If the gap is larger than 50ms, the physics of the pothole are lost anyway. 
     # Leaving it as NaN ensures it gets dropped instead of hallucinated.
-    df_num = df_res[numeric_cols].resample(interval).interpolate(method='linear', limit=5)
+    # MUST apply .mean() first to aggregate multiple points per bin!
+    df_num = df_res[numeric_cols].resample(interval).mean().interpolate(method='linear', limit=5)
     df_num = df_num.ffill(limit=5) # Causal fill for trailing edges only
     
     if len(non_numeric_cols) > 0:
-        df_non_num = df_res[non_numeric_cols].resample(interval).ffill(limit=5)
+        # For non-numeric columns like string labels, use 'first' aggregation
+        df_non_num = df_res[non_numeric_cols].resample(interval).first().ffill(limit=5)
         df_out = pd.concat([df_num, df_non_num], axis=1)
     else:
         df_out = df_num

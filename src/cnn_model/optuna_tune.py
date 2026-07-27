@@ -73,9 +73,12 @@ def objective(trial):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     # Search Space
-    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-    dropout = trial.suggest_float("dropout", 0.1, 0.7)
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+    dropout = trial.suggest_float("dropout", 0.1, 0.5)
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
+    weight_decay = trial.suggest_float("weight_decay", 1e-5, 1e-3, log=True)
+    channels = trial.suggest_categorical("channels", [16, 32, 48, 64])
+    gamma = trial.suggest_float("gamma", 1.0, 3.0)
     epochs = 50
     n_splits = 4
     
@@ -120,13 +123,13 @@ def objective(trial):
         tr_ld = make_loader(X_tr_scaled, y_tr, batch_size, is_train=True)
         vl_ld = make_loader(X_vl_scaled, y_vl, batch_size, is_train=False)
         
-        model = InceptionTime1D(in_channels=in_channels, num_classes=len(classes), dropout_rate=dropout).to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+        model = InceptionTime1D(in_channels=in_channels, num_classes=len(classes), channels=channels, dropout_rate=dropout).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
         
         cw = compute_class_weight("balanced", classes=np.unique(y_tr), y=y_tr)
         cw = cw / cw.sum() * len(cw)
-        criterion = MultiClassFocalLoss(weight=None, gamma=2.0)
+        criterion = MultiClassFocalLoss(weight=None, gamma=gamma)
         
         models.append(model)
         optimizers.append(optimizer)
@@ -173,13 +176,13 @@ def objective(trial):
     return robust_score
 
 if __name__ == "__main__":
-    logger.info("Starting Optuna Multivariate Search for 1D-CNN (30 Trials)...")
+    logger.info("Starting Optuna Multivariate Search for 1D-CNN (10 Trials)...")
     
     study = optuna.create_study(
         direction="maximize",
-        pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10)
+        pruner=optuna.pruners.MedianPruner(n_startup_trials=4, n_warmup_steps=15)
     )
-    study.optimize(objective, n_trials=30)
+    study.optimize(objective, n_trials=10)
     
     logger.info("Study finished!")
     logger.info(f"Number of finished trials: {len(study.trials)}")
