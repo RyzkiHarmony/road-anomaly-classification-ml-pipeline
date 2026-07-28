@@ -180,7 +180,7 @@ if __name__ == "__main__":
     
     study = optuna.create_study(
         direction="maximize",
-        pruner=optuna.pruners.MedianPruner(n_startup_trials=4, n_warmup_steps=15)
+        pruner=optuna.pruners.MedianPruner(n_startup_trials=4, n_warmup_steps=20)
     )
     study.optimize(objective, n_trials=10)
     

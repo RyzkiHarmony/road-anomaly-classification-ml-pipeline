@@ -608,6 +608,18 @@ def main():
     print(classification_report(test_trues, test_preds, target_names=classes))
     print("=" * 60 + "\n")
     
+    # Calculate PR-AUC for Holdout
+    y_test_pothole = (test_trues == p_idx).astype(int)
+    y_proba_pothole_test = test_probas[:, p_idx]
+    prec_test, rec_test, _ = precision_recall_curve(y_test_pothole, y_proba_pothole_test)
+    pr_auc_test = auc(rec_test, prec_test)
+    logger.info(f"Holdout Test Pothole PR-AUC: {pr_auc_test:.4f}")
+    
+    # Save Holdout predictions for PR-Curve analysis
+    np.save(os.path.join(MODEL_DIR, "cnn_1d_holdout_y_true.npy"), test_trues)
+    np.save(os.path.join(MODEL_DIR, "cnn_1d_holdout_y_proba.npy"), test_probas)
+    logger.info("Holdout Test predictions saved for PR-Curve analysis.")
+    
     # Save test confusion matrix
     cm_test = confusion_matrix(test_trues, test_preds)
     fig, ax = plt.subplots(figsize=(8, 6))

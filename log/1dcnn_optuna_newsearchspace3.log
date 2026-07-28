@@ -1,4 +1,0 @@
-05:08:06 - Starting Optuna Multivariate Search for 1D-CNN (10 Trials)...
-[I 2026-07-27 05:08:06,624] A new study created in memory with name: no-name-f0af16ed-c9f8-4724-b6a8-314ef28fe74c
-06:18:49 - Trial 0 finished. Mean F1: 0.8044, Std F1: 0.0315, Score: 0.7729
-[I 2026-07-27 06:18:49,963] Trial 0 finished with value: 0.7729285772444252 and parameters: {'lr': 0.0007854253612036422, 'dropout': 0.20912635641234686, 'batch_size': 128, 'weight_decay': 0.0005676799247340561, 'channels': 48, 'gamma': 2.784847709340152}. Best is trial 0 with value: 0.7729285772444252.

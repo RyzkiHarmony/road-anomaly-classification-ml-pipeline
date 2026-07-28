@@ -80,7 +80,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--log_file", 
         type=str, 
-        default=r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\log\1dcnn_17_tuned.log", 
+        default=r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\log\1dcnn_27_baseline.log", 
         help="Path to the log file"
     )
     args = parser.parse_args()
