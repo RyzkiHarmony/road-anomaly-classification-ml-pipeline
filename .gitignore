@@ -20,7 +20,7 @@ old-pipeline/
 scratch/
 
 evaluation/models/
-data/processed/
+data/processed/shared/
 
 
 graphify-out/
