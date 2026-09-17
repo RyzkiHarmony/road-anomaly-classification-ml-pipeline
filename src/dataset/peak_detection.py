@@ -6,15 +6,11 @@
 
 import numpy as np
 import pandas as pd
-from scipy.signal import find_peaks
-from scipy.stats import median_abs_deviation
-
 from config import (
-    PEAK_MIN_DISTANCE_S,
-    NORMAL_VERT_MS2,
     GYRO_NORMAL_RAD,
-    REGION_WINDOW_S,
+    PEAK_MIN_DISTANCE_S,
     REGION_MAD_MULTIPLIER,
+    REGION_WINDOW_S,
     get_logger,
 )
 
@@ -25,9 +21,9 @@ def detect_peaks(df):
     """
     Identify candidate sample indices using Region-Based Abnormal Motion Detection.
 
-    Instead of relying on a single static peak threshold, this computes a trailing 
-    rolling standard deviation (energy) of the signals. Regions that exceed an 
-    adaptive baseline (Median + N*MAD) are flagged as active, and the maximum 
+    Instead of relying on a single static peak threshold, this computes a trailing
+    rolling standard deviation (energy) of the signals. Regions that exceed an
+    adaptive baseline (Median + N*MAD) are flagged as active, and the maximum
     vertical peak within each active region is extracted.
 
     Returns
@@ -59,12 +55,12 @@ def detect_peaks(df):
     # Kita gunakan EMA untuk merepresentasikan "baseline" kondisi jalan saat ini.
     # Ini murni kausal dan valid untuk live deployment.
     alpha_slow = 0.01  # Faktor smoothing untuk baseline (lambat)
-    
+
     # Baseline: Rata-rata deviasi pada jalan "normal"
     ema_std = rolling_std.ewm(alpha=alpha_slow, adjust=False).mean()
     # Deviation: Variansi dari baseline tersebut
     ema_dev = (rolling_std - ema_std).abs().ewm(alpha=alpha_slow, adjust=False).mean()
-    
+
     # Threshold = Baseline + N * Deviation
     # Kita gunakan multiplier yang sedikit lebih tinggi karena EMA lebih sensitif terhadap lokal noise.
     energy_thr = ema_std + (REGION_MAD_MULTIPLIER * 2.5) * ema_dev
@@ -74,35 +70,35 @@ def detect_peaks(df):
     gyro_thr  = None
     gyro_mags = np.zeros(len(df))
     has_gyro = all(c in df.columns for c in ("gx", "gy", "gz"))
-    
+
     if has_gyro:
         gx = df["gx"].fillna(0.0).astype(float).values
         gy = df["gy"].fillna(0.0).astype(float).values
         gz = df["gz"].fillna(0.0).astype(float).values
         gyro_mags = np.sqrt(gx ** 2 + gy ** 2 + gz ** 2)
-        
+
         s_gyro = pd.Series(gyro_mags)
         rolling_gyro = s_gyro.rolling(window=region_window, min_periods=1).mean().fillna(0.0)
-        
+
         ema_g     = rolling_gyro.ewm(alpha=alpha_slow, adjust=False).mean()
         ema_g_dev = (rolling_gyro - ema_g).abs().ewm(alpha=alpha_slow, adjust=False).mean()
-        
+
         gyro_thr_causal = ema_g + (REGION_MAD_MULTIPLIER * 2.5) * ema_g_dev
         # Tetap gunakan min bound 1.0 agar tidak trigger di jalan yang terlalu mulus (noise lantai)
         is_active = is_active | (rolling_gyro > gyro_thr_causal).values | (rolling_gyro > GYRO_NORMAL_RAD)
-        
+
         # Untuk logging, kita ambil rata-rata threshold terakhir
         gyro_thr = float(gyro_thr_causal.mean())
 
     # 4. Group continuous active regions and find local peak
     active_indices = np.where(is_active)[0]
     combined_idx = []
-    
+
     if len(active_indices) > 0:
         breaks = np.where(np.diff(active_indices) > min_dist)[0]
         region_starts = np.insert(active_indices[breaks + 1], 0, active_indices[0])
         region_ends = np.append(active_indices[breaks], active_indices[-1])
-        
+
         for start, end in zip(region_starts, region_ends):
             region_slice = slice(start, end + 1)
             # Find the point of maximum actual magnitude in the active region

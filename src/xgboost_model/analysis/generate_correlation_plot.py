@@ -1,15 +1,17 @@
-import sys
 import os
+import sys
+
 # Ensure parent directory is in path for modules
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(_SCRIPT_DIR))
 
-import pandas as pd
 import matplotlib
+import pandas as pd
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+import seaborn as sns
 
 # Adjust paths to use absolute locations relative to this script
 DATA_PATH = os.path.abspath(os.path.join(_SCRIPT_DIR, '..', 'out', 'manual_labeled_windows.csv'))

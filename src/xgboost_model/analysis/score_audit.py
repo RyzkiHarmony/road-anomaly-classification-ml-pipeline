@@ -1,14 +1,17 @@
 import os
-import pandas as pd
+
 import matplotlib
+import pandas as pd
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 
 def main():
     # Resolve absolute paths relative to script location
     _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.abspath(os.path.join(_SCRIPT_DIR, '..', 'out', 'candidates_events.csv'))
-    
+
     if not os.path.exists(csv_path):
         print(f"File not found: {csv_path}")
         return
@@ -16,7 +19,7 @@ def main():
     df = pd.read_csv(csv_path)
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-    
+
     # 1. Accel
     if 'peak_vertical_g' in df.columns:
         axes[0].hist(df['peak_vertical_g'], bins=30, color='blue', alpha=0.7)

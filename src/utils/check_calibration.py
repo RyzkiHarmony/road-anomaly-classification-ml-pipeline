@@ -1,5 +1,6 @@
-import numpy as np
 import os
+
+import numpy as np
 
 # Sesuaikan dengan path Anda jika berbeda
 MODEL_DIR = r"evaluation\models\cnn_1d"
@@ -23,13 +24,13 @@ else:
     avg_prob = np.mean(correct_pothole_probas)
     under_50 = np.sum(correct_pothole_probas < 0.5)
     under_30 = np.sum(correct_pothole_probas < 0.3)
-    
+
     print(f"Total True Positive Pothole (Argmax benar) : {total_correct} sampel")
     print(f"Rata-rata probabilitas mentah (Sigmoid/Softmax) : {avg_prob:.4f}")
     print(f"Jumlah yang probabilitasnya di bawah 0.50  : {under_50} sampel ({(under_50/total_correct)*100:.1f}%)")
     print(f"Jumlah yang probabilitasnya di bawah 0.30  : {under_30} sampel ({(under_30/total_correct)*100:.1f}%)")
     print("-" * 50)
-    
+
     if avg_prob < 0.5:
         print("KESIMPULAN SENIOR ML ENGINEER: Bencana Kalibrasi! (Poor Calibration)")
         print("Model Anda menebak benar HANYA karena probabilitas kelas lain lebih hancur lagi.")

@@ -1,12 +1,13 @@
+import json
 import os
 import sys
-import json
+
+import numpy as np
 import optuna
 import pandas as pd
-import numpy as np
+from sklearn.metrics import auc, precision_recall_curve
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import precision_recall_curve, auc
 from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
 
@@ -20,7 +21,7 @@ def objective(trial):
     # ---------- LOAD DATA ----------
     data_path = os.path.join(XGB_OUT_DIR, "xgboost_labeled_windows.csv")
     df = pd.read_csv(data_path).dropna(subset=['label'])
-    
+
     TOP_N_FEATURES = 25
     banned_cols = ['lat', 'lon', 'suggestion_confidence', 'score']
     metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
@@ -54,7 +55,7 @@ def objective(trial):
     # Splitting
     dev_groups_list, _ = get_stratified_group_split(groups, y, train_ratio=0.8)
     dev_mask = np.isin(groups, dev_groups_list)
-    
+
     X_dev = X[dev_mask]
     y_dev_raw = y[dev_mask]
     groups_dev = groups[dev_mask]
@@ -63,7 +64,7 @@ def objective(trial):
     le = LabelEncoder()
     y_dev = le.fit_transform(y_dev_raw)
     classes = le.classes_
-    
+
     if "Pothole" not in classes:
         # Failsafe if Pothole isn't in dev set
         return 0.0
@@ -89,7 +90,7 @@ def objective(trial):
 
     for fold, (train_idx, val_idx) in enumerate(sgkf.split(X_dev, y_dev, groups_dev)):
         X_train, y_train = X_dev[train_idx], y_dev[train_idx]
-        
+
         # Filter augmented twins out of validation set
         is_original_val = np.array([not str(s).startswith('augmented') for s in source_dev[val_idx]])
         clean_val_idx = val_idx[is_original_val]
@@ -103,35 +104,35 @@ def objective(trial):
 
         model = XGBClassifier(**params)
         weights_train = compute_sample_weight('balanced', y_train)
-        
+
         # Fit model
         model.fit(X_train, y_train, sample_weight=weights_train)
-        
+
         # Predict on clean validation set
         y_proba = model.predict_proba(X_val)
-        
+
         y_val_pothole_fold = (y_val == p_idx).astype(int)
         y_proba_pothole_fold = y_proba[:, p_idx]
-        
+
         if sum(y_val_pothole_fold) == 0:
             continue
-            
+
         prec, rec, _ = precision_recall_curve(y_val_pothole_fold, y_proba_pothole_fold)
         pr_auc_val = auc(rec, prec)
         fold_prauc.append(pr_auc_val)
 
     if len(fold_prauc) == 0:
         return 0.0
-        
+
     avg_prauc = np.mean(fold_prauc)
     return avg_prauc
 
 def main():
     logger.info("Starting XGBoost Hyperparameter Tuning with Optuna...")
-    
+
     # Enable Optuna pruning and logging
     optuna.logging.set_verbosity(optuna.logging.INFO)
-    
+
     # We want to maximize Average PR-AUC
     study = optuna.create_study(direction='maximize', study_name="XGBoost_PR_AUC_Tuning")
     study.optimize(objective, n_trials=50)
@@ -144,16 +145,16 @@ def main():
     logger.info("  Params: ")
     for key, value in trial.params.items():
         logger.info("    {}: {}".format(key, value))
-        
+
     # Save best parameters to JSON
     _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     model_dir = os.path.join(_PROJECT_ROOT, "evaluation", "models", "xgboost")
     os.makedirs(model_dir, exist_ok=True)
-    
+
     best_params_path = os.path.join(model_dir, "best_params.json")
     with open(best_params_path, "w") as f:
         json.dump(trial.params, f, indent=4)
-        
+
     logger.info(f"Best parameters saved to {best_params_path}")
     logger.info("You can now run train.py which will automatically use these best parameters!")
 

@@ -1,20 +1,26 @@
 import os
 import sys
-import pandas as pd
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 # Tambahkan path ke utils
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
-from config import OUT_FOLDER, get_logger, TARGET_HZ
-
 from build_cnn_data import (
-    GT_PATH, EVENTS_PATH, EXTENDED_SEQ_LEN, EVENT_WINDOW_HALF_S, 
-    GAP_GUARD_BAND_S, EVENT_GAP_BUFFER_S, CHANNELS,
-    compute_engineered_features, get_csv_path_for_trip, 
-    find_large_timestamp_gaps, split_contiguous_segments, 
-    _event_overlaps_buffered_gap, extract_sequence, resample_100hz
+    EVENT_WINDOW_HALF_S,
+    EVENTS_PATH,
+    EXTENDED_SEQ_LEN,
+    GT_PATH,
+    _event_overlaps_buffered_gap,
+    compute_engineered_features,
+    extract_sequence,
+    find_large_timestamp_gaps,
+    get_csv_path_for_trip,
+    resample_100hz,
+    split_contiguous_segments,
 )
+from config import OUT_FOLDER, get_logger
 
 logger = get_logger("visualize_defect_windows")
 DEFECT_OUT_DIR = os.path.join(OUT_FOLDER, "defect_windows")
@@ -25,17 +31,17 @@ def plot_defect(raw_df, t_center, event_id, label, reason, gap_intervals=None):
     # Ambil jendela waktu mentah +- 3 detik untuk visualisasi (lebih lebar dari window 2.3 detik asli)
     view_half_s = 3.0
     times = raw_df["timestamp"].astype(float).values / 1000.0
-    
+
     idx_start = np.searchsorted(times, t_center - view_half_s)
     idx_end = np.searchsorted(times, t_center + view_half_s)
-    
+
     if idx_start >= len(raw_df) or idx_end <= 0 or idx_start == idx_end:
         logger.warning(f"Event {event_id}: Tidak ada data raw di sekitar waktu {t_center:.2f}s")
         return
 
     seg = raw_df.iloc[idx_start:idx_end]
     seg_times = seg["timestamp"].astype(float).values / 1000.0
-    
+
     fig, axs = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
     fig.suptitle(f"Defect Window Analysis - Event ID: {event_id} | Label: {label}\nReason: {reason}", fontsize=14)
 
@@ -47,7 +53,7 @@ def plot_defect(raw_df, t_center, event_id, label, reason, gap_intervals=None):
     axs[0].set_ylabel("Accel (m/s^2)")
     axs[0].legend(loc="upper right")
     axs[0].grid(True, linestyle='--', alpha=0.6)
-    
+
     # Gambarkan batas window asli (2.3 detik)
     axs[0].axvspan(t_center - EVENT_WINDOW_HALF_S, t_center + EVENT_WINDOW_HALF_S, color='yellow', alpha=0.2, label="Target Extract Window")
     axs[0].axvline(t_center, color='k', linestyle='-', lw=2, label='Event Center')
@@ -55,8 +61,8 @@ def plot_defect(raw_df, t_center, event_id, label, reason, gap_intervals=None):
     # 2. Plot Timestamp Deltas (Untuk mendeteksi Gap secara visual)
     deltas_ms = np.diff(seg["timestamp"].astype(float).values)
     # Tambahkan 0 di awal agar panjang sama dengan seg_times
-    deltas_ms = np.insert(deltas_ms, 0, 0) 
-    
+    deltas_ms = np.insert(deltas_ms, 0, 0)
+
     axs[1].bar(seg_times, deltas_ms, color='orange', width=0.05, alpha=0.7, label='Time Delta (ms)')
     axs[1].axhline(10, color='g', linestyle='--', label='Ideal Delta (10ms)')
     axs[1].axhline(50, color='r', linestyle='--', label='Max Interpolation Limit (50ms)')
@@ -84,7 +90,7 @@ def plot_defect(raw_df, t_center, event_id, label, reason, gap_intervals=None):
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
-    
+
     safe_reason = reason.replace(" ", "_")
     filename = f"defect_{event_id}_{safe_reason}.png"
     plt.savefig(os.path.join(DEFECT_OUT_DIR, filename), dpi=150)
@@ -101,17 +107,17 @@ if __name__ == "__main__":
 
     df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
     df_labeled = df_labeled.sort_values(["trip_id", "time_s"]).reset_index(drop=True)
-    
+
     logger.info(f"Memulai pelacakan defect pada {len(df_labeled)} kandidat kejadian...")
 
     grouped_by_trip = df_labeled.groupby("trip_id")
     defect_count = 0
-    
+
     for trip_id, group in grouped_by_trip:
         csv_path = get_csv_path_for_trip(trip_id)
         if not csv_path:
             continue
-            
+
         try:
             raw_df = pd.read_csv(csv_path)
             if 'speed' not in raw_df.columns:
@@ -127,7 +133,7 @@ if __name__ == "__main__":
 
                 try:
                     segment_df = resample_100hz(segment_raw)
-                except Exception as e:
+                except Exception:
                     # Seluruh segment gagal di-resample (biasanya durasi terlalu pendek)
                     for _, row in segment_events.iterrows():
                         t_event = float(row["time_s"])

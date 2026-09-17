@@ -1,82 +1,141 @@
-# ml_pipelines — Road Anomaly Detection Pipeline
+# 🛣️ Road Anomaly Detection — ML Pipeline
 
-Pipeline *Machine Learning* untuk deteksi anomali jalan (lubang/pothole dan polisi tidur/speed bump) menggunakan data sensor murni (akselerometer, giroskop) dan GPS dari smartphone yang dipasang pada sepeda motor.
+![CI Pipeline](https://github.com/YOUR_USERNAME/ml_pipelines/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.13-blue.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c.svg)
+![ONNX](https://img.shields.io/badge/export-ONNX-informational.svg)
+![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)
+![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
-## Gambaran Umum
+An **end-to-end ML pipeline** for real-time road anomaly detection (potholes & speed bumps) on Android edge devices. The system uses raw IMU sensor data (accelerometer + gyroscope) collected via smartphone mounted on a motorcycle, and exports a production-ready model to ONNX for zero-latency on-device inference.
 
-Proyek ini memproses data sensor mentah untuk mendeteksi dan mengklasifikasikan anomali jalan secara otomatis. Pipeline ini mengevaluasi dan mengoptimasi dua arsitektur utama:
-1. **Classical Machine Learning (XGBoost)** dengan fitur statistik dan morfologi *hand-crafted*.
-2. **Deep Learning (Lightweight 1D-CNN)** yang dibangun secara *End-to-End* dengan augmentasi sinyal fisis.
-3. **Ensemble (Soft Voting)** yang menggabungkan kekuatan XGBoost dan 1D-CNN.
+> **Context:** This pipeline was developed as the core ML system for an undergraduate thesis (*Skripsi*) at UDINUS. The final model achieves **Macro F1-Score = 0.86** on the holdout test set after Optuna hyperparameter optimization.
 
 ---
 
-## Arsitektur & Pipeline Produksi
+## 📐 System Architecture
 
-`	ext
+```
 ┌─────────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  Raw Data       │────▶│  Sensor Fusion   │────▶│  Windowing &       │
-│  (100Hz CSV)    │     │  (Causal Filter) │     │  Feature/Signal    │
+│  Raw Sensor Data│────▶│  Sensor Fusion   │────▶│  Windowing &       │
+│  (100Hz CSV)    │     │  (Causal Filter) │     │  Signal Extraction │
 └─────────────────┘     └──────────────────┘     └────────────────────┘
                                                              │
                                                              ▼
 ┌─────────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  ONNX Export    │◀────│  Model Training  │◀────│  Ensemble          │
-│  (Android Ready)│     │  & Calibration   │     │  Evaluation        │
+│  ONNX Export    │◀────│  CNN Training    │◀────│  Optuna HPO        │
+│  (Android Ready)│     │  (Focal Loss)    │     │  (10 Trials)       │
 └─────────────────┘     └──────────────────┘     └────────────────────┘
-`
+```
 
-**Tahapan Pemrosesan Utama:**
-1. **Sensor Fusion (sensor_fusion.py)** — Memisahkan gravitasi dari akselerasi linear menggunakan *causal low-pass filter* (scipy.signal.lfilter) untuk eksekusi latensi-nol pada perangkat mobile, menghasilkan _vertical, _horizontal, dan speed.
-2. **Feature Extraction (eature_extraction.py)** — Mengekstrak 47 fitur statistik dan morfologi (*shape-aware*). Rasio spesifik-domain (misal 
-ise_time_ratio, down_up_asymmetry) distabilkan secara numerik melalui pembatasan nilai (*clipping*) untuk mencegah *outlier* tak terhingga.
-3. **Prapemrosesan Sinyal & Augmentasi Fisis (1D-CNN)** — Melakukan resampling ketat ke 100 Hz (interval 10ms) dengan toleransi celah maksimum 50ms untuk menghindari halusinasi data. Menggunakan *zero-padding* dan **Global Z-Score Normalization**. Menerapkan **Time Warping** (menyimulasikan variasi kecepatan motor) dan **Channel Dropout** (menyimulasikan kesalahan orientasi sensor) secara dinamis selama pelatihan.
-4. **Isotonic Calibration (XGBoost)** — Kalibrasi probabilitas pasca-pelatihan melalui *Out-Of-Fold (OOF) Isotonic Regression* untuk meredam inflasi probabilitas pada kelas minoritas.
-5. **Auto-ONNX Export** — Mengekspor model akhir PyTorch dan XGBoost langsung ke format universal .onnx untuk inferensi *Edge AI* secara *real-time* di Android/Kotlin.
-6. **Sinkronisasi Android Kotlin** — Logika aplikasi Android dijamin sinkron 1-banding-1 dengan *pipeline* ini, termasuk toleransi kekosongan data (*dropout gap*) 50ms, normalisasi tingkat instansi (*global-level*) dengan Z-Score eps=1e-6, dan penentuan batas putusan standar (*Default Argmax*) tanpa pergeseran probabilitas buatan.
-
----
-
-## Metrik Evaluasi Akhir (Aligned Holdout Test Set)
-
-Metrik berikut mewakili performa akhir di dunia nyata yang dievaluasi pada 1.386 *event Holdout Test Set* (30% dari perjalanan terisolasi) yang diselaraskan secara ketat, mengandung ketidakseimbangan kelas ekstrem (rasio minoritas ~1:12):
-
-| Model / Metrik | Pothole Precision | Pothole Recall | Pothole F1-Score | Speed Bump Precision | Speed Bump Recall | Speed Bump F1-Score | Macro F1-Score | Global Accuracy |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **XGBoost (Calibrated)** | 0.774 | 0.456 | 0.573 | 0.500 | 0.442 | 0.469 | 0.671 | 91% |
-| **1D-CNN (InceptionTime)** | 0.705 | **0.689** | **0.697** | 0.581 | **0.837** | **0.686** | **0.786** | **94%** |
-
-### Analisis Hasil
-* **Keunggulan 1D-CNN:** Arsitektur *Lightweight 1D-CNN* yang dipadukan dengan *Multi-Label Focal Loss* menunjukkan superioritas mutlak dalam menerjemahkan benturan fisik temporal menjadi klasifikasi. Model ini mencapai **Macro F1-Score sebesar 0.786**, dengan mudah mengalahkan pendekatan rekayasa fitur manual.
-* **Recall vs Keselamatan:** 1D-CNN secara signifikan meningkatkan Pothole Recall menjadi **68.9%** (dibandingkan XGBoost 45.6%) sembari mempertahankan Precision yang tangguh di angka **70.5%**. Keseimbangan ini sangat krusial bagi sistem keselamatan *Edge AI* di dunia nyata untuk mencegah *False Negative* (lubang yang terlewat) tanpa membanjiri pengguna dengan *False Positive*.
-* **Ketahanan Edge (Edge Resilience):** Integrasi augmentasi dinamis berhasil meniadakan masalah *Translation Variance* (di mana posisi anomali bergeser dalam jendela pemrosesan), membuktikan ketahanan arsitektur di berbagai lingkungan jalan dan konfigurasi suspensi.
+**Key Pipeline Stages:**
+1. **Sensor Fusion** — Separates gravity from linear acceleration using a causal low-pass filter (`scipy.signal.lfilter`) with zero lookahead, ensuring real-time viability on mobile.
+2. **Signal Preprocessing** — Strict resampling to 100 Hz (10ms interval) with a maximum gap tolerance of 50ms. Applies **Global Z-Score Normalization** anchored on training set statistics (not per-instance), preventing inference-time distribution shift.
+3. **Physics-Aware Augmentation** — During training: **Time Warping** (simulates variable motor speed), **Channel Dropout** (simulates sensor orientation faults), and **Temporal Jitter** (simulates mounting vibration).
+4. **Hyperparameter Optimization** — Optuna with Median Pruner searches across LR, Dropout, Batch Size, Channels, Focal Loss Gamma, and Weight Decay. The objective is a **Robust Score** (`mean_F1 − std_F1`) to penalize unstable cross-fold behavior.
+5. **ONNX Export** — PyTorch model wrapped with `MobileInferenceWrapper` (global scaler baked in as buffers) and exported via TorchScript to ONNX for on-device Android inference.
+6. **Android Synchronization** — Processing logic is kept 1-to-1 between this pipeline and the Kotlin Android app, including the 50ms dropout gap tolerance and `eps=1e-6` Z-Score normalization.
 
 ---
 
-## Cara Menjalankan Pipeline
+## 📊 Model Performance (Holdout Test Set — 20%)
 
-Gunakan Virtual Environment proyek (.venv) untuk mengeksekusi *pipeline* dari terminal Anda.
+Results on 941 samples from **5 trip-isolated** test routes (never seen during training):
 
-### 1. Ekstraksi Dataset
-`ash
-python src/dataset/build_xgboost_data.py
+| Metric | Baseline 1D-CNN | Optuna Tuned 1D-CNN | Δ Improvement |
+|:---|:---:|:---:|:---:|
+| **Non-Event F1** | 0.98 | 0.98 | — |
+| **Pothole F1** | 0.72 | **0.78** | +0.06 ✅ |
+| **Pothole Recall** | 0.59 | **0.71** | +0.12 ✅ |
+| **Speed Bump F1** | 0.79 | **0.81** | +0.02 ✅ |
+| **Macro F1-Score** | 0.83 | **0.86** | +0.03 ✅ |
+| **Accuracy** | 96% | **96%** | — |
+
+> **Optuna Best Parameters:** `LR=0.001253`, `Batch=16`, `Channels=48`, `Dropout=0.2094`, `WeightDecay=2.7e-5`, `Gamma=1.67`
+
+---
+
+## 🚀 Quickstart
+
+```bash
+# 1. Clone and create venv
+git clone https://github.com/YOUR_USERNAME/ml_pipelines.git
+cd ml_pipelines
+python -m venv .venv
+.venv/Scripts/activate  # Windows
+# source .venv/bin/activate  # Linux/macOS
+
+# 2. Install all dependencies
+make install
+
+# 3. Build datasets from raw CSV recordings
 python src/dataset/build_cnn_data.py
-`
 
-### 2. Pelatihan Model & Ekspor ONNX
-`ash
-# Melatih XGBoost + Isotonic Calibration + Ekspor ONNX
-python src/xgboost_model/train.py
+# 4. Train the model
+make train
 
-# Melatih 1D-CNN + Dynamic Augmentation + Auto-ONNX Export
-python src/cnn_model/train.py
-`
+# 5. Export to ONNX for Android
+make export-onnx
+```
 
-### 3. Evaluasi & Analisis
-`ash
-# Membandingkan performa XGBoost vs CNN
-python evaluation/compare_models.py
+---
 
-# Menjalankan Audit Anomali Sensor Perjalanan
-python evaluation/visualize_trip_anomaly.py
-`
+## 🗂️ Project Structure
+
+```
+ml_pipelines/
+├── src/
+│   ├── cnn_model/
+│   │   ├── train.py            # Main training script (K-Fold + Holdout)
+│   │   ├── optuna_tune.py      # Hyperparameter optimization
+│   │   ├── export_onnx.py      # ONNX export with MobileInferenceWrapper
+│   │   ├── model.py            # InceptionTime1D architecture
+│   │   └── analysis/           # PR-Curve, convergence visualization
+│   ├── xgboost_model/          # Classical ML baseline (XGBoost + Isotonic)
+│   ├── dataset/                # Dataset builders & ground truth labelers
+│   ├── utils/                  # Shared config, logger, feature utils
+│   └── tests/                  # Unit tests (pytest)
+├── evaluation/
+│   ├── models/                 # Saved .pth, .onnx, scaler params
+│   └── reports/                # Confusion matrices, PR curves
+├── data/
+│   └── processed/              # Windowed features & signals (generated)
+├── log/                        # Training run logs
+├── Makefile                    # Developer automation commands
+├── ruff.toml                   # Code quality configuration
+└── requirements.txt            # All dependencies (pinned versions)
+```
+
+---
+
+## 🔬 Key Technical Decisions
+
+| Decision | Rationale |
+|:---|:---|
+| **Causal Filter (no lookahead)** | Ensures zero-latency real-time inference on device. Non-causal filters would require future samples, making live detection impossible. |
+| **Trip-Based Train/Test Split** | Prevents data leakage. Samples from the same trip share temporal correlations; shuffling would produce artificially inflated metrics. |
+| **Global Z-Score (not per-instance)** | Anchoring normalization on training set statistics ensures the inference distribution matches training, preventing silent accuracy degradation at deployment. |
+| **Focal Loss (γ=1.67)** | Addresses the extreme class imbalance (~1:15 ratio of anomaly to normal road). Down-weights easy Non-Event samples so the model focuses on learning the minority anomaly pattern. |
+| **Robust Score Objective** | `mean(F1) − std(F1)` penalizes high-variance solutions in Optuna. A model that scores 0.70 in all folds is preferred over one that scores 0.90 in one fold and 0.50 in another. |
+| **MobileInferenceWrapper (ONNX)** | Bakes the global scaler (mean, std) as PyTorch buffers into the ONNX graph, so the Android app only sends raw sensor windows — no separate preprocessing code required. |
+
+---
+
+## 🛠️ Developer Commands
+
+```bash
+make help         # List all available commands
+make install      # Install all Python dependencies
+make lint         # Run Ruff linter + auto-fix
+make test         # Run unit tests with pytest
+make train        # Train 1D-CNN (local)
+make tune         # Run Optuna HPO (local)
+make export-onnx  # Export model to ONNX (local)
+make clean        # Remove __pycache__ and .pytest_cache
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

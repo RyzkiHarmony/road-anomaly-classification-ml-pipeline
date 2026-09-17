@@ -1,20 +1,22 @@
-import pandas as pd
-import numpy as np
-import os
 import glob
 import json
+import os
+
+import pandas as pd
+
 
 # Removing tqdm dependency
 def tqdm(iterable, **kwargs):
     return iterable
 
 import sys
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.append(os.path.dirname(__file__))
 
-from config import OUT_FOLDER, CSV_FOLDER, XGB_OUT_DIR, get_logger, WINDOW_SIZE_S
-from sensor_fusion import apply_sensor_fusion, split_contiguous_segments
+from config import CSV_FOLDER, OUT_FOLDER, WINDOW_SIZE_S, XGB_OUT_DIR, get_logger
 from feature_extraction import extract_event_shape_features
+from sensor_fusion import apply_sensor_fusion, split_contiguous_segments
 
 logger = get_logger(__name__)
 
@@ -24,10 +26,9 @@ OUTPUT_PATH  = os.path.join(XGB_OUT_DIR, "xgboost_labeled_windows.csv")
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 # Rasio sampling background Non-Event tambahan jika data manual Non-Event sedikit.
-BACKGROUND_RATIO = 2 
+BACKGROUND_RATIO = 2
 RANDOM_SEED = 42
 
-import argparse
 
 # --- HELPER: Find CSV for Trip ---
 def get_csv_path_for_trip(trip_id):
@@ -60,7 +61,7 @@ def main():
 
     # 1. ATTACH LABELS TO CANDIDATES
     df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
-    
+
     shared_bg_path = os.path.join(OUT_FOLDER, "shared_background.csv")
     if os.path.exists(shared_bg_path):
         try:
@@ -69,9 +70,9 @@ def main():
                 df_labeled = pd.concat([df_labeled, df_bg], ignore_index=True)
         except pd.errors.EmptyDataError:
             pass
-        
+
     df_labeled = df_labeled.sort_values(["trip_id", "time_s"]).reset_index(drop=True)
-    
+
     if df_labeled.empty:
         logger.warning("Belum ada data yang dilabeli di ground_truth_labels.csv.")
         return
@@ -81,7 +82,7 @@ def main():
     re_extracted_records = []
     skipped_events = 0
     skipped_by_trip = {}
-    
+
     # GROUP BY TRIP TO AVOID RE-READING AND RE-PROCESSING FILES
     grouped_by_trip = df_labeled.groupby("trip_id")
     for trip_id, group in grouped_by_trip:
@@ -90,18 +91,18 @@ def main():
             try:
                 raw_df = pd.read_csv(csv_path)
                 segments = split_contiguous_segments(raw_df)
-                
+
                 for segment_raw in segments:
                     segment_start_s = float(segment_raw["timestamp"].iloc[0]) / 1000.0
                     segment_end_s = float(segment_raw["timestamp"].iloc[-1]) / 1000.0
                     segment_events = group[(group["time_s"] >= segment_start_s) & (group["time_s"] <= segment_end_s)]
-                    
+
                     if segment_events.empty:
                         continue
-                        
+
                     try:
                         segment_fused = apply_sensor_fusion(segment_raw)
-                        
+
                         for _, row in segment_events.iterrows():
                             t_event = row["time_s"]
                             try:
@@ -132,7 +133,7 @@ def main():
             for _, row in group.iterrows():
                 skipped_events += 1
                 skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + 1
-                
+
     df_labeled = pd.DataFrame(re_extracted_records)
 
     logger.info(f"Basis data: {len(df_labeled)} event.")

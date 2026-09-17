@@ -10,10 +10,9 @@
 
 import numpy as np
 import pandas as pd
-from scipy.stats import median_abs_deviation, kurtosis as sp_kurtosis, skew as sp_skew
-from scipy.ndimage import gaussian_filter1d
-
-from config import WINDOW_S, OVERLAP, TARGET_HZ
+from config import OVERLAP, TARGET_HZ, WINDOW_S
+from scipy.stats import kurtosis as sp_kurtosis
+from scipy.stats import skew as sp_skew
 
 
 def extract_event_shape_features(window_df, bg_df=None):
@@ -119,7 +118,7 @@ def extract_event_shape_features(window_df, bg_df=None):
     else:
         dominant_idx = 0
         t_center = 0.0
-        
+
     num_peaks_accel = 0 # DEPRECATED (Not Kotlin Friendly)
 
     t_rel = t - t_center
@@ -136,7 +135,7 @@ def extract_event_shape_features(window_df, bg_df=None):
     top2_peak_ratio = 0.0 # DEPRECATED
 
     # ---------- Duration above threshold (Continuous) ----------
-    # Mencegah penggabungan multi-pothole dengan mencari segmen kontigu terpanjang 
+    # Mencegah penggabungan multi-pothole dengan mencari segmen kontigu terpanjang
     # di sekitar pusat event (menghindari label leakage).
     above_thr = mags_smooth > accel_thr
     duration_above_threshold = 0.0
@@ -144,16 +143,16 @@ def extract_event_shape_features(window_df, bg_df=None):
         edges = np.diff(np.concatenate(([0], above_thr.astype(int), [0])))
         starts = np.where(edges == 1)[0]
         ends   = np.where(edges == -1)[0]
-        
+
         # Cari segmen yang bersinggungan/mengandung puncak utama
         center_idx = dominant_idx if len(a_vert) > 0 else len(mags_smooth) // 2
-        
+
         valid_durations = []
         for s, e in zip(starts, ends):
             # Jika puncak berada di dalam atau sangat dekat dengan segmen ini
             if s <= center_idx <= e or abs(s - center_idx) < min_dist or abs(e - center_idx) < min_dist:
                 valid_durations.append(e - s)
-        
+
         if valid_durations:
             duration_above_threshold = float(max(valid_durations)) / fs
         else:
@@ -268,7 +267,7 @@ def extract_event_shape_features(window_df, bg_df=None):
     # 1. Signal-to-Noise Ratio (SNR)
     # Background Context (-5s to -1s) passed directly if available
     bg_seg = bg_df if bg_df is not None else pd.DataFrame()
-    
+
     if len(bg_seg) > 10 and len(seg) > 5:
         bg_a_vert = bg_seg["a_vertical"].astype(float).values
         bg_energy_rate = float(np.sum(bg_a_vert ** 2)) / len(bg_a_vert)
@@ -282,12 +281,12 @@ def extract_event_shape_features(window_df, bg_df=None):
     mean_abs_val = float(np.mean(np.abs(a_vert))) if len(a_vert) > 0 else 0.0
     mean_sqrt_abs_val = float(np.mean(np.sqrt(np.abs(a_vert)))) if len(a_vert) > 0 else 0.0
     max_abs_val = float(np.max(np.abs(a_vert))) if len(a_vert) > 0 else 0.0
-    
+
     crest_factor = max_abs_val / (rms_val + 1e-6)
     impulse_factor = max_abs_val / (mean_abs_val + 1e-6)
     clearance_factor = max_abs_val / ((mean_sqrt_abs_val**2) + 1e-6)
     shape_factor = rms_val / (mean_abs_val + 1e-6)
-    
+
     # Time Center of Mass (Energy concentration relative to the dominant peak)
     time_center_of_mass = 0.0
     if len(a_vert) > 0:
@@ -303,7 +302,7 @@ def extract_event_shape_features(window_df, bg_df=None):
         max_z = float(np.max(a_vert))
         if max_z > 0:
             min_z_to_max_z_ratio = np.clip(min_z / (max_z + 1e-6), -10.0, 10.0)
-            
+
         idx_min = np.argmin(a_vert)
         idx_max = np.argmax(a_vert)
         # Pothole: drop (min) happens before bounce (max)
@@ -313,37 +312,37 @@ def extract_event_shape_features(window_df, bg_df=None):
     hjorth_activity = 0.0
     hjorth_mobility = 0.0
     hjorth_complexity = 0.0
-    
+
     if len(a_vert) > 2:
         hjorth_activity = float(np.var(a_vert))
-        
+
         diff1 = np.diff(a_vert)
         diff2 = np.diff(diff1)
-        
+
         var_y = np.var(a_vert)
         var_d1 = np.var(diff1)
         var_d2 = np.var(diff2)
-        
+
         if var_y > 0:
             hjorth_mobility = float(np.sqrt(var_d1 / var_y))
             if var_d1 > 0:
                 hjorth_complexity = float(np.sqrt(var_d2 / var_d1) / hjorth_mobility)
-                
+
     # ---------- 4. Cross-Correlation (X, Y, Z) ----------
     corr_xy = 0.0
     corr_xz = 0.0
     corr_yz = 0.0
-    
+
     if len(seg) > 5 and has_native_lin:
         lax = seg["lin_ax"].astype(float).values
         lay = seg["lin_ay"].astype(float).values
         laz = seg["lin_az"].astype(float).values
-        
+
         try:
             corr_xy = float(np.corrcoef(lax, lay)[0, 1])
             corr_xz = float(np.corrcoef(lax, laz)[0, 1])
             corr_yz = float(np.corrcoef(lay, laz)[0, 1])
-            
+
             # Handle NaNs from constant signals
             if np.isnan(corr_xy): corr_xy = 0.0
             if np.isnan(corr_xz): corr_xz = 0.0
@@ -394,7 +393,7 @@ def extract_event_shape_features(window_df, bg_df=None):
         az_arr = seg["lin_az"].astype(float).values
         brake_energy = float(np.sum(az_arr ** 2))
         brake_to_bump_ratio = np.clip(brake_energy / (vertical_energy + 1e-6), 0.0, 100.0)
-        
+
     down_up_asymmetry = 0.0
     if len(a_vert) > 0:
         down_energy = float(np.sum(a_vert[a_vert < 0] ** 2))

@@ -4,8 +4,8 @@
 # Semua threshold, weight, dan parameter pipeline dikumpulkan di satu file
 # agar mudah di-tune tanpa mengubah logic di modul lain.
 
-import os
 import logging
+import os
 
 # ---------- PATHS ----------
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

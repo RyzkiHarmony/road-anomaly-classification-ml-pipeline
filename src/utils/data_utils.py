@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
     groups = np.asarray(groups)
     y_raw = np.asarray(y_raw)
@@ -33,11 +34,11 @@ def get_stratified_group_split(groups, y_raw, train_ratio=0.7):
         # If added to train:
         ratio_if_train = (current_train + counts) / (total_counts + 1e-9)
         err_train = np.sum((ratio_if_train - train_ratio) ** 2)
-        
+
         # If added to test:
         ratio_if_test = current_train / (total_counts + 1e-9)
         err_test = np.sum((ratio_if_test - train_ratio) ** 2)
-        
+
         if err_train < err_test:
             train_groups.add(g)
             current_train += counts

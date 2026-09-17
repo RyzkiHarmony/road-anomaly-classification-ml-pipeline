@@ -5,12 +5,11 @@
 #   cd labeling
 #   python -m pytest tests/ -v
 
-import math
-import sys
 import os
-import pytest
+import sys
+
 import numpy as np
-import pandas as pd
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils"))

@@ -1,26 +1,30 @@
 # %%
-import pandas as pd
-import numpy as np
-import folium
-import os
+import base64
+import datetime
 import glob
 import json
-import datetime
-import base64
+import os
 from io import BytesIO
+
+import folium
 import matplotlib
+import numpy as np
+import pandas as pd
+
 matplotlib.use("Agg")  # non-interactive backend, aman untuk batch rendering
+import sys
+
 import matplotlib.pyplot as plt
 from IPython.display import display
 
-import sys, os
 _DIR = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
 sys.path.append(os.path.join(_DIR, '..', 'utils'))
 
-from config import CSV_FOLDER, META_FOLDER, LABELS_FOLDER, OUT_FOLDER
-from label_suggester import apply_label_suggestions, save_label_suggestions
-from sensor_fusion import apply_sensor_fusion
+from config import CSV_FOLDER, LABELS_FOLDER, META_FOLDER, OUT_FOLDER
 from helpers import load_trip_meta
+from label_suggester import apply_label_suggestions
+from sensor_fusion import apply_sensor_fusion
+
 MAP_FOLDER = os.path.join(OUT_FOLDER, "maps")
 
 os.makedirs(MAP_FOLDER, exist_ok=True)
@@ -116,7 +120,7 @@ def generate_event_chart_b64(raw_df, event_time_s):
         a_vert_g = seg["a_vertical"].astype(float).values / 9.80665
         axes[ax_idx].plot(t_rel, a_vert_g, color="#a855f7", linewidth=1.0)
         axes[ax_idx].axhline(0, color="gray", linewidth=0.5, linestyle=":")
-        
+
         # Tambahkan panduan visual untuk threshold kausal yang baru direkalibrasi
         axes[ax_idx].axhline(1.0, color="green", linewidth=0.5, linestyle="--", alpha=0.5)
         axes[ax_idx].axhline(-1.0, color="green", linewidth=0.5, linestyle="--", alpha=0.5)
@@ -124,14 +128,14 @@ def generate_event_chart_b64(raw_df, event_time_s):
         axes[ax_idx].axhline(-1.4, color="orange", linewidth=0.5, linestyle="--", alpha=0.5)
         axes[ax_idx].axhline(1.8, color="red", linewidth=0.5, linestyle="--", alpha=0.5)
         axes[ax_idx].axhline(-1.8, color="red", linewidth=0.5, linestyle="--", alpha=0.5)
-        
+
         axes[ax_idx].set_ylabel("a_vert (G)", fontsize=6)
         axes[ax_idx].set_title("Vertical Accel (G, +up/-down) | Green: 1.0G, Orange: 1.4G, Red: 1.8G", fontsize=8, pad=2)
-        
+
         # Kunci limit sumbu Y agar threshold selalu terlihat
         y_max = max(2.0, np.max(np.abs(a_vert_g)) * 1.2)
         axes[ax_idx].set_ylim(-y_max, y_max)
-        
+
         ax_idx += 1
 
     # --- Gyroscope subplots ---
@@ -284,7 +288,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     # Tambahkan sedikit simpangan/jitter agar marker tidak saling tumpang tindih sempurna
     lat        = row["lat"] + np.random.uniform(-0.00002, 0.00002)
     lon        = row["lon"] + np.random.uniform(-0.00002, 0.00002)
-    
+
     event_coords[nomor] = {"lat": lat, "lon": lon}
     waktu_real = row["datetime_wib"].strftime("%H:%M:%S")
     menit      = int(row["detik_ke"] // 60)
@@ -311,7 +315,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
     suggested_conf = row.get("suggestion_confidence", 0.0)
     suggested_rsn  = row.get("suggestion_reason", "")
     suggested_raw  = row.get("suggested_raw_label", "")
-    
+
     vert_val = row.get('peak_vertical_g', float('nan'))
     vert_dir_str = "<span style='color:#ef4444;'>⬇️ Down (Pothole?)</span>" if vert_val < 0 else "<span style='color:#16a34a;'>⬆️ Up (Bump?)</span>"
 
@@ -344,12 +348,12 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
               <tr><td colspan='2'>🤖 <b>Suggested: <span style='color:#8b5cf6;'>{suggested_lbl}</span></b> ({suggested_conf:.0%})</td></tr>
               <tr><td colspan='2' style='font-size:10px;color:#555;'><i>{suggested_rsn}</i></td></tr>
             """
-        
+
     if kurtosis_val is not None and kurtosis_val == kurtosis_val: # NaN check
         jrk_str = f"{max_jerk_val:.0f}" if max_jerk_val is not None else "N/A"
         kur_str = f"{kurtosis_val:.1f}" if kurtosis_val is not None else "N/A"
         fft_str = f"{fft_ratio:.1f}" if fft_ratio is not None else "N/A"
-        
+
         scoring_rows += f"""
           <tr><td colspan='2'><hr style='margin:2px 0;'></td></tr>
           <tr><td>Max Jerk</td><td>: <b>{jrk_str} m/s³</b> <span style='font-size:9px;color:#888'>(Tinggi=Pothole)</span></td></tr>
@@ -364,7 +368,7 @@ for i, (_, row) in enumerate(df_trip.iterrows()):
         nav_buttons += f"<button onclick='goToEvent({prev_nomor})' style='cursor:pointer; padding:2px 8px; font-size:11px;'>&laquo; Prev</button>"
     else:
         nav_buttons += "<div></div>"
-        
+
     if next_nomor:
         nav_buttons += f"<button onclick='goToEvent({next_nomor})' style='cursor:pointer; padding:2px 8px; font-size:11px;'>Next &raquo;</button>"
     else:
@@ -409,7 +413,7 @@ js_script += """};
 function goToEvent(nomor) {
     var coords = eventCoords[nomor];
     if (!coords) return;
-    
+
     var mapInstance = null;
     for (var key in window) {
         if (window[key] instanceof L.Map) {
@@ -418,9 +422,9 @@ function goToEvent(nomor) {
         }
     }
     if (!mapInstance) return;
-    
+
     mapInstance.setView(coords, 18);
-    
+
     mapInstance.eachLayer(function(layer) {
         if (layer instanceof L.Marker) {
             var mLat = layer.getLatLng().lat;
@@ -473,7 +477,7 @@ else:
 
 # %% [markdown]
 # ## 3. Form Input Label (Ground Truth)
-# 
+#
 # ### Cara kerja:
 # 1. Jalankan sel di bawah untuk memuat label dari file JSON
 #    (jika file belum ada, akan dibuat template kosong).
@@ -501,54 +505,54 @@ def load_labels_from_json(trip_id, df_trip, trip_index=None):
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            
+
         import numpy as np
         labels = {}
         lost = 0
-        
+
         event_mapping = data.get("event_mapping", {})
         raw_labels = data.get("labels", {})
-        
+
         if not event_mapping:
             # Fallback for old integer keys
             labels = {int(k): v for k, v in raw_labels.items()}
             return labels
-            
+
         for k_str, label in raw_labels.items():
             if k_str not in event_mapping:
                 lost += 1
                 continue
-                
+
             time_s = float(event_mapping[k_str])
             time_diffs = np.abs(df_trip["time_s"] - time_s)
-            
+
             if len(time_diffs) == 0:
                 continue
-                
+
             min_diff = time_diffs.min()
-            
+
             if min_diff <= 0.5:
                 best_match_idx = time_diffs.idxmin()
                 nomor = int(df_trip.loc[best_match_idx, "nomor_event"])
                 labels[nomor] = label
             else:
                 lost += 1
-                
+
         print(f"[OK] Dimuat {len(labels)} label dari: {os.path.basename(path)}")
         if lost > 0:
             print(f"[WARN] {lost} label gagal di-map ke event saat ini (perbedaan waktu > 0.5s).")
-            
+
         # Self-healing: overwrite JSON with new mapping if it loaded successfully
         if len(labels) > 0:
             save_labels_to_json(trip_id, labels, df_trip, trip_index, "Auto-healed event_mapping")
-            
+
         return labels
 
     # Buat template kosong
     event_mapping = {}
     for idx, row in df_trip.iterrows():
         event_mapping[str(int(row["nomor_event"]))] = round(float(row["time_s"]), 3)
-        
+
     template = {
         "trip_index": trip_index if trip_index is not None else "?",
         "trip_id": str(trip_id),
@@ -560,19 +564,19 @@ def load_labels_from_json(trip_id, df_trip, trip_index=None):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(template, f, indent=4, ensure_ascii=False)
     print(f"[INFO] File label kosong dibuat: {os.path.basename(path)}")
-    print(f"       Edit file tersebut, lalu jalankan sel ini lagi.")
+    print("       Edit file tersebut, lalu jalankan sel ini lagi.")
     return {}
 
 
 def save_labels_to_json(trip_id, labels, df_trip, trip_index=None, notes=""):
     """Simpan USER_LABELS ke file JSON dengan arsitektur event_mapping."""
     path = _label_file_path(trip_id)
-    
+
     # 1. Simpan semua event_mapping untuk trip ini (baik yang dilabeli maupun belum)
     event_mapping = {}
     for idx, row in df_trip.iterrows():
         event_mapping[str(int(row["nomor_event"]))] = round(float(row["time_s"]), 3)
-        
+
     data = {
         "trip_index": trip_index if trip_index is not None else "?",
         "trip_id": str(trip_id),
@@ -606,7 +610,7 @@ if len(USER_LABELS) > 0:
             dur = float(matched.iloc[0].get("duration_above_threshold", 0.2))
             if pd.isna(dur) or dur <= 0: dur = 0.2
             t_peak = float(matched.iloc[0]["time_s"])
-            
+
             saved_rows.append({
                 "event_id":         int(matched.iloc[0]["event_id"]),
                 "trip_id":          selected_trip,

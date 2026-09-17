@@ -1,21 +1,24 @@
-import os
-import pandas as pd
-import numpy as np
-import joblib
 import json
+import os
+
+import joblib
 import matplotlib
+import numpy as np
+import pandas as pd
+
 matplotlib.use('Agg')
+import sys
+
 import matplotlib.pyplot as plt
-from sklearn.model_selection import GroupShuffleSplit, StratifiedGroupKFold
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_recall_curve, auc
 from sklearn.isotonic import IsotonicRegression
+from sklearn.metrics import auc, classification_report, confusion_matrix, f1_score, precision_recall_curve
+from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
 
-import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
-from config import XGB_OUT_DIR, get_logger, BEST_FEATURES
+from config import XGB_OUT_DIR, get_logger
 from data_utils import get_stratified_group_split
 
 logger = get_logger(__name__)
@@ -80,7 +83,7 @@ def main():
 
     # Menghapus row yang memiliki NaN pada kolom fitur atau label
     df = df.dropna(subset=['label'])
-    
+
     # DROP DATA LEAKAGE AND NON-KOTLIN-FRIENDLY FEATURES
     banned_cols = ['lat', 'lon', 'suggestion_confidence', 'score']
     metadata_cols = ['event_id', 'trip_id', 'label', 'source', 'time_s', 'timestamp'] + banned_cols
@@ -103,7 +106,7 @@ def main():
 
     # Split Dev/Holdout based on trip_id using the custom function
     dev_groups_list, test_groups_list = get_stratified_group_split(groups, y_all, train_ratio=0.8)
-    
+
     dev_mask = np.isin(groups, dev_groups_list)
     test_mask = np.isin(groups, test_groups_list)
 
@@ -120,7 +123,7 @@ def main():
     y_test_raw = y_all[test_mask][is_original_test]
     groups_test = groups[test_mask][is_original_test]
 
-    logger.info(f"Split Summary (Trip-Based):")
+    logger.info("Split Summary (Trip-Based):")
     logger.info(f"  Dev Set (80%): {len(dev_groups_list)} trips, {len(X_dev_full)} samples")
     logger.info(f"  Holdout Test Set (20%): {len(test_groups_list)} trips, {len(X_test_full)} samples (original only)")
 
@@ -145,9 +148,9 @@ def main():
 
     # ---------- CROSS-VALIDATION (4-FOLD STRATIFIED GROUP K-FOLD ON DEV SET) ----------
     sgkf = StratifiedGroupKFold(n_splits=4, shuffle=True, random_state=42)
-    
+
     fold_metrics = []
-    
+
     # OOF Trackers
     oof_y_true = []
     oof_y_pred = []
@@ -156,44 +159,44 @@ def main():
     for fold, (train_idx, val_idx) in enumerate(sgkf.split(X_dev, y_dev, groups_dev)):
         # 1. Train Set
         X_train, y_train = X_dev[train_idx], y_dev[train_idx]
-        
+
         # 2. Validation Set: STRICTLY filter out augmented twins to prevent data leakage validation mirages
         is_original_val = np.array([not str(s).startswith('augmented') for s in source_dev[val_idx]])
         clean_val_idx = val_idx[is_original_val]
-        
+
         X_val, y_val = X_dev[clean_val_idx], y_dev[clean_val_idx]
 
         # XGBClassifier with loaded or default parameters
         model = XGBClassifier(**xgb_params)
-        
+
         # Calculate sample weights to combat base rate fallacy
         weights_train = compute_sample_weight('balanced', y_train)
         model.fit(X_train, y_train, sample_weight=weights_train)
-        
+
         # Predictions on the clean, un-augmented validation split
         y_proba = model.predict_proba(X_val)
         y_pred = np.argmax(y_proba, axis=1)
-        
+
         # Track OOF
         oof_y_true.extend(y_val)
         oof_y_pred.extend(y_pred)
         oof_y_proba.extend(y_proba)
-        
+
         # Evaluate Training Set to check Overfitting
         y_pred_train = model.predict(X_train)
         f1_train = f1_score(y_train, y_pred_train, labels=[p_idx], average='macro', zero_division=0)
-        
+
         # Validation Evaluation
         f1_val = f1_score(y_val, y_pred, labels=[p_idx], average='macro', zero_division=0)
-        
+
         # Calculate PR-AUC for Pothole
         y_val_pothole_fold = (y_val == p_idx).astype(int)
         y_proba_pothole_fold = y_proba[:, p_idx]
         prec, rec, _ = precision_recall_curve(y_val_pothole_fold, y_proba_pothole_fold)
         pr_auc_val = auc(rec, prec)
-        
+
         fold_metrics.append((f1_val, pr_auc_val))
-        
+
         logger.info(f"Fold {fold+1} | Train Pothole F1: {f1_train:.4f} | Val Pothole F1: {f1_val:.4f} | Val PR-AUC: {pr_auc_val:.4f}")
 
     avg_f1 = np.mean([m[0] for m in fold_metrics])
@@ -211,7 +214,7 @@ def main():
 
     print("\nOut-of-Fold Classification Report (Default Argmax):")
     print(classification_report(oof_y_true, oof_y_pred_opt, target_names=classes, zero_division=0))
-    
+
     # Save Out-of-Fold Confusion Matrix
     cm_oof = confusion_matrix(oof_y_true, oof_y_pred_opt)
     _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -262,20 +265,20 @@ def main():
     # OOF probabilities are cross-validated, so no leakage.
     # This learns a mapping: raw_proba -> calibrated_proba per class.
     logger.info("Applying Isotonic Probability Calibration on OOF data...")
-    
+
     calibrators = {}
     for cls_idx in range(len(classes)):
         y_binary = (oof_y_true == cls_idx).astype(float)
         raw_proba = oof_y_proba[:, cls_idx]
-        
+
         ir = IsotonicRegression(y_min=0, y_max=1, out_of_bounds='clip')
         ir.fit(raw_proba, y_binary)
         calibrators[cls_idx] = ir
-        
+
         # Log calibration effect
         cal_proba = ir.predict(raw_proba)
         logger.info(f"  {classes[cls_idx]}: raw mean={raw_proba.mean():.4f} -> cal mean={cal_proba.mean():.4f}")
-    
+
     # Apply calibration to OOF probabilities and verify
     cal_oof_proba = np.column_stack([
         calibrators[i].predict(oof_y_proba[:, i]) for i in range(len(classes))
@@ -294,16 +297,16 @@ def main():
     # Save raw model for ONNX export
     pkl_path = os.path.join(model_dir, "xgboost_model.pkl")
     joblib.dump(final_model, pkl_path)
-    
+
     # Save calibrated model for Python evaluation
     cal_pkl_path = os.path.join(model_dir, "xgboost_calibrators.pkl")
     joblib.dump(calibrators, cal_pkl_path)
-    
+
     joblib.dump(le, os.path.join(model_dir, "xgboost_label_encoder.pkl"))
-    
+
     with open(os.path.join(model_dir, "xgboost_features.json"), "w") as f:
         json.dump(feature_cols, f, indent=2)
-    
+
     # Save threshold JSON for Android inference (uses raw ONNX + thresholds)
     threshold_config = {
         "pothole_threshold": float(best_thresh_p_cal),
@@ -318,7 +321,7 @@ def main():
     thresh_json_path = os.path.join(model_dir, "xgboost_thresholds.json")
     with open(thresh_json_path, "w") as f:
         json.dump(threshold_config, f, indent=2)
-    
+
     logger.info(f"Raw model saved at {pkl_path}")
     logger.info(f"Calibrated model saved at {cal_pkl_path}")
     logger.info(f"Threshold config saved at {thresh_json_path}")
@@ -331,7 +334,7 @@ def main():
         calibrators[i].predict(raw_test_probas[:, i]) for i in range(len(classes))
     ])
     test_probas = test_probas / test_probas.sum(axis=1, keepdims=True)
-            
+
     # --- Report Default Argmax on Holdout (Primary Metric) ---
     test_preds_default = np.argmax(test_probas, axis=1)
     print("\n" + "=" * 60)
@@ -339,7 +342,7 @@ def main():
     print("=" * 60)
     print(classification_report(y_test, test_preds_default, target_names=classes, zero_division=0))
     print("=" * 60 + "\n")
-    
+
     # Save holdout confusion matrix (using default argmax)
     cm_test = confusion_matrix(y_test, test_preds_default)
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -370,17 +373,17 @@ def main():
     try:
         from onnxmltools import convert_xgboost
         from onnxmltools.convert.common.data_types import FloatTensorType
-        
+
         logger.info("Exporting final model to ONNX format for Android deployment...")
         initial_types = [('input', FloatTensorType([None, len(feature_cols)]))]
-        
+
         # Convert the XGBoost final model to ONNX format
         onnx_model = convert_xgboost(
-            final_model, 
-            initial_types=initial_types, 
+            final_model,
+            initial_types=initial_types,
             target_opset=15
         )
-        
+
         onnx_path = os.path.join(model_dir, "xgboost_model.onnx")
         with open(onnx_path, "wb") as f:
             f.write(onnx_model.SerializeToString())

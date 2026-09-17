@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 import os
+
 import numpy as np
 import pandas as pd
+
 try:
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.preprocessing import LabelEncoder
@@ -54,10 +56,10 @@ _RAW_TO_FINAL = {
 ML_FEATURES = [
     "peak_mag", "peak_vertical_g", "peak_gyro_mag", "speed_mean",
     "event_duration", "vert_jrk", "num_peaks_accel", "num_peaks_gyro",
-    "peak_interval_mean", "peak_interval_std", "asymmetry_score", "vertical_energy", 
-    "gyro_energy", "accel_to_gyro_ratio", "local_duration", "top2_peak_ratio", 
-    "duration_above_threshold", "max_jerk", "peak_to_peak", "fft_high_low_ratio", 
-    "zcr", "kurtosis", "skewness", "gyro_pitch_energy", "gyro_roll_energy", 
+    "peak_interval_mean", "peak_interval_std", "asymmetry_score", "vertical_energy",
+    "gyro_energy", "accel_to_gyro_ratio", "local_duration", "top2_peak_ratio",
+    "duration_above_threshold", "max_jerk", "peak_to_peak", "fft_high_low_ratio",
+    "zcr", "kurtosis", "skewness", "gyro_pitch_energy", "gyro_roll_energy",
     "gyro_yaw_energy", "gyro_pitch_roll_ratio",
     "energy_psd_2_10", "speed_vert_interaction", "speed_normalized_p2p"
 ]
@@ -82,7 +84,7 @@ def train_ml_models(df_candidates, gt_path):
         "rf": None, "rf_classes": None,
         "xgb": None, "xgb_le": None
     }
-    
+
     if not os.path.exists(gt_path):
         return models
 
@@ -159,7 +161,7 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
     """
     if models is None:
         models = {}
-        
+
     rf_model = models.get("rf")
     rf_classes = models.get("rf_classes")
     xgb_model = models.get("xgb")
@@ -175,7 +177,7 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
     fft_ratio = _f(row, "fft_high_low_ratio", 0.0)
     max_jrk = _f(row, "max_jerk", 0.0)
     p_mag = _f(row, "peak_mag", 0.0)
-    
+
     # S-Tier Features
     pitch_e = _f(row, "gyro_pitch_energy", 0.0)
     roll_e = _f(row, "gyro_roll_energy", 0.0)
@@ -213,7 +215,7 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
             all_known_classes = set()
             for p in probs_list:
                 all_known_classes.update(p["classes"])
-            
+
             avg_probs = {}
             for cls in all_known_classes:
                 sum_prob = 0.0
@@ -236,7 +238,7 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
         kind = "event" if best_label in ("Pothole", "Speed Bump") else "condition_like"
         rule = f"ML_{best_model_name}"
         reason = f"Dipelajari dari data (Confidence: {best_confidence*100:.0f}%)"
-        
+
         suggested_label = _RAW_TO_FINAL.get(best_label, "Non-Event")
         return pd.Series({
             "suggested_label": suggested_label,
@@ -323,7 +325,7 @@ def suggest_event_label(row: pd.Series, models=None) -> pd.Series:
         reason = "amplitudo rendah + tidak ada struktur event → Non-Event"
         confidence = 0.92
         needs_review = False
-        
+
     # R9 - Fallback ML Low Confidence
     elif best_model_name != "NONE":
         raw_label = best_label
@@ -371,11 +373,11 @@ def apply_label_suggestions(df: pd.DataFrame, gt_path: str = None) -> pd.DataFra
     out = df.copy()
 
     models = train_ml_models(out, gt_path)
-    
+
     active_models = []
     if models.get("rf") is not None: active_models.append("RandomForest")
     if models.get("xgb") is not None: active_models.append("XGBoost")
-    
+
     if active_models:
         print(f"  [INFO] ML Suggester diaktifkan. Model aktif: {', '.join(active_models)}")
 

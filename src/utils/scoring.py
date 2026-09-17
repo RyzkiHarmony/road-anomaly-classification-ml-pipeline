@@ -10,12 +10,18 @@
 
 import numpy as np
 import pandas as pd
-
 from config import (
-    W_ACCEL, W_GYRO, W_JERK, W_DURATION,
-    SCORE_ACCEL_MIN_G, SCORE_ACCEL_MAX_G,
-    SCORE_GYRO_MAX, SCORE_JERK_MAX, SCORE_DUR_MAX_S,
-    PRIORITY_HIGH_THRESHOLD, PRIORITY_MEDIUM_THRESHOLD,
+    PRIORITY_HIGH_THRESHOLD,
+    PRIORITY_MEDIUM_THRESHOLD,
+    SCORE_ACCEL_MAX_G,
+    SCORE_ACCEL_MIN_G,
+    SCORE_DUR_MAX_S,
+    SCORE_GYRO_MAX,
+    SCORE_JERK_MAX,
+    W_ACCEL,
+    W_DURATION,
+    W_GYRO,
+    W_JERK,
     get_logger,
 )
 from helpers import robust_normalise
@@ -60,8 +66,8 @@ def score_events(events_df: pd.DataFrame) -> pd.DataFrame:
     # Oleh karena itu, kita memberikan "Boost" eksponensial untuk event dengan kecepatan rendah,
     # dan menetapkan kecepatan normal/tinggi sebagai baseline (1.0).
     speed_kph = df["speed_mean"].values * 3.6 if "speed_mean" in df.columns else np.full(len(df), 30.0)
-    
-    # Fungsi eksponensial terbalik: 
+
+    # Fungsi eksponensial terbalik:
     # v = 0 km/j -> boost maksimal (x1.5)
     # v >= 30 km/j -> mendekati baseline (x1.0)
     speed_boost = np.where(speed_kph < 30.0, 1.0 + 0.5 * np.exp(-speed_kph / 10.0), 1.0)
@@ -82,7 +88,7 @@ def score_events(events_df: pd.DataFrame) -> pd.DataFrame:
         + W_JERK   * n_jerk
         + W_DURATION * n_dur
     )
-    
+
     # Kalikan dengan speed_boost dan batasi maksimal 1.0 agar tetap ternormalisasi
     df["score"] = np.clip(base_score * df["speed_factor"], 0.0, 1.0)
 

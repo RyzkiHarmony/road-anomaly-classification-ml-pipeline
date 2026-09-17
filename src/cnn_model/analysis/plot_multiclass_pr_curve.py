@@ -1,7 +1,8 @@
 import os
-import numpy as np
+
 import matplotlib.pyplot as plt
-from sklearn.metrics import precision_recall_curve, auc
+import numpy as np
+from sklearn.metrics import auc, precision_recall_curve
 
 # Path untuk memuat probabilitas dari model Baseline dan Optuna
 baseline_true_path = r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d\baseline_holdout_y_true.npy"
@@ -24,9 +25,9 @@ def plot_multiclass():
     y_proba_base = np.load(baseline_proba_path)
     y_true_opt = np.load(optuna_true_path)
     y_proba_opt = np.load(optuna_proba_path)
-    
+
     fig, axes = plt.subplots(1, 2, figsize=(16, 7), sharey=True)
-    
+
     # --- PLOT 1: BASELINE ---
     for i, cls_name in enumerate(classes):
         y_test_bin = (y_true_base == i).astype(int)
@@ -34,7 +35,7 @@ def plot_multiclass():
         prec, rec, _ = precision_recall_curve(y_test_bin, prob)
         pr_auc = auc(rec, prec)
         axes[0].plot(rec, prec, color=colors[i], lw=2.5, label=f'{cls_name} (AUC = {pr_auc:.4f})')
-        
+
     axes[0].set_title('Baseline 1D-CNN', fontsize=14, fontweight='bold')
     axes[0].set_xlabel('Recall', fontsize=12)
     axes[0].set_ylabel('Precision', fontsize=12)
@@ -50,7 +51,7 @@ def plot_multiclass():
         prec, rec, _ = precision_recall_curve(y_test_bin, prob)
         pr_auc = auc(rec, prec)
         axes[1].plot(rec, prec, color=colors[i], lw=2.5, label=f'{cls_name} (AUC = {pr_auc:.4f})')
-        
+
     axes[1].set_title('Optuna Tuned 1D-CNN', fontsize=14, fontweight='bold')
     axes[1].set_xlabel('Recall', fontsize=12)
     axes[1].set_xlim([0.0, 1.0])

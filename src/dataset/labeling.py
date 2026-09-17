@@ -1,26 +1,32 @@
-import os
 import glob
+import os
+import sys
+
 import numpy as np
 import pandas as pd
-import sys
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.append(os.path.dirname(__file__))
 
+from clustering import cluster_peaks
 from config import (
-    CSV_FOLDER, OUT_FOLDER,
-    SPEED_LOW_MS, SPEED_HIGH_MS,
-    HIGH_CONF_VERT_G, CANDIDATE_VERT_G,
-    PRIORITY_HIGH_THRESHOLD, PRIORITY_MEDIUM_THRESHOLD,
+    CANDIDATE_VERT_G,
+    CSV_FOLDER,
+    HIGH_CONF_VERT_G,
+    OUT_FOLDER,
+    PRIORITY_HIGH_THRESHOLD,
+    PRIORITY_MEDIUM_THRESHOLD,
+    SPEED_HIGH_MS,
+    SPEED_LOW_MS,
     get_logger,
 )
-from helpers import load_trip_meta, validate_magnitude
-from sensor_fusion import apply_sensor_fusion
-from peak_detection import detect_peaks
-from feature_extraction import extract_windows_features
-from clustering import cluster_peaks
-from scoring import score_events
 from export import prepare_labeling_file
+from feature_extraction import extract_windows_features
+from helpers import load_trip_meta, validate_magnitude
 from label_suggester import apply_label_suggestions
+from peak_detection import detect_peaks
+from scoring import score_events
+from sensor_fusion import apply_sensor_fusion
 
 logger = get_logger(__name__)
 

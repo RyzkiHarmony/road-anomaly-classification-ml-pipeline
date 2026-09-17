@@ -11,20 +11,19 @@
 
 import numpy as np
 import pandas as pd
-
 from config import (
-    CLUSTER_TIME_S,
-    CLUSTER_SPATIAL_M,
-    G_TO_MS2,
-    HIGH_CONF_VERT_G,
     CANDIDATE_VERT_G,
-    GYRO_HIGH_CONF_RAD,
+    CLUSTER_SPATIAL_M,
+    CLUSTER_TIME_S,
+    G_TO_MS2,
     GYRO_CANDIDATE_RAD,
+    GYRO_HIGH_CONF_RAD,
+    HIGH_CONF_VERT_G,
     WINDOW_SIZE_S,
     get_logger,
 )
-from helpers import haversine
 from feature_extraction import extract_event_shape_features
+from helpers import haversine
 
 logger = get_logger(__name__)
 
@@ -71,7 +70,7 @@ def _cluster_to_event_row(cluster: dict, raw_df, raw_times) -> dict:
     dominant_vert_idx = int(np.argmax(np.abs(cluster["mags_vert"])))
     max_vert_ms2      = float(cluster["mags_vert"][dominant_vert_idx])
     time_dominant     = float(cluster["times"][dominant_vert_idx])
-    
+
     max_accel_ms2     = float(np.max(cluster["mags"]))
     max_gyro_rads     = float(np.max(cluster["gyro_mags"]))
 

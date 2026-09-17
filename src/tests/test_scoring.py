@@ -5,25 +5,25 @@
 #   cd labeling
 #   python -m pytest tests/ -v
 
-import sys
 import os
-import pytest
-import numpy as np
+import sys
+
 import pandas as pd
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils"))
 
-from scoring import score_events
 from config import (
     PRIORITY_HIGH_THRESHOLD,
     PRIORITY_MEDIUM_THRESHOLD,
-    SCORE_ACCEL_MIN_G,
     SCORE_ACCEL_MAX_G,
+    SCORE_ACCEL_MIN_G,
+    SCORE_DUR_MAX_S,
     SCORE_GYRO_MAX,
     SCORE_JERK_MAX,
-    SCORE_DUR_MAX_S,
 )
+from scoring import score_events
 
 
 def _make_events(**kwargs) -> pd.DataFrame:

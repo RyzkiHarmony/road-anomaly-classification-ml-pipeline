@@ -1,9 +1,11 @@
-import os
 import argparse
-import numpy as np
+import os
+
 import matplotlib.pyplot as plt
-from sklearn.metrics import precision_recall_curve, auc
+import numpy as np
+from sklearn.metrics import auc, precision_recall_curve
 from sklearn.preprocessing import label_binarize
+
 
 def plot_pr_curve(model_dir, report_dir):
     # Construct file paths
@@ -28,15 +30,15 @@ def plot_pr_curve(model_dir, report_dir):
 
     # Setup the plot
     plt.figure(figsize=(9, 7))
-    
+
     # Warna yang digunakan untuk membedakan garis tiap kelas
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
-    
+
     # Hitung dan Plot PR Curve untuk masing-masing kelas
     for i in range(n_classes):
         precision, recall, _ = precision_recall_curve(y_true_bin[:, i], y_proba[:, i])
         pr_auc = auc(recall, precision)
-        
+
         plt.plot(recall, precision, color=colors[i % len(colors)], lw=2.5,
                  label=f'{classes[i]} (PR-AUC = {pr_auc:.4f})')
 
@@ -48,16 +50,16 @@ def plot_pr_curve(model_dir, report_dir):
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.xlim([0.0, 1.05])
     plt.ylim([0.0, 1.05])
-    
+
     # Buat direktori report jika belum ada
     os.makedirs(report_dir, exist_ok=True)
     output_path = os.path.join(report_dir, "cnn_1d_pr_curve.png")
-    
+
     # Simpan dan Tampilkan
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     print(f"Gambar PR Curve berhasil disimpan di:\n -> {output_path}")
-    
+
     # Show window only if not in headless environment (we will just close it in headless)
     try:
         plt.show(block=False)
@@ -68,13 +70,13 @@ def plot_pr_curve(model_dir, report_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot Precision-Recall Curve dari data OOF")
-    parser.add_argument("--model_dir", type=str, 
-                        default=r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d", 
+    parser.add_argument("--model_dir", type=str,
+                        default=r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\models\cnn_1d",
                         help="Folder tempat cnn_1d_oof_y_true.npy disimpan")
-    parser.add_argument("--report_dir", type=str, 
-                        default=r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\cnn_1d", 
+    parser.add_argument("--report_dir", type=str,
+                        default=r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\evaluation\reports\cnn_1d",
                         help="Folder tempat gambar PR Curve akan disimpan")
-    
+
     args = parser.parse_args()
-    
+
     plot_pr_curve(args.model_dir, args.report_dir)

@@ -1,16 +1,17 @@
-import os
 import glob
 import json
-import pandas as pd
-import numpy as np
+import os
 import sys
+
+import numpy as np
+import pandas as pd
 
 # Tambahkan path ke folder utils untuk import config
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.append(os.path.dirname(__file__))
 
-from config import OUT_FOLDER, CSV_FOLDER, CNN_OUT_DIR, WINDOW_SIZE_S, TARGET_HZ, get_logger
-from sensor_fusion import resample_100hz, find_large_timestamp_gaps, split_contiguous_segments
+from config import CNN_OUT_DIR, CSV_FOLDER, OUT_FOLDER, TARGET_HZ, WINDOW_SIZE_S, get_logger
+from sensor_fusion import find_large_timestamp_gaps, resample_100hz, split_contiguous_segments
 
 logger = get_logger(__name__)
 
@@ -21,7 +22,7 @@ os.makedirs(CNN_DATA_DIR, exist_ok=True)
 GT_PATH      = os.path.join(OUT_FOLDER, "ground_truth_labels.csv")
 EVENTS_PATH  = os.path.join(OUT_FOLDER, "candidates_events.csv")
 
-BACKGROUND_RATIO = 2 
+BACKGROUND_RATIO = 2
 MAX_JITTER_SAMPLES = 15
 SEQ_LEN = int(WINDOW_SIZE_S * TARGET_HZ)  # 2.0 * 100 = 200
 EXTENDED_SEQ_LEN = SEQ_LEN + 2 * MAX_JITTER_SAMPLES # 230
@@ -42,7 +43,7 @@ def _require_columns(df, required_cols, trip_id):
 
 def compute_engineered_features(df):
     df = df.sort_values("timestamp").reset_index(drop=True)
-    
+
     # 1. Pastikan kolom ax, ay, az tersedia (jika belum, jumlahkan lin dan grav)
     if "ax" not in df.columns:
         if "lin_ax" in df.columns and "grav_x" in df.columns:
@@ -55,7 +56,7 @@ def compute_engineered_features(df):
             df["az"] = df["accel_z"]
         else:
             raise ValueError("Missing accelerometer columns: cannot derive ax/ay/az")
-            
+
     # Pastikan gx, gy, gz ada
     for col in ["gx", "gy", "gz"]:
         if col not in df.columns:
@@ -102,25 +103,25 @@ def extract_sequence(raw_df, t_center):
     Menggunakan interpolasi nearest jika sample tidak tepat EXTENDED_SEQ_LEN.
     """
     times = raw_df["timestamp"].astype(float).values / 1000.0
-    
+
     # Toleransi untuk mencari nearest indices
     window_s = EXTENDED_SEQ_LEN / TARGET_HZ
     idx_start = np.searchsorted(times, t_center - (window_s / 2.0))
     idx_end = np.searchsorted(times, t_center + (window_s / 2.0))
-    
+
     seg = raw_df.iloc[idx_start:idx_end]
-    
+
     seq = np.zeros((EXTENDED_SEQ_LEN, len(CHANNELS)), dtype=np.float32)
-    
+
     if len(seg) > 0:
         # [CRITICAL FIX]: limit=5 to avoid hallucinating large gaps
         data_arr = seg[CHANNELS].interpolate(method='linear', limit=5).ffill(limit=5).bfill(limit=5).values
-        
+
         # Check coverage
         coverage_ratio = len(data_arr) / EXTENDED_SEQ_LEN
         if coverage_ratio < 0.7 or np.isnan(data_arr).any():
             return None
-            
+
         if len(data_arr) == EXTENDED_SEQ_LEN:
             seq = data_arr
         elif len(data_arr) > EXTENDED_SEQ_LEN:
@@ -131,10 +132,10 @@ def extract_sequence(raw_df, t_center):
             # Pad dengan 0.0 (sudah inisialisasi dari np.zeros), BUKAN edge values
             pad_left = (EXTENDED_SEQ_LEN - len(data_arr)) // 2
             seq[pad_left:pad_left+len(data_arr)] = data_arr
-            
+
     else:
         return None
-    
+
     return seq
 
 def main():
@@ -146,12 +147,12 @@ def main():
     df_events = pd.read_csv(EVENTS_PATH)
 
     df_labeled = df_events.merge(df_gt[["event_id", "label"]], on="event_id", how="inner")
-    
+
     shared_bg_path = os.path.join(OUT_FOLDER, "shared_background.csv")
     # [DOKUMENTASI]: shared_background.csv adalah sampel kelas Non-Event yang di-generate
     # secara acak dari trip yang sama dengan data ground truth untuk menyeimbangkan kelas.
-    # Karena trip_id dipertahankan aslinya, pembagian StratifiedGroupKFold berdasarkan 
-    # trip_id di train.py memastikan sampel background ini TIDAK menyebabkan data leakage 
+    # Karena trip_id dipertahankan aslinya, pembagian StratifiedGroupKFold berdasarkan
+    # trip_id di train.py memastikan sampel background ini TIDAK menyebabkan data leakage
     # lintas set (train vs test).
     if os.path.exists(shared_bg_path):
         try:
@@ -160,9 +161,9 @@ def main():
                 df_labeled = pd.concat([df_labeled, df_bg], ignore_index=True)
         except pd.errors.EmptyDataError:
             pass
-        
+
     df_labeled = df_labeled.sort_values(["trip_id", "time_s"]).reset_index(drop=True)
-    
+
     if df_labeled.empty:
         logger.warning("Belum ada data yang dilabeli.")
         return
@@ -179,7 +180,7 @@ def main():
         "preprocess_failed": 0,
         "missing_csv": 0,
     }
-    
+
     grouped_by_trip = df_labeled.groupby("trip_id")
     for trip_id, group in grouped_by_trip:
         csv_path = get_csv_path_for_trip(trip_id)
@@ -244,7 +245,7 @@ def main():
             skipped_events += len(group)
             skipped_by_trip[trip_id] = skipped_by_trip.get(trip_id, 0) + len(group)
             skipped_by_reason["missing_csv"] += len(group)
-                
+
 
     if not X_list:
         raise ValueError("No CNN samples were extracted. Check raw CSV schema and preprocessing rules.")
@@ -254,15 +255,15 @@ def main():
     y = np.array(y_list)
     groups = np.array(groups_list)
     event_ids = np.array(event_ids_list)
-    
+
     # Transpose X to (N_samples, Channels, Length) for PyTorch 1D-CNN
     X = np.transpose(X, (0, 2, 1))
-    
+
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_X.npy"), X)
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_y.npy"), y)
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_groups.npy"), groups)
     np.save(os.path.join(CNN_DATA_DIR, "cnn_1d_event_ids.npy"), event_ids)
-    
+
     logger.info(f"Dataset 1D-CNN disimpan. Shape X: {X.shape}, Shape y: {y.shape}")
     if skipped_events:
         top_skipped = sorted(skipped_by_trip.items(), key=lambda item: item[1], reverse=True)[:5]
@@ -272,6 +273,6 @@ def main():
             "Skip reasons: "
             + ", ".join([f"{reason}={count}" for reason, count in skipped_by_reason.items()])
         )
-    
+
 if __name__ == "__main__":
     main()

@@ -1,5 +1,6 @@
-import onnx
 import os
+
+import onnx
 
 model_dir = r"d:\VSCode Data\Road Detection - Project Skripsi\ml_pipelines\06_1dcnn\models"
 onnx_path = os.path.join(model_dir, "model_1dcnn.onnx")

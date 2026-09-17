@@ -2,8 +2,8 @@
 # Export file labeling terstratifikasi (high/candidate/normal).
 
 import os
-import pandas as pd
 
+import pandas as pd
 from config import OUT_FOLDER
 from label_suggester import SUGGESTION_COLS
 
