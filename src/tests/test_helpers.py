@@ -12,7 +12,10 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils"))
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils"),
+)
 
 from helpers import haversine, normalise_0_1, robust_normalise
 
@@ -29,7 +32,9 @@ class TestHaversine:
         # Jakarta: -6.2088, 106.8456
         # Bandung: -6.9175, 107.6191
         dist_m = haversine(-6.2088, 106.8456, -6.9175, 107.6191)
-        assert 115_000 < dist_m < 130_000, f"Expected ~120 km, got {dist_m/1000:.1f} km"
+        assert 115_000 < dist_m < 130_000, (
+            f"Expected ~120 km, got {dist_m / 1000:.1f} km"
+        )
 
     def test_short_distance_cluster_threshold(self):
         """Two GPS points 5 metres apart should be < CLUSTER_SPATIAL_M (10 m)."""
@@ -73,7 +78,7 @@ class TestNormalise01:
         result = normalise_0_1(values)
         # Relative ordering must be preserved
         sorted_original = np.argsort(values)
-        sorted_result   = np.argsort(result)
+        sorted_result = np.argsort(result)
         np.testing.assert_array_equal(sorted_original, sorted_result)
 
 
