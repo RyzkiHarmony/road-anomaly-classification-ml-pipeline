@@ -19,11 +19,12 @@ logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(_PROJECT_ROOT, "src", "utils"))
+sys.path.append(os.path.join(_PROJECT_ROOT, "src", "cnn_model"))
 
 from config import CNN_OUT_DIR
 from data_utils import get_stratified_group_split
 from model import InceptionTime1D
-from train import DynamicJitterDataset, MultiClassFocalLoss, set_seed
+from training_utils import DynamicJitterDataset, MultiClassFocalLoss, set_seed
 
 DATA_DIR = CNN_OUT_DIR
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "best_optuna_params.json")
@@ -176,13 +177,18 @@ def objective(trial):
     return robust_score
 
 if __name__ == "__main__":
-    logger.info("Starting Optuna Multivariate Search for 1D-CNN (10 Trials)...")
+    import argparse
+    parser = argparse.ArgumentParser(description="Optuna Hyperparameter Optimization for 1D-CNN")
+    parser.add_argument("--n-trials", type=int, default=10, help="Number of Optuna trials (default: 10)")
+    args = parser.parse_args()
+
+    logger.info(f"Starting Optuna Multivariate Search for 1D-CNN ({args.n_trials} Trials)...")
 
     study = optuna.create_study(
         direction="maximize",
         pruner=optuna.pruners.MedianPruner(n_startup_trials=4, n_warmup_steps=20)
     )
-    study.optimize(objective, n_trials=10)
+    study.optimize(objective, n_trials=args.n_trials)
 
     logger.info("Study finished!")
     logger.info(f"Number of finished trials: {len(study.trials)}")

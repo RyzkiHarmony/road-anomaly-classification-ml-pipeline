@@ -55,6 +55,65 @@ Results on 941 samples from **5 trip-isolated** test routes (never seen during t
 
 ---
 
+## 🔍 Alur Pengerjaan & Tahapan Pipeline Terperinci
+
+Pipeline dikembangkan secara terstruktur melalui **6 Tahap Utama**, dimulai dari inspeksi data kotor mentah hingga ekspor model ke format ONNX untuk Android Edge AI:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAHAP 1: INSPEKSI DATA KOTOR & AUDIT KUALITAS (RAW DATA QUALITY AUDIT)      │
+│  • Pengecekan Fluktuasi Sampling Rate (80Hz - 110Hz -> Irregular Interval)  │
+│  • Deteksi Dropout Gaps (> 50ms akibat Throttling OS Android)               │
+│  • Verifikasi Satuan Sensor (m/s² & rad/s) & Noise Level Getaran Motor      │
+│  • Analisis Ketidakseimbangan Kelas Ground Truth (~15:1 Non-Event Ratio)     │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAHAP 2: PEMBERSIHAN DATA & SENSOR FUSION (DATA CLEANING & PREPROCESSING)    │
+│  • Interpolasi Linier Resampling Teratur 100 Hz (10ms Interval)             │
+│  • Causal Low-pass Filter (scipy.signal.lfilter, Latensi 0ms, Zero-Lookahead)│
+│  • Sensor Fusion: Pemisahan Gravitasi (g) & Akselerasi Linier (a_lin)       │
+│  • Spatial Alignment: Pencocokan GPS Haversine (< 10m) & Timestamp IMU      │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAHAP 3: PEMBUATAN WINDOW & DATASET (WINDOWING & DATASET BUILDING)          │
+│  • Windowing Terpusat 2.0 Detik (200 Sampel = 100 sebelum & 100 sesudah)    │
+│  • Kalkulasi Z-Score Global Normalization (mean, std pada Training Set)     │
+│  • Trip-Isolated Group Split (Stratified Group K-Fold berdasar trip_id)     │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAHAP 4: PELATIHAN MODEL & OPTIMASI HIPERPARAMETER (TRAINING & HPO)         │
+│  • Arsitektur 1D-CNN InceptionTime1D + Squeeze-and-Excitation (SEBlock1D)   │
+│  • MultiClassFocalLoss (Gamma=1.67) untuk Penanganan Extreme Class Imbalance │
+│  • Physics-Aware Augmentation: Time Warping, Channel Dropout, Jitter        │
+│  • Optuna HPO: Search Space (LR, Batch, Weight Decay, Channels, Gamma)      │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAHAP 5: EVALUASI MODEL, AUDIT KESALAHAN & STUDA ABLASI (EVALUATION & AUDIT) │
+│  • Evaluasi Holdout Test Set (20% Trip Terisolasi yang Belum Pernah Dilihat) │
+│  • Matriks Evaluasi: Confusion Matrix, PR-AUC, Precision, Recall, F1-Score  │
+│  • Studi Ablasi Head-to-Head: Baseline 1D-CNN vs Optuna Tuned 1D-CNN        │
+│  • Error Audit (Analisis False Positive & False Negative) & Uji Kalibrasi   │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TAHAP 6: EKSPOR ONNX & INTEGRASI ANDROID (ONNX EXPORT & EDGE AI)             │
+│  • Wrap Model dengan MobileInferenceWrapper (Bake Z-Score Scaler Buffers)   │
+│  • TorchScript Export -> 1dcnn_optuna_tuned.onnx                             │
+│  • Benchmark Inference Latency (< 5ms per 2-second window) pada Device      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 🚀 Quickstart
 
 ```bash
@@ -66,16 +125,28 @@ python -m venv .venv
 # source .venv/bin/activate  # Linux/macOS
 
 # 2. Install all dependencies
-make install
+pip install -r requirements.txt
 
-# 3. Build datasets from raw CSV recordings
-python src/dataset/build_cnn_data.py
+# 3. Tahap 1 - Deteksi peak & labeling event
+python src/dataset/001_labeling.py
 
-# 4. Train the model
-make train
+# 4. Tahap 2 - Generate shared background (Non-Event)
+python src/dataset/002_generate_shared_background.py
 
-# 5. Export to ONNX for Android
-make export-onnx
+# 5. Tahap 3 - Pembuatan window & dataset 1D-CNN (2.0s @ 100Hz)
+python src/dataset/003_build_cnn_data.py
+
+# 6. Tahap 4 - Optimasi hiperparameter (Optuna HPO)
+python src/cnn_model/005_optuna_tune.py
+
+# 7. Tahap 5 - Pelatihan model InceptionTime1D (K-Fold & Holdout)
+python src/cnn_model/006_train.py
+
+# 8. Tahap 6 - Ekspor ONNX untuk deployment Android
+python src/cnn_model/007_export_onnx.py
+
+# 9. Tahap 7 - Benchmark latensi inferensi edge (< 5ms)
+python src/cnn_model/008_benchmark_onnx.py
 ```
 
 ---
@@ -85,25 +156,35 @@ make export-onnx
 ```
 ml_pipelines/
 ├── src/
-│   ├── cnn_model/
-│   │   ├── train.py            # Main training script (K-Fold + Holdout)
-│   │   ├── optuna_tune.py      # Hyperparameter optimization
-│   │   ├── export_onnx.py      # ONNX export with MobileInferenceWrapper
-│   │   ├── model.py            # InceptionTime1D architecture
-│   │   └── analysis/           # PR-Curve, convergence visualization
-│   ├── xgboost_model/          # Classical ML baseline (XGBoost + Isotonic)
-│   ├── dataset/                # Dataset builders & ground truth labelers
-│   ├── utils/                  # Shared config, logger, feature utils
-│   └── tests/                  # Unit tests (pytest)
+│   ├── dataset/                        # Pipeline tahap data preparation & ground truth
+│   │   ├── 001_labeling.py             # Step 1: Deteksi peak & clustering event
+│   │   ├── 002_generate_shared_background.py # Step 2: Sampling background non-event
+│   │   ├── 003_build_cnn_data.py       # Step 3: Windowing & dataset numpy 1D-CNN
+│   │   ├── 004_build_xgboost_data.py   # Step 4: Ekstraksi fitur tabular XGBoost
+│   │   ├── cnn_dataset_utils.py        # Helper library windowing & ekstraksi sinyal
+│   │   ├── sensor_fusion.py            # Helper causal filtering & gravitasi
+│   │   ├── clustering.py               # Helper spatio-temporal clustering
+│   │   ├── peak_detection.py           # Helper deteksi shock acceleration
+│   │   └── feature_extraction.py       # Helper 88 fitur domain waktu-frekuensi
+│   ├── cnn_model/                      # Pipeline tahap pemodelan 1D-CNN & deployment
+│   │   ├── 005_optuna_tune.py          # Step 5: HPO Bayesian optimization
+│   │   ├── 006_train.py                # Step 6: Pelatihan model K-Fold + Holdout
+│   │   ├── 007_export_onnx.py          # Step 7: ONNX export + MobileInferenceWrapper
+│   │   ├── 008_benchmark_onnx.py       # Step 8: Benchmark inferensi edge
+│   │   ├── model.py                    # InceptionTime1D neural network architecture
+│   │   ├── training_utils.py           # Dataset jitter, focal loss, & seed utils
+│   │   └── analysis/                   # Eksperimen LR, epoch, dan batch size
+│   ├── xgboost_model/                  # Classical ML baseline (XGBoost)
+│   ├── utils/                          # Shared config, logger, feature helpers
+│   └── tests/                          # Pytest suite (31 passing tests)
 ├── evaluation/
-│   ├── models/                 # Saved .pth, .onnx, scaler params
-│   └── reports/                # Confusion matrices, PR curves
+│   ├── models/                         # Saved .pth, .onnx, scaler params
+│   └── reports/                        # Confusion matrices, PR curves
 ├── data/
-│   └── processed/              # Windowed features & signals (generated)
-├── log/                        # Training run logs
-├── Makefile                    # Developer automation commands
-├── ruff.toml                   # Code quality configuration
-└── requirements.txt            # All dependencies (pinned versions)
+│   └── processed/                      # Windowed features & signals (generated)
+├── log/                                # Training run logs
+├── ruff.toml                           # Code quality configuration
+└── requirements.txt                    # All dependencies (pinned versions)
 ```
 
 ---

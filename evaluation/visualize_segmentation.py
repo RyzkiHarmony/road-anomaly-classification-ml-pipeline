@@ -9,7 +9,7 @@ def main():
         X = np.load('data/processed/cnn_1d/cnn_1d_X.npy')
         y = np.load('data/processed/cnn_1d/cnn_1d_y.npy', allow_pickle=True)
     except FileNotFoundError:
-        print("Data numpy cnn_1d belum ditemukan, pastikan build_cnn_data.py sudah dijalankan.")
+        print("Data numpy cnn_1d belum ditemukan, pastikan 003_build_cnn_data.py sudah dijalankan.")
         return
     
     # Target Hz and duration

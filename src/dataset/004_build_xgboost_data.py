@@ -33,7 +33,7 @@ RANDOM_SEED = 42
 # --- HELPER: Find CSV for Trip ---
 def get_csv_path_for_trip(trip_id):
     meta_dir = os.path.join(os.path.dirname(CSV_FOLDER), "meta")
-    meta_files = glob.glob(os.path.join(meta_dir, "*.json"))
+    meta_files = sorted(glob.glob(os.path.join(meta_dir, "*.json")))
     for jf in meta_files:
         try:
             with open(jf, 'r') as f:

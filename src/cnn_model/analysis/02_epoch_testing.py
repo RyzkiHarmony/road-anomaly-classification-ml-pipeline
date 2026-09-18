@@ -15,7 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../..", "05_pipeline_ex
 
 from config import CNN_OUT_DIR
 from model import InceptionTime1D
-from train import DynamicJitterDataset, MultiLabelFocalLoss, get_stratified_group_split, scale_instance_level, set_seed
+from training_utils import DynamicJitterDataset, MultiLabelFocalLoss, get_stratified_group_split, scale_instance_level, set_seed
 
 DATA_DIR = CNN_OUT_DIR
 

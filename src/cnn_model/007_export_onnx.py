@@ -51,7 +51,7 @@ def main():
 
     # Load best params to match the saved model
     best_params_path = os.path.join(_PROJECT_ROOT, "src", "cnn_model", "best_optuna_params.json")
-    channels_val = 32  # Default from train.py argparse
+    channels_val = 32  # Default from 006_train.py argparse
     dropout_val = 0.5
     if os.path.exists(best_params_path):
         import json

@@ -46,7 +46,7 @@ def main():
     # 2. Load Saved CNN Event IDs (Extracted successfully)
     cnn_ids_path = os.path.join(CNN_OUT_DIR, "cnn_1d_event_ids.npy")
     if not os.path.exists(cnn_ids_path):
-        print(f"Error: {cnn_ids_path} tidak ditemukan. Silakan jalankan build_cnn_data.py terlebih dahulu.")
+        print(f"Error: {cnn_ids_path} tidak ditemukan. Silakan jalankan 003_build_cnn_data.py terlebih dahulu.")
         return
 
     cnn_event_ids = set(np.load(cnn_ids_path, allow_pickle=True))

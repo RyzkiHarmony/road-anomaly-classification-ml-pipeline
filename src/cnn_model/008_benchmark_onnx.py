@@ -63,7 +63,13 @@ def benchmark_onnx(model_path, num_runs=1000):
     print(f"\nSample Prediction Output (Softmax embedded):\n{result}")
 
 if __name__ == "__main__":
-    if not os.path.exists(ONNX_MODEL_PATH):
-        print(f"ERROR: Model not found at {ONNX_MODEL_PATH}")
+    import argparse
+    parser = argparse.ArgumentParser(description="Benchmark ONNX Model Inference Latency")
+    parser.add_argument("--model-path", type=str, default=ONNX_MODEL_PATH, help="Path to ONNX model")
+    parser.add_argument("--num-runs", type=int, default=1000, help="Number of benchmark iterations")
+    args = parser.parse_args()
+
+    if not os.path.exists(args.model_path):
+        print(f"ERROR: Model not found at {args.model_path}")
     else:
-        benchmark_onnx(ONNX_MODEL_PATH)
+        benchmark_onnx(args.model_path, num_runs=args.num_runs)
