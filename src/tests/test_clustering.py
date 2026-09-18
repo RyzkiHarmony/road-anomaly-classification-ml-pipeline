@@ -11,8 +11,16 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset"))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils"))
+sys.path.insert(
+    0,
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dataset"
+    ),
+)
+sys.path.insert(
+    0,
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "utils"),
+)
 
 from clustering import cluster_peaks
 
@@ -21,13 +29,13 @@ def _make_peaks(**kwargs) -> pd.DataFrame:
     """Build a minimal peaks DataFrame with all columns required by cluster_peaks()."""
     n = len(kwargs.get("time_s", [0.0]))
     defaults = {
-        "time_s":        [0.0] * n,
-        "lat":           [-7.0] * n,
-        "lon":           [110.0] * n,
-        "peak_mag":      [30.0] * n,
+        "time_s": [0.0] * n,
+        "lat": [-7.0] * n,
+        "lon": [110.0] * n,
+        "peak_mag": [30.0] * n,
         "peak_vertical": [30.0] * n,
-        "peak_gyro_mag": [2.0]  * n,
-        "peak_speed":    [5.0]  * n,
+        "peak_gyro_mag": [2.0] * n,
+        "peak_speed": [5.0] * n,
     }
     defaults.update(kwargs)
     return pd.DataFrame(defaults)
@@ -51,14 +59,14 @@ class TestClusterPeaks:
 
     def test_two_nearby_peaks_merge_into_one_event(self):
         """Peaks within CLUSTER_TIME_S (2s) and same GPS point should merge."""
-        peaks = _make_peaks(time_s=[0.0, 0.5])   # 0.5s apart → same cluster
+        peaks = _make_peaks(time_s=[0.0, 0.5])  # 0.5s apart → same cluster
         df, next_id = cluster_peaks(peaks, start_event_id=0)
         assert len(df) == 1
         assert next_id == 1
 
     def test_two_distant_peaks_become_two_events(self):
         """Peaks more than CLUSTER_TIME_S (2s) apart should become separate events."""
-        peaks = _make_peaks(time_s=[0.0, 5.0])   # 5s apart → different clusters
+        peaks = _make_peaks(time_s=[0.0, 5.0])  # 5s apart → different clusters
         df, next_id = cluster_peaks(peaks, start_event_id=0)
         assert len(df) == 2
         assert next_id == 2
@@ -80,9 +88,16 @@ class TestClusterPeaks:
     def test_output_has_required_columns(self):
         """Output DataFrame must contain the core columns needed downstream."""
         required_cols = {
-            "event_id", "time_s", "lat", "lon",
-            "peak_mag", "peak_vertical", "peak_vertical_g",
-            "peak_gyro_mag", "speed_mean", "level",
+            "event_id",
+            "time_s",
+            "lat",
+            "lon",
+            "peak_mag",
+            "peak_vertical",
+            "peak_vertical_g",
+            "peak_gyro_mag",
+            "speed_mean",
+            "level",
         }
         peaks = _make_peaks(time_s=[0.0])
         df, _ = cluster_peaks(peaks, start_event_id=0)
@@ -94,9 +109,9 @@ class TestClusterPeaks:
         # 8G * 9.80665 = 78.45 m/s²
         high_g_ms2 = 8.5 * 9.80665
         peaks = _make_peaks(
-            time_s         =[0.0],
-            peak_vertical  =[high_g_ms2],
-            peak_gyro_mag  =[0.0],
+            time_s=[0.0],
+            peak_vertical=[high_g_ms2],
+            peak_gyro_mag=[0.0],
         )
         df, _ = cluster_peaks(peaks, start_event_id=0)
         assert df["level"].iloc[0] == "high_conf"
