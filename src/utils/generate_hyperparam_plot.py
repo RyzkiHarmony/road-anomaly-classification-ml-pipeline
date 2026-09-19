@@ -50,7 +50,7 @@ def plot_sensitivity(ax, param_values, loss_values, f1_values, xlabel, title, is
     ax.legend(lines, labels, loc='best')
 
 def main():
-    base_dir = os.path.join("src", "cnn_model", "analysis")
+    base_dir = os.path.join("src", "stage4_modeling", "cnn", "analysis")
     lr_res = load_results(os.path.join(base_dir, "lr_tune_results.json"))
     ep_res = load_results(os.path.join(base_dir, "epoch_tune_results.json"))
     bs_res = load_results(os.path.join(base_dir, "batch_sz_tune_results.json"))

@@ -117,36 +117,33 @@ Pipeline dikembangkan secara terstruktur melalui **6 Tahap Utama**, dimulai dari
 ## 🚀 Quickstart
 
 ```bash
-# 1. Clone and create venv
+# 1. Clone dan aktifkan venv proyek
 git clone https://github.com/YOUR_USERNAME/ml_pipelines.git
 cd ml_pipelines
-python -m venv .venv
-.venv/Scripts/activate  # Windows
-# source .venv/bin/activate  # Linux/macOS
+.venv/Scripts/activate  # Windows PowerShell
 
-# 2. Install all dependencies
-pip install -r requirements.txt
+# 2. Tahap 1 - Deteksi peak & labeling ground truth event
+python src/stage1_dataset/01_detect_peaks_label.py
+python src/stage1_dataset/02_generate_background.py
 
-# 3. Tahap 1 - Deteksi peak & labeling event
-python src/dataset/001_labeling.py
+# 3. Tahap 2 - Prapemrosesan, Causal Filter, Pemisahan X & y (Tensor 3D & Tabular 2D)
+python src/stage2_preprocessing/03_build_cnn_tensors.py
+python src/stage2_preprocessing/04_build_xgb_tabular.py
 
-# 4. Tahap 2 - Generate shared background (Non-Event)
-python src/dataset/002_generate_shared_background.py
+# 4. Tahap 3 - EDA Distribusi Kelas & Imbalance
+python src/stage3_eda_and_splitting/eda_distribution.py
 
-# 5. Tahap 3 - Pembuatan window & dataset 1D-CNN (2.0s @ 100Hz)
-python src/dataset/003_build_cnn_data.py
+# 5. Tahap 4 - Pelatihan & Optimasi Hiperparameter
+python src/stage4_modeling/xgboost/06_train_xgb.py
+python src/stage4_modeling/cnn/06_train_cnn.py
 
-# 6. Tahap 4 - Optimasi hiperparameter (Optuna HPO)
-python src/cnn_model/005_optuna_tune.py
+# 6. Tahap 5 - Evaluasi Klasifikasi Holdout Test Set Head-to-Head
+python src/stage5_evaluation/07_compare_models.py
 
-# 7. Tahap 5 - Pelatihan model InceptionTime1D (K-Fold & Holdout)
-python src/cnn_model/006_train.py
-
-# 8. Tahap 6 - Ekspor ONNX untuk deployment Android
-python src/cnn_model/007_export_onnx.py
-
-# 9. Tahap 7 - Benchmark latensi inferensi edge (< 5ms)
-python src/cnn_model/008_benchmark_onnx.py
+# 7. Tahap 6 - Ekspor ONNX, Benchmark Latensi Edge & Visualisasi Barchart Komparasi
+python src/stage6_reports_deployment/08_export_onnx.py
+python src/stage6_reports_deployment/09_benchmark_latency.py
+python src/stage6_reports_deployment/plot_comparisons.py
 ```
 
 ---
@@ -156,32 +153,47 @@ python src/cnn_model/008_benchmark_onnx.py
 ```
 ml_pipelines/
 ├── src/
-│   ├── dataset/                        # Pipeline tahap data preparation & ground truth
-│   │   ├── 001_labeling.py             # Step 1: Deteksi peak & clustering event
-│   │   ├── 002_generate_shared_background.py # Step 2: Sampling background non-event
-│   │   ├── 003_build_cnn_data.py       # Step 3: Windowing & dataset numpy 1D-CNN
-│   │   ├── 004_build_xgboost_data.py   # Step 4: Ekstraksi fitur tabular XGBoost
-│   │   ├── cnn_dataset_utils.py        # Helper library windowing & ekstraksi sinyal
-│   │   ├── sensor_fusion.py            # Helper causal filtering & gravitasi
-│   │   ├── clustering.py               # Helper spatio-temporal clustering
-│   │   ├── peak_detection.py           # Helper deteksi shock acceleration
-│   │   └── feature_extraction.py       # Helper 88 fitur domain waktu-frekuensi
-│   ├── cnn_model/                      # Pipeline tahap pemodelan 1D-CNN & deployment
-│   │   ├── 005_optuna_tune.py          # Step 5: HPO Bayesian optimization
-│   │   ├── 006_train.py                # Step 6: Pelatihan model K-Fold + Holdout
-│   │   ├── 007_export_onnx.py          # Step 7: ONNX export + MobileInferenceWrapper
-│   │   ├── 008_benchmark_onnx.py       # Step 8: Benchmark inferensi edge
-│   │   ├── model.py                    # InceptionTime1D neural network architecture
-│   │   ├── training_utils.py           # Dataset jitter, focal loss, & seed utils
-│   │   └── analysis/                   # Eksperimen LR, epoch, dan batch size
-│   ├── xgboost_model/                  # Classical ML baseline (XGBoost)
-│   ├── utils/                          # Shared config, logger, feature helpers
-│   └── tests/                          # Pytest suite (31 passing tests)
-├── evaluation/
-│   ├── models/                         # Saved .pth, .onnx, scaler params
-│   └── reports/                        # Confusion matrices, PR curves
-├── data/
-│   └── processed/                      # Windowed features & signals (generated)
+│   ├── stage1_dataset/                 # TAHAP 1: Penentuan Target, Ground Truth & Deteksi Peak
+│   │   ├── 01_detect_peaks_label.py    # Ekstraksi peak & spatio-temporal clustering
+│   │   ├── 02_generate_background.py   # Sampling non-event background
+│   │   ├── clustering.py               # Algoritma spatio-temporal clustering
+│   │   ├── peak_detection.py           # Adaptive thresholding peak detector
+│   │   └── label_suggester.py          # Ground truth candidate heuristic scorer
+│   ├── stage2_preprocessing/           # TAHAP 2: Prapemrosesan Sinyal & Pemisahan Fitur (X, y)
+│   │   ├── sensor_fusion.py            # Causal low-pass filter (scipy.signal.lfilter)
+│   │   ├── feature_extraction.py       # Ekstraksi 88 fitur domain waktu-frekuensi
+│   │   ├── signal_windowing.py         # Windowing sinyal 2.0s @ 100Hz & gap handling
+│   │   ├── 03_build_cnn_tensors.py     # Pemisahan fitur X (3D) & y untuk 1D-CNN
+│   │   └── 04_build_xgb_tabular.py     # Pemisahan fitur X (2D) & y untuk XGBoost
+│   ├── stage3_eda_and_splitting/       # TAHAP 3: EDA Imbalance, Data Splitting & Normalisasi
+│   │   ├── eda_distribution.py         # Visualisasi diagram batang distribusi kelas target
+│   │   ├── data_splitting.py           # Trip-isolated stratified group split (80:20)
+│   │   └── normalizer.py               # Global Z-Score normalization (fit on train only)
+│   ├── stage4_modeling/                # TAHAP 4: Pemodelan & Pelatihan (XGBoost & 1D-CNN)
+│   │   ├── cnn/
+│   │   │   ├── architecture.py         # InceptionTime1D + SEBlock1D (PyTorch)
+│   │   │   ├── 05_tune_cnn.py          # Optuna Bayesian HPO
+│   │   │   └── 06_train_cnn.py         # Training K-Fold + Holdout final model
+│   │   └── xgboost/
+│   │       ├── 05_tune_xgb.py          # Optuna Bayesian HPO
+│   │       └── 06_train_xgb.py         # Training K-Fold + Holdout final model
+│   ├── stage5_evaluation/              # TAHAP 5: Evaluasi Klasifikasi & Pengujian Testing
+│   │   ├── 07_compare_models.py        # Komparasi Holdout head-to-head (Precision, Recall, F1)
+│   │   ├── calculate_prauc.py          # PR-AUC curve analysis kelas minoritas
+│   │   ├── error_audit.py              # Audit False Positives & False Negatives
+│   │   └── feature_importance.py       # Analisis kontribusi fitur XGBoost
+│   ├── stage6_reports_deployment/      # TAHAP 6: Visualisasi Akhir, Komparasi, Ekspor & Latensi
+│   │   ├── 08_export_onnx.py           # Ekspor PyTorch (MobileInferenceWrapper) & XGB ke ONNX
+│   │   ├── 09_benchmark_latency.py     # Benchmark latensi inferensi CPU single-thread edge
+│   │   └── plot_comparisons.py         # Diagram batang komparasi Akurasi vs Latensi Komputasi
+│   ├── utils/                          # Shared Global Config & Helpers
+│   │   ├── config.py                   # Konstanta global, path, & threshold
+│   │   └── helpers.py                  # Haversine, math utilities
+│   └── tests/                          # Pytest Suite (31 passing tests)
+├── data/                               # Data Mentah (raw) & Data Terproses (processed)
+├── evaluation/                         # Checkpoints Model (.pth, .onnx) & Laporan Evaluasi (.csv, .png)
+│   ├── models/                         # Model weights, label encoder & scaler params
+│   └── reports/                        # Confusion matrices, PR curves, benchmark reports
 ├── log/                                # Training run logs
 ├── ruff.toml                           # Code quality configuration
 └── requirements.txt                    # All dependencies (pinned versions)
