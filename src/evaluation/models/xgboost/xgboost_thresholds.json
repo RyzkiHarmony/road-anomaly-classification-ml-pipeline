@@ -1,0 +1,14 @@
+{
+  "pothole_threshold": 0.5,
+  "speed_bump_threshold": 0.5,
+  "pothole_class_index": 1,
+  "speed_bump_class_index": 2,
+  "non_event_class_index": 0,
+  "class_names": [
+    "Non-Event",
+    "Pothole",
+    "Speed Bump"
+  ],
+  "calibration_method": "isotonic",
+  "note": "Thresholds optimized on calibrated probabilities. For ONNX raw inference, use these thresholds with raw predict_proba output."
+}

@@ -5,17 +5,17 @@ Device: CPU (Single-Threaded Simulation for Mobile Edge)
 ----------------------------------------------------------------------
 Metrik                         | XGBoost ONNX       | 1D-CNN ONNX       
 ------------------------------------------------------------------------
-Model Size (KB)                | 237.92             | 649.80            
-Input Shape                    | [None, 56]         | ['batch_size', 14, 200]
-Average Latency (ms)           | 0.0172             | 0.2040            
-Standard Deviation (ms)        | 0.0082             | 0.0925            
-95th Percentile (ms)           | 0.0245             | 0.2782            
-Throughput (preds/sec)         | 58217.38           | 4901.37           
+Model Size (KB)                | 822.66             | 135.16            
+Input Shape                    | [None, 25]         | ['batch_size', 7, 200]
+Average Latency (ms)           | 0.0311             | 0.4034            
+Standard Deviation (ms)        | 0.0191             | 0.2250            
+95th Percentile (ms)           | 0.0404             | 0.7182            
+Throughput (preds/sec)         | 32182.28           | 2478.77           
 ======================================================================
 
 ANALISIS & REKOMENDASI DEPLOYMENT:
-- **Ukuran Penyimpanan:** Model 1D-CNN (649.8 KB) adalah 2.7x lebih besar dari XGBoost (237.9 KB).
+- **Ukuran Penyimpanan:** Model 1D-CNN (135.2 KB) adalah 0.2x lebih besar dari XGBoost (822.7 KB).
   Namun, kedua model tergolong sangat kecil (<1 MB) dan sangat aman untuk penyimpanan internal Android.
-- **Kecepatan Inferensi:** Waktu eksekusi rata-rata 1D-CNN (0.20 ms) adalah 11.9x dari XGBoost (0.02 ms).
-  Meskipun 1D-CNN lebih lambat, waktu inferensinya (0.20 ms) berada jauh di bawah ambang batas real-time (10 ms).
+- **Kecepatan Inferensi:** Waktu eksekusi rata-rata 1D-CNN (0.40 ms) adalah 13.0x dari XGBoost (0.03 ms).
+  Meskipun 1D-CNN lebih lambat, waktu inferensinya (0.40 ms) berada jauh di bawah ambang batas real-time (10 ms).
   Model 1D-CNN mampu memproses hingga 100+ prediksi per detik pada core CPU tunggal, menjadikannya sangat layak dideploy.

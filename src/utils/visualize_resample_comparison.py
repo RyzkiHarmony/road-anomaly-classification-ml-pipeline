@@ -8,6 +8,8 @@ import glob
 import json
 
 import matplotlib.pyplot as plt
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "stage2_preprocessing"))
 from sensor_fusion import resample_100hz
 
 CSV_FOLDER = os.path.join("data", "raw", "active", "csv")

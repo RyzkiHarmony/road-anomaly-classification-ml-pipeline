@@ -1,222 +1,286 @@
 # 🛣️ Road Anomaly Detection — ML Pipeline
 
-![CI Pipeline](https://github.com/YOUR_USERNAME/ml_pipelines/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.13-blue.svg)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c.svg)
+![XGBoost](https://img.shields.io/badge/XGBoost-2.0+-green.svg)
 ![ONNX](https://img.shields.io/badge/export-ONNX-informational.svg)
 ![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
-An **end-to-end ML pipeline** for real-time road anomaly detection (potholes & speed bumps) on Android edge devices. The system uses raw IMU sensor data (accelerometer + gyroscope) collected via smartphone mounted on a motorcycle, and exports a production-ready model to ONNX for zero-latency on-device inference.
+Pipeline Machine Learning dan Deep Learning *end-to-end* untuk deteksi anomali permukaan jalan (*Pothole* dan *Speed Bump*) secara *real-time* pada perangkat edge Android. Sistem memanfaatkan data sensor gerak IMU (*Accelerometer* dan *Gyroscope*) berfrekuensi 100 Hz yang direkam menggunakan smartphone terpasang pada sepeda motor, dan mengekspor model teroptimasi ke format ONNX untuk inferensi latensi rendah langsung di perangkat.
 
-> **Context:** This pipeline was developed as the core ML system for an undergraduate thesis (*Skripsi*) at UDINUS. The final model achieves **Macro F1-Score = 0.86** on the holdout test set after Optuna hyperparameter optimization.
-
----
-
-## 📐 System Architecture
-
-```
-┌─────────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  Raw Sensor Data│────▶│  Sensor Fusion   │────▶│  Windowing &       │
-│  (100Hz CSV)    │     │  (Causal Filter) │     │  Signal Extraction │
-└─────────────────┘     └──────────────────┘     └────────────────────┘
-                                                             │
-                                                             ▼
-┌─────────────────┐     ┌──────────────────┐     ┌────────────────────┐
-│  ONNX Export    │◀────│  CNN Training    │◀────│  Optuna HPO        │
-│  (Android Ready)│     │  (Focal Loss)    │     │  (10 Trials)       │
-└─────────────────┘     └──────────────────┘     └────────────────────┘
-```
-
-**Key Pipeline Stages:**
-1. **Sensor Fusion** — Separates gravity from linear acceleration using a causal low-pass filter (`scipy.signal.lfilter`) with zero lookahead, ensuring real-time viability on mobile.
-2. **Signal Preprocessing** — Strict resampling to 100 Hz (10ms interval) with a maximum gap tolerance of 50ms. Applies **Global Z-Score Normalization** anchored on training set statistics (not per-instance), preventing inference-time distribution shift.
-3. **Physics-Aware Augmentation** — During training: **Time Warping** (simulates variable motor speed), **Channel Dropout** (simulates sensor orientation faults), and **Temporal Jitter** (simulates mounting vibration).
-4. **Hyperparameter Optimization** — Optuna with Median Pruner searches across LR, Dropout, Batch Size, Channels, Focal Loss Gamma, and Weight Decay. The objective is a **Robust Score** (`mean_F1 − std_F1`) to penalize unstable cross-fold behavior.
-5. **ONNX Export** — PyTorch model wrapped with `MobileInferenceWrapper` (global scaler baked in as buffers) and exported via TorchScript to ONNX for on-device Android inference.
-6. **Android Synchronization** — Processing logic is kept 1-to-1 between this pipeline and the Kotlin Android app, including the 50ms dropout gap tolerance and `eps=1e-6` Z-Score normalization.
+> **Konteks Akademis:** *Pipeline* ini dikembangkan sebagai sistem inti untuk skripsi sarjana di **Universitas Dian Nuswantoro (UDINUS)**. Pipeline ini mengimplementasikan evaluasi ketat berbasis rute terisolasi (*Trip-Isolated Stratified Group Split 80:20*) dan studi ablasi *head-to-head* antara model *Feature Engineering* (XGBoost) dan *Deep Learning* (1D-CNN InceptionTime).
 
 ---
 
-## 📊 Model Performance (Holdout Test Set — 20%)
+## 📐 Arsitektur Sistem
 
-Results on 941 samples from **5 trip-isolated** test routes (never seen during training):
+```
+┌─────────────────┐     ┌──────────────────┐     ┌──────────────────────────────────┐
+│  Raw Sensor Data│────▶│  Sensor Fusion   │────▶│  Windowing (2.0s @ 100Hz)        │
+│  (100Hz CSV)    │     │  (Causal Filter) │     │  Causal Real-time Preprocessing  │
+└─────────────────┘     └──────────────────┘     └─────────────────┬────────────────┘
+                                                                   │
+                                  ┌────────────────────────────────┴───────────────────────────────┐
+                                  ▼                                                                ▼
+              ┌───────────────────────────────────────┐                        ┌───────────────────────────────────────┐
+              │ Jalur 1D-CNN (Tensor 3D)              │                        │ Jalur XGBoost (Tabular 2D)            │
+              │ • 7 Sinyal Raw Berurutan (C=7, L=200) │                        │ • Ekstraksi 88 Fitur Waktu & Frekuensi│
+              │ • Global Z-Score Normalization        │                        │ • Seleksi Non-Redundan (|r| <= 0.75)  │
+              └───────────────────┬───────────────────┘                        └───────────────────┬───────────────────┘
+                                  │                                                                │
+                                  ▼                                                                ▼
+              ┌───────────────────────────────────────┐                        ┌───────────────────────────────────────┐
+              │ InceptionTime1D + SE-Block            │                        │ XGBoost Classifier                    │
+              │ • MultiClass Focal Loss (γ=1.67)      │                        │ • Sample Weighting: Balanced          │
+              │ • Optuna Bayesian HPO                 │                        │ • Kalibrasi Isotonik Probabilitas     │
+              └───────────────────┬───────────────────┘                        └───────────────────┬───────────────────┘
+                                  │                                                                │
+                                  └────────────────────────────────┬───────────────────────────────┘
+                                                                   ▼
+                                              ┌────────────────────────────────────────┐
+                                              │  Evaluasi Holdout & Studi Ablasi       │
+                                              │  • 20% Rute Baru (Trip-Isolated)       │
+                                              │  • Ekspor Model ONNX untuk Android     │
+                                              └────────────────────────────────────────┘
+```
 
-| Metric | Baseline 1D-CNN | Optuna Tuned 1D-CNN | Δ Improvement |
-|:---|:---:|:---:|:---:|
-| **Non-Event F1** | 0.98 | 0.98 | — |
-| **Pothole F1** | 0.72 | **0.78** | +0.06 ✅ |
-| **Pothole Recall** | 0.59 | **0.71** | +0.12 ✅ |
-| **Speed Bump F1** | 0.79 | **0.81** | +0.02 ✅ |
-| **Macro F1-Score** | 0.83 | **0.86** | +0.03 ✅ |
-| **Accuracy** | 96% | **96%** | — |
+---
 
-> **Optuna Best Parameters:** `LR=0.001253`, `Batch=16`, `Channels=48`, `Dropout=0.2094`, `WeightDecay=2.7e-5`, `Gamma=1.67`
+## 📊 Hasil Evaluasi Model (Holdout Test Set — 20% Rute Baru)
+
+Pengujian dilakukan pada **rute perjalanan baru** yang diisolasi secara ketat (*Trip-Isolated*), sehingga data uji tidak pernah dilihat oleh model selama proses pelatihan ataupun penyetelan hiperparameter.
+
+### Studi Ablasi Head-to-Head: XGBoost vs 1D-CNN
+
+| Kelas / Evaluasi | Model | Precision | Recall | F1-Score | Support |
+|:---|:---|:---:|:---:|:---:|:---:|
+| **Non-Event** | XGBoost (Optuna Tuned) | 0.9732 | 0.9847 | 0.9789 | 847 |
+| | 1D-CNN (InceptionTime) | 0.9664 | 0.9881 | 0.9771 | 843 |
+| **Pothole (Target Utama)** | XGBoost (Optuna Tuned) | 0.7308 | 0.6786 | 0.7037 | 56 |
+| | 1D-CNN (InceptionTime) | **0.8810** | 0.6607 | **0.7551** | 56 |
+| **Speed Bump** | XGBoost (Optuna Tuned) | 0.6111 | 0.5238 | 0.5641 | 42 |
+| | 1D-CNN (InceptionTime) | **0.8378** | **0.7381** | **0.7848** | 42 |
+| **Macro Average** | XGBoost (Optuna Tuned) | 0.7717 | 0.7290 | 0.7489 | 945 |
+| | 1D-CNN (InceptionTime) | **0.8950** | **0.7956** | **0.8390** | 941 |
+| **Overall Accuracy** | XGBoost (Optuna Tuned) | 94.60% | — | — | 945 |
+| | 1D-CNN (InceptionTime) | **95.75%** | — | — | 941 |
+
+> **Analisis Singkat:** Model deep learning 1D-CNN (InceptionTime) unggul dalam menangkap dinamika temporal gelombang getaran jalan (*F1 Pothole = 0.7551* dan *F1 Speed Bump = 0.7848*), sementara model XGBoost berbasis 25 fitur non-redundan memberikan F1 Pothole = 0.7037 dengan efisiensi komputasi sangat tinggi pada perangkat edge.
+
+---
+
+## ⚙️ Parameter Terbaik Hasil Optimasi Optuna
+
+### 1. XGBoost (Objektif: Maksimalisasi PR-AUC Pothole)
+File konfigurasi: `evaluation/models/xgboost/best_params.json`
+
+| Parameter | Nilai Terpilih | Ruang Pencarian (*Search Space*) |
+|:---|:---:|:---|
+| `n_estimators` | **290** | [50, 300] (Integer) |
+| `max_depth` | **7** | [3, 9] (Integer) |
+| `min_child_weight` | **1** | [1, 10] (Integer) |
+| `learning_rate` | **0.1879** | [0.01, 0.30] (Log Scale) |
+| `subsample` | **0.6126** | [0.50, 1.00] (Uniform Float) |
+| `colsample_bytree` | **0.5640** | [0.50, 1.00] (Uniform Float) |
+| `reg_alpha` | **4.6666** | [0.00, 10.00] (Uniform Float) |
+| `reg_lambda` | **7.8339** | [0.00, 10.00] (Uniform Float) |
+
+### 2. 1D-CNN InceptionTime (Objektif: Robust Score `mean_F1 - std_F1`)
+File konfigurasi: `src/stage4_modeling/cnn/best_optuna_params.json`
+
+| Parameter | Nilai Terpilih | Deskripsi |
+|:---|:---:|:---|
+| `channels` | **48** | Lebar channel konvolusi Inception Block |
+| `dropout` | **0.2094** | Regularisasi dropout rate |
+| `learning_rate` | **0.001253** | Kecepatan konvergensi AdamW |
+| `batch_size` | **16** | Ukuran mini-batch per iterasi |
+| `weight_decay` | **2.7e-5** | Penalti bobot L2 |
+| `focal_gamma` (γ) | **1.67** | Parameter fokus MultiClass Focal Loss |
 
 ---
 
 ## 🔍 Alur Pengerjaan & Tahapan Pipeline Terperinci
 
-Pipeline dikembangkan secara terstruktur melalui **6 Tahap Utama**, dimulai dari inspeksi data kotor mentah hingga ekspor model ke format ONNX untuk Android Edge AI:
-
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAHAP 1: INSPEKSI DATA KOTOR & AUDIT KUALITAS (RAW DATA QUALITY AUDIT)      │
-│  • Pengecekan Fluktuasi Sampling Rate (80Hz - 110Hz -> Irregular Interval)  │
-│  • Deteksi Dropout Gaps (> 50ms akibat Throttling OS Android)               │
-│  • Verifikasi Satuan Sensor (m/s² & rad/s) & Noise Level Getaran Motor      │
-│  • Analisis Ketidakseimbangan Kelas Ground Truth (~15:1 Non-Event Ratio)     │
+│ TAHAP 1: DETEKSI PEAK & GROUND TRUTH MAPPING (GROUND TRUTH ENGINE)          │
+│  • Pengecekan Fluktuasi Sampling Rate (80Hz - 110Hz -> Regularisasi 100Hz)  │
+│  • Deteksi Puncak Abnormalitas (Adaptive Thresholding Peak Detector)         │
+│  • Spatio-Temporal Clustering (Pengelompokan Puncak Berulang < 0.8 Detik)   │
+│  • Ground Truth Mapping diikat pada dimensi fisik absolut (time_s / GPS)     │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAHAP 2: PEMBERSIHAN DATA & SENSOR FUSION (DATA CLEANING & PREPROCESSING)    │
-│  • Interpolasi Linier Resampling Teratur 100 Hz (10ms Interval)             │
-│  • Causal Low-pass Filter (scipy.signal.lfilter, Latensi 0ms, Zero-Lookahead)│
-│  • Sensor Fusion: Pemisahan Gravitasi (g) & Akselerasi Linier (a_lin)       │
-│  • Spatial Alignment: Pencocokan GPS Haversine (< 10m) & Timestamp IMU      │
+│ TAHAP 2: SENSOR FUSION & PRAPEMROSESAN SINYAL (SIGNAL PREPROCESSING)        │
+│  • Causal Low-pass Filter (scipy.signal.lfilter, Latensi 0ms, Zero Lookahead)│
+│  • Sensor Fusion: Pemisahan Gravitasi (g) & Akselerasi Linier Dinamis        │
+│  • Windowing Terpusat 2.0 Detik (200 Sampel @ 100Hz)                        │
+│  • Pembentukan 3D Tensor untuk 1D-CNN (cnn_1d_X.npy, cnn_1d_y.npy)          │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAHAP 3: PEMBUATAN WINDOW & DATASET (WINDOWING & DATASET BUILDING)          │
-│  • Windowing Terpusat 2.0 Detik (200 Sampel = 100 sebelum & 100 sesudah)    │
-│  • Kalkulasi Z-Score Global Normalization (mean, std pada Training Set)     │
-│  • Trip-Isolated Group Split (Stratified Group K-Fold berdasar trip_id)     │
+│ TAHAP 3: FEATURE ENGINEERING & DATASET SPLITTING (TABULAR & SPLITTING)      │
+│  • Ekstraksi 88 Fitur Domain Waktu, Frekuensi (FFT) & Karakteristik Gelombang│
+│  • Seleksi Fitur Non-Redundan: Pemangkasan multikolinieritas Pearson |r|<=0.75│
+│  • Terpilih 25 Fitur Independen terkuat untuk representasi tabular XGBoost  │
+│  • Trip-Isolated Stratified Group Split (80% Dev Set vs 20% Holdout Test)   │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAHAP 4: PELATIHAN MODEL & OPTIMASI HIPERPARAMETER (TRAINING & HPO)         │
-│  • Arsitektur 1D-CNN InceptionTime1D + Squeeze-and-Excitation (SEBlock1D)   │
-│  • MultiClassFocalLoss (Gamma=1.67) untuk Penanganan Extreme Class Imbalance │
+│ TAHAP 4: PEMODELAN & OPTIMASI HIPERPARAMETER (MODELING & OPTUNA HPO)        │
+│  • XGBoost: Optimasi Optuna (100 Trials, PR-AUC Pothole) + Kalibrasi Isotonik│
+│  • 1D-CNN: InceptionTime1D + SE-Block, MultiClass Focal Loss (γ=1.67)       │
 │  • Physics-Aware Augmentation: Time Warping, Channel Dropout, Jitter        │
-│  • Optuna HPO: Search Space (LR, Batch, Weight Decay, Channels, Gamma)      │
+│  • 4-Fold Stratified Group K-Fold Cross-Validation pada Dev Set              │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAHAP 5: EVALUASI MODEL, AUDIT KESALAHAN & STUDA ABLASI (EVALUATION & AUDIT) │
-│  • Evaluasi Holdout Test Set (20% Trip Terisolasi yang Belum Pernah Dilihat) │
-│  • Matriks Evaluasi: Confusion Matrix, PR-AUC, Precision, Recall, F1-Score  │
-│  • Studi Ablasi Head-to-Head: Baseline 1D-CNN vs Optuna Tuned 1D-CNN        │
-│  • Error Audit (Analisis False Positive & False Negative) & Uji Kalibrasi   │
+│ TAHAP 5: EVALUASI MODEL & STUDI ABLASI (EVALUATION & BENCHMARKING)          │
+│  • Pengujian Independen pada Holdout Test Set (5 Rute Baru yang Terisolasi) │
+│  • Metrik Lengkap: Confusion Matrix, PR-AUC, Precision, Recall, F1-Score     │
+│  • Studi Ablasi Komparatif Head-to-Head (XGBoost vs 1D-CNN)                  │
+│  • Error Audit (Analisis Sampel False Positive & False Negative pada Peta)  │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ TAHAP 6: EKSPOR ONNX & INTEGRASI ANDROID (ONNX EXPORT & EDGE AI)             │
-│  • Wrap Model dengan MobileInferenceWrapper (Bake Z-Score Scaler Buffers)   │
-│  • TorchScript Export -> 1dcnn_optuna_tuned.onnx                             │
-│  • Benchmark Inference Latency (< 5ms per 2-second window) pada Device      │
+│ TAHAP 6: EKSPOR ONNX & DEPLOYMENT ANDROID (EDGE AI DEPLOYMENT)              │
+│  • Pembungkusan MobileInferenceWrapper (Global Scaler Buffer terintegrasi)   │
+│  • Ekspor Model PyTorch & XGBoost ke format ONNX (Opset 15)                  │
+│  • Benchmark Latensi Inferensi CPU Single-Thread Mobile (< 5ms per window)   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Panduan Eksekusi (Quickstart)
+
+> **Catatan:** Selalu gunakan lingkungan virtual Python (`.venv\Scripts\python.exe`) yang telah terinstal dependensinya.
 
 ```bash
-# 1. Clone and create venv
-git clone https://github.com/YOUR_USERNAME/ml_pipelines.git
+# 1. Masuk ke direktori proyek dan aktifkan venv
 cd ml_pipelines
-python -m venv .venv
-.venv/Scripts/activate  # Windows
-# source .venv/bin/activate  # Linux/macOS
+.\.venv\Scripts\activate
 
-# 2. Install all dependencies
-pip install -r requirements.txt
+# 2. Tahap 1 - Deteksi Peak & Pembuatan Label Ground Truth
+.venv\Scripts\python.exe src/stage1_dataset/01_detect_peaks_label.py
+.venv\Scripts\python.exe src/stage1_dataset/02_generate_background.py
 
-# 3. Tahap 1 - Deteksi peak & labeling event
-python src/dataset/001_labeling.py
+# 3. Tahap 2 - Prapemrosesan Sinyal & Pembentukan Tensor 1D-CNN
+.venv\Scripts\python.exe src/stage2_preprocessing/03_build_cnn_tensors.py
 
-# 4. Tahap 2 - Generate shared background (Non-Event)
-python src/dataset/002_generate_shared_background.py
+# 4. Tahap 3 - Ekstraksi Fitur Tabular XGBoost & Analisis Distribusi
+.venv\Scripts\python.exe src/stage3_feature_engineering/04_extract_xgb_features.py
+.venv\Scripts\python.exe src/stage3_eda_and_splitting/eda_distribution.py
 
-# 5. Tahap 3 - Pembuatan window & dataset 1D-CNN (2.0s @ 100Hz)
-python src/dataset/003_build_cnn_data.py
+# 5. Tahap 4 - Optimasi Hiperparameter (Optuna) & Pelatihan Model
+# A. Model XGBoost
+.venv\Scripts\python.exe src/stage4_modeling/xgboost/05_tune_xgb.py
+.venv\Scripts\python.exe src/stage4_modeling/xgboost/06_train_xgb.py
 
-# 6. Tahap 4 - Optimasi hiperparameter (Optuna HPO)
-python src/cnn_model/005_optuna_tune.py
+# B. Model 1D-CNN
+.venv\Scripts\python.exe src/stage4_modeling/cnn/05_tune_cnn.py
+.venv\Scripts\python.exe src/stage4_modeling/cnn/06_train_cnn.py
 
-# 7. Tahap 5 - Pelatihan model InceptionTime1D (K-Fold & Holdout)
-python src/cnn_model/006_train.py
+# 6. Tahap 5 - Evaluasi Komparatif & Studi Ablasi Head-to-Head
+.venv\Scripts\python.exe src/stage5_evaluation/07_compare_models.py
 
-# 8. Tahap 6 - Ekspor ONNX untuk deployment Android
-python src/cnn_model/007_export_onnx.py
-
-# 9. Tahap 7 - Benchmark latensi inferensi edge (< 5ms)
-python src/cnn_model/008_benchmark_onnx.py
+# 7. Tahap 6 - Ekspor ONNX & Pengujian Latensi Edge
+.venv\Scripts\python.exe src/stage6_reports_deployment/08_export_onnx.py
+.venv\Scripts\python.exe src/stage6_reports_deployment/09_benchmark_latency.py
+.venv\Scripts\python.exe src/stage6_reports_deployment/plot_comparisons.py
 ```
 
 ---
 
-## 🗂️ Project Structure
+## 🗂️ Struktur Direktori Proyek
 
 ```
 ml_pipelines/
 ├── src/
-│   ├── dataset/                        # Pipeline tahap data preparation & ground truth
-│   │   ├── 001_labeling.py             # Step 1: Deteksi peak & clustering event
-│   │   ├── 002_generate_shared_background.py # Step 2: Sampling background non-event
-│   │   ├── 003_build_cnn_data.py       # Step 3: Windowing & dataset numpy 1D-CNN
-│   │   ├── 004_build_xgboost_data.py   # Step 4: Ekstraksi fitur tabular XGBoost
-│   │   ├── cnn_dataset_utils.py        # Helper library windowing & ekstraksi sinyal
-│   │   ├── sensor_fusion.py            # Helper causal filtering & gravitasi
-│   │   ├── clustering.py               # Helper spatio-temporal clustering
-│   │   ├── peak_detection.py           # Helper deteksi shock acceleration
-│   │   └── feature_extraction.py       # Helper 88 fitur domain waktu-frekuensi
-│   ├── cnn_model/                      # Pipeline tahap pemodelan 1D-CNN & deployment
-│   │   ├── 005_optuna_tune.py          # Step 5: HPO Bayesian optimization
-│   │   ├── 006_train.py                # Step 6: Pelatihan model K-Fold + Holdout
-│   │   ├── 007_export_onnx.py          # Step 7: ONNX export + MobileInferenceWrapper
-│   │   ├── 008_benchmark_onnx.py       # Step 8: Benchmark inferensi edge
-│   │   ├── model.py                    # InceptionTime1D neural network architecture
-│   │   ├── training_utils.py           # Dataset jitter, focal loss, & seed utils
-│   │   └── analysis/                   # Eksperimen LR, epoch, dan batch size
-│   ├── xgboost_model/                  # Classical ML baseline (XGBoost)
-│   ├── utils/                          # Shared config, logger, feature helpers
-│   └── tests/                          # Pytest suite (31 passing tests)
-├── evaluation/
-│   ├── models/                         # Saved .pth, .onnx, scaler params
-│   └── reports/                        # Confusion matrices, PR curves
-├── data/
-│   └── processed/                      # Windowed features & signals (generated)
-├── log/                                # Training run logs
-├── ruff.toml                           # Code quality configuration
-└── requirements.txt                    # All dependencies (pinned versions)
+│   ├── stage1_dataset/                 # TAHAP 1: Penentuan Target, Ground Truth & Deteksi Peak
+│   │   ├── 01_detect_peaks_label.py    # Deteksi peak & spatio-temporal clustering
+│   │   ├── 02_generate_background.py   # Ekstraksi window non-event normal
+│   │   ├── clustering.py               # Spatio-temporal DBSCAN-like clustering
+│   │   ├── peak_detection.py           # Adaptive thresholding peak detector
+│   │   ├── label_suggester.py          # Ground truth candidate heuristic scorer
+│   │   └── manual_labeling_per_trip.py # Antarmuka verifikasi label per rute
+│   ├── stage2_preprocessing/           # TAHAP 2: Prapemrosesan Sinyal & Sensor Fusion
+│   │   ├── sensor_fusion.py            # Causal low-pass filter (scipy.signal.lfilter)
+│   │   ├── signal_windowing.py         # Windowing sinyal 2.0s @ 100Hz & penanganan gap
+│   │   └── 03_build_cnn_tensors.py     # Ekstraksi tensor 3D sinyal mentah untuk 1D-CNN
+│   ├── stage3_feature_engineering/     # TAHAP 3A: Ekstraksi Fitur Domain Waktu-Frekuensi
+│   │   ├── 04_extract_xgb_features.py  # Ekstraksi 88 fitur tabular per window
+│   │   └── feature_extraction.py       # Modul kalkulasi statistik, energi, spectral & wavelet
+│   ├── stage3_eda_and_splitting/       # TAHAP 3B: EDA, Trip Split & Normalisasi
+│   │   ├── eda_distribution.py         # Visualisasi distribusi label & uji ketidakseimbangan
+│   │   ├── data_splitting.py           # Trip-isolated stratified group split (80:20)
+│   │   └── normalizer.py               # Global Z-Score normalization (fit on train only)
+│   ├── stage4_modeling/                # TAHAP 4: Pemodelan, Tuning & Pelatihan
+│   │   ├── cnn/                        # Jalur Deep Learning 1D-CNN
+│   │   │   ├── architecture.py         # InceptionTime1D + SE-Block + Focal Loss
+│   │   │   ├── 05_tune_cnn.py          # Optuna HPO untuk arsitektur & parameter CNN
+│   │   │   ├── 06_train_cnn.py         # Pelatihan K-Fold + Holdout test model CNN
+│   │   │   └── hard_negative_mining.py # Penambangan sampel false positive berulang
+│   │   └── xgboost/                    # Jalur Klasik ML XGBoost
+│   │       ├── 05_tune_xgb.py          # Optuna HPO seleksi fitur & parameter XGBoost
+│   │       ├── 06_train_xgb.py         # Pelatihan K-Fold, kalibrasi isotonik & holdout
+│   │       └── export.py               # Konversi model XGBoost ke format ONNX
+│   ├── stage5_evaluation/              # TAHAP 5: Evaluasi Komparatif & Audit Kesalahan
+│   │   ├── 07_compare_models.py        # Komparasi evaluasi holdout head-to-head
+│   │   ├── calculate_prauc.py          # Analisis kurva Precision-Recall AUC
+│   │   ├── error_audit.py              # Investigasi mendalam sampel FP & FN
+│   │   ├── feature_importance.py       # Kontribusi fitur terpenting model XGBoost
+│   │   └── visualize_trip_anomaly.py   # Visualisasi peta anomali jalan per rute
+│   ├── stage6_reports_deployment/      # TAHAP 6: Visualisasi Akhir, Ekspor & Benchmark
+│   │   ├── 08_export_onnx.py           # Ekspor PyTorch & XGBoost ke ONNX (Opset 15)
+│   │   ├── 09_benchmark_latency.py     # Pengujian latensi eksekusi CPU edge
+│   │   └── plot_comparisons.py         # Plot komparatif F1-score vs Latensi Komputasi
+│   ├── utils/                          # Konfigurasi Global & Utility Matematika
+│   │   ├── config.py                   # Konstanta global, path file, dan threshold sensor
+│   │   └── helpers.py                  # Fungsi kalkulasi jarak Haversine & rotasi
+│   └── tests/                          # Rangkaian Pengujian Unit (Unit Test Suite)
+├── data/                               # Direktori data mentah dan olahan
+├── evaluation/                         # Checkpoints Model (.pkl, .pth, .onnx) & Laporan Evaluasi
+│   ├── models/                         # Model weights, label encoder & scaler params
+│   └── reports/                        # Confusion matrices, kurva PR, dan laporan CSV
+├── log/                                # Log sesi pelatihan & tuning
+├── ruff.toml                           # Konfigurasi linter & code formatter Ruff
+└── requirements.txt                    # Dependensi pustaka Python
 ```
 
 ---
 
-## 🔬 Key Technical Decisions
+## 🔬 Prinsip Rekayasa & Keputusan Teknis Utama
 
-| Decision | Rationale |
+| Keputusan Teknis | Alasan & Rasionalitas Metodologis |
 |:---|:---|
-| **Causal Filter (no lookahead)** | Ensures zero-latency real-time inference on device. Non-causal filters would require future samples, making live detection impossible. |
-| **Trip-Based Train/Test Split** | Prevents data leakage. Samples from the same trip share temporal correlations; shuffling would produce artificially inflated metrics. |
-| **Global Z-Score (not per-instance)** | Anchoring normalization on training set statistics ensures the inference distribution matches training, preventing silent accuracy degradation at deployment. |
-| **Focal Loss (γ=1.67)** | Addresses the extreme class imbalance (~1:15 ratio of anomaly to normal road). Down-weights easy Non-Event samples so the model focuses on learning the minority anomaly pattern. |
-| **Robust Score Objective** | `mean(F1) − std(F1)` penalizes high-variance solutions in Optuna. A model that scores 0.70 in all folds is preferred over one that scores 0.90 in one fold and 0.50 in another. |
-| **MobileInferenceWrapper (ONNX)** | Bakes the global scaler (mean, std) as PyTorch buffers into the ONNX graph, so the Android app only sends raw sensor windows — no separate preprocessing code required. |
+| **Causal Filter (Zero Lookahead)** | Menjamin inferensi *real-time* tanpa latensi pada perangkat mobile. Filter non-kausal membutuhkan sampel masa depan yang mustahil tersedia saat deteksi langsung di jalan. |
+| **Trip-Isolated Data Split (80:20)** | Mencegah kebocoran data (*data leakage*). Sampel dari rute yang sama memiliki korelasi spasio-temporal tinggi; *shuffling* acak akan menghasilkan metrik evaluasi yang *overoptimistic*. |
+| **Ground Truth Mapping Absolut** | Label ground truth diikat pada koordinat spasial dan dimensi waktu absolut (`time_s`), bukan indeks baris. Hal ini mencegah korupsi label saat parameter *filtering* diubah. |
+| **Seleksi Fitur Pearson (\|r\| <= 0.75)** | Mengeliminasi multikolinieritas pada model XGBoost. Dari 56 fitur kandidat, 19 fitur redundan dipangkas dan 25 fitur independen terkuat dipertahankan. |
+| **Kalibrasi Isotonik Probabilitas** | Memperbaiki kalibrasi skor probabilitas keluaran XGBoost pada kelas minoritas (*Pothole* dan *Speed Bump*) sehingga ambang deteksi optimal dapat diterapkan secara stabil. |
+| **MultiClass Focal Loss (γ=1.67)** | Mengatasi ketidakseimbangan kelas ekstrem (~15:1 rasio Non-Event terhadap Anomali) pada 1D-CNN dengan menurunkan bobot sampel Non-Event yang mudah dipelajari. |
+| **MobileInferenceWrapper (ONNX)** | Menyematkan parameter normalisasi Z-Score (*mean* dan *std*) langsung sebagai *buffer* ke dalam graf komputasi ONNX, sehingga aplikasi Android hanya perlu mengirimkan *window* sinyal mentah. |
 
 ---
 
-## 🛠️ Developer Commands
+## 🛠️ Perintah Pengembang (Developer Tooling)
 
 ```bash
-make help         # List all available commands
-make install      # Install all Python dependencies
-make lint         # Run Ruff linter + auto-fix
-make test         # Run unit tests with pytest
-make train        # Train 1D-CNN (local)
-make tune         # Run Optuna HPO (local)
-make export-onnx  # Export model to ONNX (local)
-make clean        # Remove __pycache__ and .pytest_cache
+make help         # Menampilkan daftar perintah yang tersedia
+make install      # Menginstal semua dependensi Python ke dalam venv
+make lint         # Menjalankan linter Ruff & auto-formatting
+make test         # Menjalankan unit tests dengan pytest
+make train        # Melatih model (XGBoost & 1D-CNN)
+make tune         # Menjalankan Optuna Bayesian HPO
+make export-onnx  # Mengekspor checkpoint model ke format ONNX
+make clean        # Membersihkan cache Python (__pycache__, .pytest_cache)
 ```
 
 ---
-
-## 📄 License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

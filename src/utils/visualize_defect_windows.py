@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'utils'))
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'dataset'))
-from cnn_dataset_utils import (
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'stage2_preprocessing'))
+from signal_windowing import (
     EVENT_WINDOW_HALF_S,
     EVENTS_PATH,
     EXTENDED_SEQ_LEN,
